@@ -25,7 +25,6 @@ export enum TokenKind {
 
     Begin = "Begin",
     End = "End",
-    Endl = "Endl",
 
     Array = "Array",
     Of = "Of",

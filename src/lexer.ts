@@ -53,16 +53,13 @@ class Lexer {
             if (c.isEnd())
                 break
 
-            if (c.c == "\n") {
-                this.emitToken(TokenKind.Endl, c.pos, "\n")
-                this.next()
-            } else if (c.c == '_' || (c.c >= 'a' && c.c <= 'z') || (c.c >= 'A' && c.c <= 'A')) {
+            if (c.c == '_' || (c.c >= 'a' && c.c <= 'z') || (c.c >= 'A' && c.c <= 'A')) {
                 this.scanWord()
             } else if (c.c == '\"' || c.c == '`') {
                 this.scanString()
             } else if (c.c >= '0' && c.c <= '9') {
                 this.scanNumberLiteral()
-            } else if ("'!%&|^~(){}[]*+-:<>,=".includes(c.c)) {
+            } else if ("'!%&|^~(){}[]*+-:<>,=;".includes(c.c)) {
                 this.scanSymbol()
             } else if (c.c == '/') {
                 this.next()
@@ -185,6 +182,7 @@ class Lexer {
             [["->"], TokenKind.Arrow],
             [["-"], TokenKind.Minus],
             [["/"], TokenKind.Div],
+            [[":", "="], TokenKind.Assign],
             [[":"], TokenKind.Colon],
             [[";"], TokenKind.Semicolon],
             [["<", "="], TokenKind.LessThanEqual],
@@ -211,7 +209,7 @@ class Lexer {
 
             if (matched) {
                 this.emitToken(item[1], first.pos, value)
-                if (symbolMap.length > 1)
+                if (item[0].length > 1)
                     this.next()
                 return
             }
@@ -232,7 +230,7 @@ class Lexer {
     private advance(): CharPos {
         while (true) {
             const c = this.peek()
-            if (c.c == " " || c.c == "\t" || c.c == "\r")
+            if (c.c == " " || c.c == "\t" || c.c == "\r" || c.c == '\n')
                 this.next()
             else
                 return c
@@ -259,9 +257,8 @@ class Lexer {
         let value = ""
         while (true) {
             const c = this.peek()
-            if (c.isEnd() || !f(c.c)) {
+            if (c.isEnd() || !f(c.c))
                 break
-            }
             value += c.c
             this.next()
         }
