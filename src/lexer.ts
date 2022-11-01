@@ -84,6 +84,7 @@ class Lexer {
             (c >= 'A' && c <= 'A') ||
             (c >= '0' && c <= '9')
         )
+        console.log("word", word)
 
         const map: { [key: string]: TokenKind } = {
             "var": TokenKind.Var,
@@ -250,6 +251,7 @@ class Lexer {
                 break
             }
             value += c.c
+            this.next()
         }
         return value
     }
