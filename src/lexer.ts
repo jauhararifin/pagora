@@ -60,9 +60,9 @@ class Lexer {
                 this.scanWord()
             } else if (c.c == '\"' || c.c == '`') {
                 this.scanString()
-            } else if (c.c >= '0' || c.c <= '9') {
+            } else if (c.c >= '0' && c.c <= '9') {
                 this.scanNumberLiteral()
-            } else if (c.c in Array.from("'!%&|^~(){}[]*+-:<>,=")) {
+            } else if ("'!%&|^~(){}[]*+-:<>,=".includes(c.c)) {
                 this.scanSymbol()
             } else if (c.c == '/') {
                 this.next()
@@ -72,6 +72,9 @@ class Lexer {
                 } else {
                     this.emitToken(TokenKind.Div, c.pos, "/")
                 }
+            } else {
+                this.emitError(`unrecognize token '${c.c}' at ${c.pos.line}:${c.pos.col}`)
+                this.next()
             }
         }
     }
@@ -84,7 +87,6 @@ class Lexer {
             (c >= 'A' && c <= 'A') ||
             (c >= '0' && c <= '9')
         )
-        console.log("word", word)
 
         const map: { [key: string]: TokenKind } = {
             "var": TokenKind.Var,
@@ -197,8 +199,18 @@ class Lexer {
 
         const key = [first.c, second.c]
         for (const item of symbolMap) {
-            if (key == item[0]) {
-                this.emitToken(item[1], first.pos, first.c + second.c)
+            let matched = true
+            let value = ""
+            for (let i = 0; i < item[0].length; i++) {
+                value += key[i]
+                if (item[0][i] != key[i]) {
+                    matched = false
+                    break
+                }
+            }
+
+            if (matched) {
+                this.emitToken(item[1], first.pos, value)
                 if (symbolMap.length > 1)
                     this.next()
                 return

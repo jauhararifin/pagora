@@ -21,6 +21,17 @@ describe("tokenize test", () => {
             expectedTokens: [{ kind: TokenKind.If, value: "if", position: { line: 1, col: 1 } }],
             expectedErrors: [],
         },
+        {
+            name: 'simple if with expression',
+            sourceCode: `if a < b`,
+            expectedTokens: [
+                { kind: TokenKind.If, value: "if", position: { line: 1, col: 1 } },
+                { kind: TokenKind.Identifier, value: "a", position: { line: 1, col: 4 } },
+                { kind: TokenKind.LessThan, value: "<", position: { line: 1, col: 6 } },
+                { kind: TokenKind.Identifier, value: "b", position: { line: 1, col: 8 } },
+            ],
+            expectedErrors: [],
+        }
     ]
 
     for (const testcase of testcases) {
