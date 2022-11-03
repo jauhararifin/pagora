@@ -16,6 +16,7 @@ export enum TokenKind {
   Var = 'Var',
   Type = 'Type',
   Struct = 'Struct',
+  As = 'As',
   Identifier = 'Identifier',
   Function = 'Function',
   Comma = 'Comma',

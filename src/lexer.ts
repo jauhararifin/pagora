@@ -103,6 +103,7 @@ class Lexer {
       var: TokenKind.Var,
       type: TokenKind.Type,
       struct: TokenKind.Struct,
+      as: TokenKind.As,
       function: TokenKind.Function,
       begin: TokenKind.Begin,
       end: TokenKind.End,
