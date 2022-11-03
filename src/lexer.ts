@@ -1,11 +1,11 @@
 import { Token, TokenKind, Position } from './tokens'
 
-interface Error {
+export interface Error {
   position: Position
   message: string
 }
 
-interface Result {
+export interface Result {
   tokens: Token[]
   errors: Error[]
 }
@@ -82,7 +82,7 @@ class Lexer {
           })
         }
       } else {
-        this.errors.push({ position: c.pos, message: `unrecognize token '${c.c}'` })
+        this.errors.push({ position: c.pos, message: `unrecognized character '${c.c}'` })
         this.next()
       }
     }
@@ -178,6 +178,10 @@ class Lexer {
   }
 
   private scanNumberLiteral (): void {
+    // TODO: improve number literal. Support:
+    // - hexadecimal, binary, octa
+    // - floating point
+    // - exponent expression
     const c = this.peek()
     const value = this.consumeWhile((c) => (c >= '0' && c <= '9') || c === '_')
     this.tokens.push({

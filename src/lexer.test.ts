@@ -1,11 +1,11 @@
-import { tokenize } from './lexer'
+import { Error, tokenize } from './lexer'
 import { Token, TokenKind } from './tokens'
 
 interface Testcase {
   name: string
   sourceCode: string
   expectedTokens: Token[]
-  expectedErrors: string[]
+  expectedErrors: Error[]
 }
 
 const simpleForLoop = `
@@ -95,6 +95,37 @@ describe('tokenize test', () => {
         { kind: TokenKind.Div, value: '/', position: { line: 1, col: 3 } },
         { kind: TokenKind.Identifier, value: 'b', position: { line: 1, col: 5 } },
         { kind: TokenKind.Comment, value: '// this is a comment', position: { line: 1, col: 7 } }
+      ],
+      expectedErrors: []
+    },
+    {
+      name: 'scan symbols',
+      sourceCode: '>!a',
+      expectedTokens: [
+        { kind: TokenKind.GreaterThan, value: '>', position: { line: 1, col: 1 } },
+        { kind: TokenKind.Not, value: '!', position: { line: 1, col: 2 } },
+        { kind: TokenKind.Identifier, value: 'a', position: { line: 1, col: 3 } }
+      ],
+      expectedErrors: []
+    },
+    {
+      name: 'scan invalid symbol',
+      sourceCode: '@',
+      expectedTokens: [],
+      expectedErrors: [{ position: { line: 1, col: 1 }, message: "unrecognized character '@'" }]
+    },
+    {
+      name: 'number literal',
+      sourceCode: '123',
+      expectedTokens: [{ kind: TokenKind.IntegerLiteral, value: '123', position: { line: 1, col: 1 } }],
+      expectedErrors: []
+    },
+    {
+      name: 'negative number literal',
+      sourceCode: '-123',
+      expectedTokens: [
+        { kind: TokenKind.Minus, value: '-', position: { line: 1, col: 1 } },
+        { kind: TokenKind.IntegerLiteral, value: '123', position: { line: 1, col: 2 } }
       ],
       expectedErrors: []
     }
