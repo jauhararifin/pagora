@@ -10,5 +10,6 @@
         "sourceType": "module",
         "project": "./tsconfig.json"
     },
+    "ignorePatterns": ["dist/*.js"],
     "rules": {}
 }

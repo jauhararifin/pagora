@@ -74,10 +74,14 @@ class Lexer {
         if (next.c === '/') {
           this.scanComment(c.pos)
         } else {
-          this.emitToken(TokenKind.Div, c.pos, '/')
+          this.tokens.push({
+            value: '/',
+            position: c.pos,
+            kind: TokenKind.Div
+          })
         }
       } else {
-        this.emitError(c.pos, `unrecognize token '${c.c}'`)
+        this.errors.push({ position: c.pos, message: `unrecognize token '${c.c}'` })
         this.next()
       }
     }
@@ -118,16 +122,13 @@ class Lexer {
       break: TokenKind.Break
     }
 
-    if (word in map) {
-      this.emitToken(map[word], position, word)
-    } else {
-      this.emitToken(TokenKind.Identifier, position, word)
-    }
+    const kind = word in map ? map[word] : TokenKind.Identifier
+    this.tokens.push({ value: word, position, kind })
   }
 
   private scanString (): void {
     const c = this.peek()
-    const pos = c.pos
+    const position = c.pos
     const openingQuote = c.c
 
     const backslashes: { [key: string]: string } = {
@@ -149,14 +150,14 @@ class Lexer {
       const c = this.peek()
       this.next()
       if (c.c === '\n') {
-        this.emitError(c.pos, 'unexpected newline on string literal')
+        this.errors.push({ position: c.pos, message: 'unexpected newline on string literal' })
       }
 
       if (afterBackslash) {
         if (c.c in backslashes) {
           value += backslashes[c.c]
         } else {
-          this.emitError(pos, `unexpected ${c.c} character`)
+          this.errors.push({ position, message: `unexpected ${c.c} character` })
         }
         afterBackslash = false
       } else if (c.c === '\\') {
@@ -168,13 +169,21 @@ class Lexer {
       }
     }
 
-    this.emitToken(TokenKind.StringLiteral, pos, value)
+    this.tokens.push({
+      value,
+      position,
+      kind: TokenKind.StringLiteral
+    })
   }
 
   private scanNumberLiteral (): void {
     const c = this.peek()
     const value = this.consumeWhile((c) => (c >= '0' && c <= '9') || c === '_')
-    this.emitToken(TokenKind.IntegerLiteral, c.pos, value)
+    this.tokens.push({
+      value,
+      position: c.pos,
+      kind: TokenKind.IntegerLiteral
+    })
   }
 
   private scanSymbol (): void {
@@ -217,18 +226,26 @@ class Lexer {
       }
 
       if (matched) {
-        this.emitToken(item[1], first.pos, value)
+        this.tokens.push({
+          value,
+          position: first.pos,
+          kind: item[1]
+        })
         if (item[0].length > 1) { this.next() }
         return
       }
     }
 
-    this.emitError(first.pos, 'unexpected symbol')
+    this.errors.push({ position: first.pos, message: 'unexpected symbol' })
   }
 
-  private scanComment (pos: Position): void {
+  private scanComment (position: Position): void {
     const value = this.consumeWhile((c) => c !== '\n')
-    this.emitToken(TokenKind.Comment, pos, value)
+    this.tokens.push({
+      value,
+      position,
+      kind: TokenKind.Comment
+    })
   }
 
   private advance (): CharPos {
@@ -263,13 +280,5 @@ class Lexer {
       this.next()
     }
     return value
-  }
-
-  private emitToken (kind: TokenKind, position: Position, value: string): void {
-    this.tokens.push({ kind, position, value })
-  }
-
-  private emitError (position: Position, message: string): void {
-    this.errors.push({ position, message })
   }
 }
