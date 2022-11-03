@@ -86,6 +86,17 @@ describe('tokenize test', () => {
       sourceCode: simpleForLoop,
       expectedTokens: expectedSimpleForLoop,
       expectedErrors: []
+    },
+    {
+      name: 'comment and div',
+      sourceCode: 'a / b // this is a comment',
+      expectedTokens: [
+        { kind: TokenKind.Identifier, value: 'a', position: { line: 1, col: 1 } },
+        { kind: TokenKind.Div, value: '/', position: { line: 1, col: 3 } },
+        { kind: TokenKind.Identifier, value: 'b', position: { line: 1, col: 5 } },
+        { kind: TokenKind.Comment, value: '// this is a comment', position: { line: 1, col: 7 } }
+      ],
+      expectedErrors: []
     }
   ]
 

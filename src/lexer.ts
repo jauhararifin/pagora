@@ -72,6 +72,7 @@ class Lexer {
         this.next()
         const next = this.peek()
         if (next.c === '/') {
+          this.back()
           this.scanComment(c.pos)
         } else {
           this.tokens.push({
@@ -264,11 +265,11 @@ class Lexer {
   }
 
   private next (): void {
-    if (this.index >= this.sourceCode.length) {
-      return
-    }
+    if (this.index < this.sourceCode.length) { this.index++ }
+  }
 
-    this.index++
+  private back (): void {
+    if (this.index > 0) { this.index-- }
   }
 
   private consumeWhile (f: (c: string) => boolean): string {

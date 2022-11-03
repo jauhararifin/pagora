@@ -2,6 +2,7 @@
   "scripts": {
     "build": "webpack --mode=production",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "lint": "eslint .",
     "lint:fix": "eslint --fix ."
   },
