@@ -1,73 +1,73 @@
-export type Token = {
-    value: string,
-    position: Position,
-    kind: TokenKind,
+export interface Token {
+  value: string
+  position: Position
+  kind: TokenKind
 }
 
-export type Position = {
-    line: number,
-    col: number,
+export interface Position {
+  line: number
+  col: number
 }
 
 export enum TokenKind {
-    Invalid = "Invalid",
-    Comment = "Comment",
+  Invalid = 'Invalid',
+  Comment = 'Comment',
 
-    Var = "Var",
-    Type = "Type",
-    Struct = "Struct",
-    Identifier = "Identifier",
-    Function = "Function",
-    Comma = "Comma",
-    Colon = "Colon",
-    Arrow = "Arrow",
-    Semicolon = "Semicolon",
+  Var = 'Var',
+  Type = 'Type',
+  Struct = 'Struct',
+  Identifier = 'Identifier',
+  Function = 'Function',
+  Comma = 'Comma',
+  Colon = 'Colon',
+  Arrow = 'Arrow',
+  Semicolon = 'Semicolon',
 
-    Begin = "Begin",
-    End = "End",
+  Begin = 'Begin',
+  End = 'End',
 
-    Array = "Array",
-    Of = "Of",
+  Array = 'Array',
+  Of = 'Of',
 
-    OpenSquare = "OpenSquare",
-    CloseSquare = "CloseSquare",
-    OpenBrac = "OpenBrac",
-    CloseBrac = "CloseBrac",
+  OpenSquare = 'OpenSquare',
+  CloseSquare = 'CloseSquare',
+  OpenBrac = 'OpenBrac',
+  CloseBrac = 'CloseBrac',
 
-    IntegerLiteral = "IntegerLiteral",
-    RealLiteral = "RealLiteral",
-    StringLiteral = "StringLiteral",
+  IntegerLiteral = 'IntegerLiteral',
+  RealLiteral = 'RealLiteral',
+  StringLiteral = 'StringLiteral',
 
-    Assign = "Assign",
+  Assign = 'Assign',
 
-    Plus = "Plus",
-    Minus = "Minus",
-    Multiply = "Multiply",
-    Div = "Div",
-    Mod = "Mod",
+  Plus = 'Plus',
+  Minus = 'Minus',
+  Multiply = 'Multiply',
+  Div = 'Div',
+  Mod = 'Mod',
 
-    And = "And",
-    Not = "Not",
-    Or = "Or",
+  And = 'And',
+  Not = 'Not',
+  Or = 'Or',
 
-    Equal = "Equal",
-    NotEqual = "NotEqual",
-    GreaterThan = "GreaterThan",
-    GreaterThanEqual = "GreaterThanEqual",
-    LessThan = "LessThan",
-    LessThanEqual = "LessThanEqual",
+  Equal = 'Equal',
+  NotEqual = 'NotEqual',
+  GreaterThan = 'GreaterThan',
+  GreaterThanEqual = 'GreaterThanEqual',
+  LessThan = 'LessThan',
+  LessThanEqual = 'LessThanEqual',
 
-    If = "If",
-    Then = "Then",
-    Else = "Else",
-    While = "While",
-    For = "For",
-    Do = "Do",
+  If = 'If',
+  Then = 'Then',
+  Else = 'Else',
+  While = 'While',
+  For = 'For',
+  Do = 'Do',
 
-    Continue = "Continue",
-    Break = "Break",
+  Continue = 'Continue',
+  Break = 'Break',
 
-    Integer = "Integer",
-    Char = "Char",
-    Real = "Real",
+  Integer = 'Integer',
+  Char = 'Char',
+  Real = 'Real',
 }

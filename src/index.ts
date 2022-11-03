@@ -1,6 +1,6 @@
-import { tokenize } from "./lexer";
+import { tokenize } from './lexer'
 
-function compile(sourceCode: string) {
-    const tokens = tokenize(sourceCode)
-    console.log(tokens)
+export function compile (sourceCode: string): void {
+  const tokens = tokenize(sourceCode)
+  console.log(tokens)
 }
