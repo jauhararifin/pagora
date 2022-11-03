@@ -1,10 +1,10 @@
-export interface Token {
+export type Token = {
     value: string,
     position: Position,
     kind: TokenKind,
 }
 
-export interface Position {
+export type Position = {
     line: number,
     col: number,
 }

@@ -1,12 +1,7 @@
 import { tokenize } from "./lexer"
 import { Token, TokenKind } from "./tokens"
 
-test("Dummy unit test", () => {
-    const actual = 1 + 2
-    expect(actual).toBe(3)
-})
-
-interface Testcase {
+type Testcase = {
     name: string,
     sourceCode: string,
     expectedTokens: Token[],
@@ -96,7 +91,7 @@ describe("tokenize test", () => {
 
     for (const testcase of testcases) {
         it(testcase.name, () => {
-            const [tokens, errors] = tokenize(testcase.sourceCode)
+            const { tokens, errors } = tokenize(testcase.sourceCode)
             expect(tokens).toStrictEqual(testcase.expectedTokens)
             expect(errors).toStrictEqual(testcase.expectedErrors)
         })

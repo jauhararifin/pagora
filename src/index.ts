@@ -1,7 +1,6 @@
-import { createContext } from "./context";
 import { tokenize } from "./lexer";
 
 function compile(sourceCode: string) {
-    let ctx = createContext(sourceCode)
-    const tokens = tokenize(ctx)
+    const tokens = tokenize(sourceCode)
+    console.log(tokens)
 }

@@ -1,9 +1,17 @@
 import { Token, TokenKind, Position } from "./tokens";
 
-export function tokenize(sourceCode: string): [Token[], string[]] {
-    const lexer = new Lexer(sourceCode)
-    lexer.scan()
-    return [lexer.getTokens(), lexer.getErrors()]
+type Error = {
+    position: Position,
+    message: string,
+}
+
+type Result = {
+    tokens: Token[],
+    errors: Error[],
+}
+
+export function tokenize(sourceCode: string): Result {
+    return new Lexer(sourceCode).scan()
 }
 
 class CharPos {
@@ -24,7 +32,7 @@ class Lexer {
     private sourceCode: CharPos[]
     private index: number
     private tokens: Token[]
-    private errors: string[]
+    private errors: Error[]
 
     constructor(sourceCode: string) {
         this.sourceCode = []
@@ -46,7 +54,7 @@ class Lexer {
         }
     }
 
-    scan() {
+    scan(): Result {
         while (true) {
             this.advance()
             const c = this.peek()
@@ -70,10 +78,12 @@ class Lexer {
                     this.emitToken(TokenKind.Div, c.pos, "/")
                 }
             } else {
-                this.emitError(`unrecognize token '${c.c}' at ${c.pos.line}:${c.pos.col}`)
+                this.emitError(c.pos, `unrecognize token '${c.c}'`)
                 this.next()
             }
         }
+
+        return { tokens: this.tokens, errors: this.errors }
     }
 
     private scanWord() {
@@ -140,14 +150,14 @@ class Lexer {
             const c = this.peek()
             this.next()
             if (c.c == "\n") {
-                this.emitError(`unexpected newline on string literal at ${c.pos.line}:${c.pos.col}`)
+                this.emitError(c.pos, `unexpected newline on string literal`)
             }
 
             if (afterBackslash) {
                 if (c.c in backslashes) {
                     value += backslashes[c.c]
                 } else {
-                    this.emitError(`unknown \${c.c} character at ${c.pos.line}:${c.pos.col}`)
+                    this.emitError(pos, `unexpected \${c.c} character`)
                 }
                 afterBackslash = false
             } else if (c.c == "\\") {
@@ -215,17 +225,13 @@ class Lexer {
             }
         }
 
-        this.emitError(`unexpected symbol at ${first.pos.line}:${first.pos.col}`)
+        this.emitError(first.pos, `unexpected symbol`)
     }
 
     private scanComment(pos: Position) {
         const value = this.consumeWhile((c) => c != '\n')
         this.emitToken(TokenKind.Comment, pos, value)
     }
-
-    getTokens(): Token[] { return this.tokens }
-
-    getErrors(): string[] { return this.errors }
 
     private advance(): CharPos {
         while (true) {
@@ -269,7 +275,7 @@ class Lexer {
         this.tokens.push({ kind, position, value })
     }
 
-    private emitError(err: string) {
-        this.errors.push(err)
+    private emitError(position: Position, message: string) {
+        this.errors.push({ position, message })
     }
 }
