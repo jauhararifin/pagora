@@ -39,6 +39,7 @@ const expectedSimpleForLoop = [
   { kind: TokenKind.OpenBrac, value: '(', position: { line: 4, col: 11 } },
   { kind: TokenKind.Identifier, value: 'i', position: { line: 4, col: 12 } },
   { kind: TokenKind.CloseBrac, value: ')', position: { line: 4, col: 13 } },
+  { kind: TokenKind.PhantomSemicolon, value: ';', position: { line: 4, col: 14 } },
   { kind: TokenKind.End, value: 'end', position: { line: 5, col: 1 } }
 ]
 

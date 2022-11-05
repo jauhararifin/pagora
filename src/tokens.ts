@@ -10,6 +10,8 @@ export interface Position {
 }
 
 export enum TokenKind {
+  EOF = 'EOF',
+  PhantomSemicolon = 'PhantomSemicolon',
   Invalid = 'Invalid',
   Comment = 'Comment',
 
@@ -67,6 +69,7 @@ export enum TokenKind {
 
   Continue = 'Continue',
   Break = 'Break',
+  Return = 'Return',
 
   Integer = 'Integer',
   Char = 'Char',

@@ -75,14 +75,14 @@ class Lexer {
           this.back()
           this.scanComment(c.pos)
         } else {
-          this.tokens.push({
+          this.emitToken({
             value: '/',
             position: c.pos,
             kind: TokenKind.Div
           })
         }
       } else {
-        this.errors.push({ position: c.pos, message: `unrecognized character '${c.c}'` })
+        this.emitError({ position: c.pos, message: `unrecognized character '${c.c}'` })
         this.next()
       }
     }
@@ -121,11 +121,12 @@ class Lexer {
       for: TokenKind.For,
       do: TokenKind.Do,
       continue: TokenKind.Continue,
-      break: TokenKind.Break
+      break: TokenKind.Break,
+      return: TokenKind.Real
     }
 
     const kind = word in map ? map[word] : TokenKind.Identifier
-    this.tokens.push({ value: word, position, kind })
+    this.emitToken({ value: word, position, kind })
   }
 
   private scanString (): void {
@@ -152,14 +153,14 @@ class Lexer {
       const c = this.peek()
       this.next()
       if (c.c === '\n') {
-        this.errors.push({ position: c.pos, message: 'unexpected newline on string literal' })
+        this.emitError({ position: c.pos, message: 'unexpected newline on string literal' })
       }
 
       if (afterBackslash) {
         if (c.c in backslashes) {
           value += backslashes[c.c]
         } else {
-          this.errors.push({ position, message: `unexpected ${c.c} character` })
+          this.emitError({ position, message: `unexpected ${c.c} character` })
         }
         afterBackslash = false
       } else if (c.c === '\\') {
@@ -171,7 +172,7 @@ class Lexer {
       }
     }
 
-    this.tokens.push({
+    this.emitToken({
       value,
       position,
       kind: TokenKind.StringLiteral
@@ -185,7 +186,7 @@ class Lexer {
     // - exponent expression
     const c = this.peek()
     const value = this.consumeWhile((c) => (c >= '0' && c <= '9') || c === '_')
-    this.tokens.push({
+    this.emitToken({
       value,
       position: c.pos,
       kind: TokenKind.IntegerLiteral
@@ -232,7 +233,7 @@ class Lexer {
       }
 
       if (matched) {
-        this.tokens.push({
+        this.emitToken({
           value,
           position: first.pos,
           kind: item[1]
@@ -242,12 +243,12 @@ class Lexer {
       }
     }
 
-    this.errors.push({ position: first.pos, message: 'unexpected symbol' })
+    this.emitError({ position: first.pos, message: 'unexpected symbol' })
   }
 
   private scanComment (position: Position): void {
     const value = this.consumeWhile((c) => c !== '\n')
-    this.tokens.push({
+    this.emitToken({
       value,
       position,
       kind: TokenKind.Comment
@@ -257,7 +258,34 @@ class Lexer {
   private advance (): CharPos {
     while (true) {
       const c = this.peek()
-      if (c.c === ' ' || c.c === '\t' || c.c === '\r' || c.c === '\n') { this.next() } else { return c }
+      if (c.c === ' ' || c.c === '\t' || c.c === '\r') {
+        this.next()
+      } else if (c.c === '\n') {
+        if (this.tokens.length > 0) {
+          const lastToken = this.tokens[this.tokens.length - 1]
+          const needPhantomToken = [
+            TokenKind.Break,
+            TokenKind.Continue,
+            TokenKind.IntegerLiteral,
+            TokenKind.RealLiteral,
+            TokenKind.StringLiteral,
+            TokenKind.Break,
+            TokenKind.Continue,
+            TokenKind.Return,
+            TokenKind.CloseBrac,
+            TokenKind.CloseSquare,
+            TokenKind.Integer,
+            TokenKind.Char,
+            TokenKind.Real
+          ]
+          if (needPhantomToken.includes(lastToken.kind)) {
+            this.emitToken({ value: ';', position: c.pos, kind: TokenKind.PhantomSemicolon })
+          }
+        }
+        this.next()
+      } else {
+        return c
+      }
     }
   }
 
@@ -275,6 +303,14 @@ class Lexer {
 
   private back (): void {
     if (this.index > 0) { this.index-- }
+  }
+
+  private emitToken (token: Token): void {
+    this.tokens.push(token)
+  }
+
+  private emitError (error: Error): void {
+    this.errors.push(error)
   }
 
   private consumeWhile (f: (c: string) => boolean): string {
