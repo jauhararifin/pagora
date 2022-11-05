@@ -130,6 +130,35 @@ describe('tokenize test', () => {
         { kind: TokenKind.IntegerLiteral, value: '123', position: { line: 1, col: 2 } }
       ],
       expectedErrors: []
+    },
+    {
+      name: 'variable decl',
+      sourceCode: 'var some_var: integer',
+      expectedTokens: [
+        { kind: TokenKind.Var, value: 'var', position: { line: 1, col: 1 } },
+        { kind: TokenKind.Identifier, value: 'some_var', position: { line: 1, col: 5 } },
+        { kind: TokenKind.Colon, value: ':', position: { line: 1, col: 13 } },
+        { kind: TokenKind.Integer, value: 'integer', position: { line: 1, col: 15 } }
+      ],
+      expectedErrors: []
+    },
+    {
+      name: 'variable with array type',
+      sourceCode: 'var some_var: array[10,20] of integer',
+      expectedTokens: [
+        { kind: TokenKind.Var, value: 'var', position: { line: 1, col: 1 } },
+        { kind: TokenKind.Identifier, value: 'some_var', position: { line: 1, col: 5 } },
+        { kind: TokenKind.Colon, value: ':', position: { line: 1, col: 13 } },
+        { kind: TokenKind.Array, value: 'array', position: { line: 1, col: 15 } },
+        { kind: TokenKind.OpenSquare, value: '[', position: { line: 1, col: 20 } },
+        { kind: TokenKind.IntegerLiteral, value: '10', position: { line: 1, col: 21 } },
+        { kind: TokenKind.Comma, value: ',', position: { line: 1, col: 23 } },
+        { kind: TokenKind.IntegerLiteral, value: '20', position: { line: 1, col: 24 } },
+        { kind: TokenKind.CloseSquare, value: ']', position: { line: 1, col: 26 } },
+        { kind: TokenKind.Of, value: 'of', position: { line: 1, col: 28 } },
+        { kind: TokenKind.Integer, value: 'integer', position: { line: 1, col: 31 } }
+      ],
+      expectedErrors: []
     }
   ]
 

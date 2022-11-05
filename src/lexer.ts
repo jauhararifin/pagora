@@ -86,7 +86,7 @@ class Lexer {
 
     const word = this.consumeWhile((c) => c === '_' ||
       (c >= 'a' && c <= 'z') ||
-      (c >= 'A' && c <= 'A') ||
+      (c >= 'A' && c <= 'Z') ||
       (c >= '0' && c <= '9')
     )
 
@@ -210,7 +210,8 @@ class Lexer {
       [['['], TokenKind.OpenSquare],
       [[']'], TokenKind.CloseSquare],
       [['('], TokenKind.OpenBrac],
-      [[')'], TokenKind.CloseBrac]
+      [[')'], TokenKind.CloseBrac],
+      [[','], TokenKind.Comma]
     ]
 
     const key = [first.c, second.c]

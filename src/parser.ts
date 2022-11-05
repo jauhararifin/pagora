@@ -1,7 +1,11 @@
 import {
+  ArrayTypeNode,
+  CommaSeparatedExpr,
   DeclKind,
   DeclNode,
+  ExprKind,
   ExprNode,
+  IntegerLitExprNode,
   RootNode,
   StatementKind,
   TypeExprNode,
@@ -128,14 +132,85 @@ class Parser {
   }
 
   private parseTypeExpr (): TypeExprNode | null {
-    const token = this.expectEither(PrimitiveTypes)
+    const token = this.expectEither([...PrimitiveTypes, TokenKind.Array])
     if (token == null) return null
 
-    return { kind: TypeKind.PRIMITIVE, type: token }
+    if (PrimitiveTypes.includes(token.kind)) {
+      return { kind: TypeKind.PRIMITIVE, type: token }
+    }
+
+    this.prev()
+    return this.parseArrayTypeExpr()
+  }
+
+  private parseArrayTypeExpr (): ArrayTypeNode | null {
+    const arrayToken = this.expectEither([TokenKind.Array])
+    if (arrayToken == null) return null
+
+    const openSquare = this.expectEither([TokenKind.OpenSquare])
+    if (openSquare == null) return null
+
+    const commaSeparatedSize = this.parseCommaSeparatedExpr()
+    if (commaSeparatedSize == null) return null
+
+    const closeSquare = this.expectEither([TokenKind.CloseSquare])
+    if (closeSquare == null) return null
+
+    const ofToken = this.expectEither([TokenKind.Of])
+    if (ofToken == null) return null
+
+    const elementType = this.parseTypeExpr()
+    if (elementType == null) return null
+
+    return {
+      kind: TypeKind.ARRAY,
+      array: arrayToken,
+      openSquare,
+      dimension: commaSeparatedSize,
+      closeSquare,
+      of: ofToken,
+      type: elementType
+    }
+  }
+
+  private parseCommaSeparatedExpr (): CommaSeparatedExpr | null {
+    const exprs: ExprNode[] = []
+    const commas: Token[] = []
+    while (true) {
+      const expr = this.parseExpr()
+      if (expr == null) {
+        break
+      }
+      exprs.push(expr)
+
+      const commaTok = this.consumeIfMatch([TokenKind.Comma])
+      if (commaTok == null) {
+        break
+      }
+      commas.push(commaTok)
+    }
+
+    return { values: exprs, commas }
   }
 
   private parseExpr (): ExprNode | null {
-    return null
+    const token = this.peek()
+    switch (token.kind) {
+      case TokenKind.IntegerLiteral:
+        return this.parseIntegerLiteral()
+      default:
+        return null
+    }
+  }
+
+  private parseIntegerLiteral (): IntegerLitExprNode | null {
+    const token = this.expectEither([TokenKind.IntegerLiteral])
+    if (token == null) return null
+
+    return {
+      kind: ExprKind.INTEGER_LIT,
+      value: token
+    }
   }
 
   private consumeIfMatch (expectedKinds: TokenKind[]): Token | null {
@@ -177,6 +252,13 @@ class Parser {
       }
     }
     return this.tokens[this.index++]
+  }
+
+  private prev (): void {
+    if (this.index === 0) {
+      return
+    }
+    this.index--
   }
 
   private peek (): Token {

@@ -65,6 +65,7 @@ export interface PrimitiveTypeNode {
 
 export interface ArrayTypeNode {
   kind: TypeKind.ARRAY
+  array: Token
   openSquare: Token
   dimension: CommaSeparatedExpr // capture the commas position
   closeSquare: Token
@@ -135,9 +136,13 @@ export interface ExprStatementNode {
   expr: ExprNode
 }
 
-export interface ExprNode {
-  kind: ExprKind
-}
+export type ExprNode =
+IdentExprNode |
+IntegerLitExprNode |
+BooleanLitExprNode |
+BinaryExprNode |
+UnaryExprNode |
+CallExprNode
 
 export enum ExprKind {
   IDENT,
@@ -161,7 +166,7 @@ export interface IdentExprNode {
 }
 
 export interface IntegerLitExprNode {
-  kind: ExprKind.IDENT
+  kind: ExprKind.INTEGER_LIT
   value: Token
 }
 
