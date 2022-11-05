@@ -11,5 +11,7 @@
         "project": "./tsconfig.json"
     },
     "ignorePatterns": ["dist/*.js"],
-    "rules": {}
+    "rules": {
+        "max-len": ["warn", { "code": 120 }]
+    }
 }

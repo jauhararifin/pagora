@@ -75,3 +75,9 @@ export enum TokenKind {
   Char = 'Char',
   Real = 'Real',
 }
+
+export const PrimitiveTypes = [
+  TokenKind.Integer,
+  TokenKind.Char,
+  TokenKind.Real
+]

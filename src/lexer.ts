@@ -1,16 +1,7 @@
+import { Error, ErrorKind, Result } from './errors'
 import { Token, TokenKind, Position } from './tokens'
 
-export interface Error {
-  position: Position
-  message: string
-}
-
-export interface Result {
-  tokens: Token[]
-  errors: Error[]
-}
-
-export function tokenize (sourceCode: string): Result {
+export function tokenize (sourceCode: string): Result<Token[]> {
   return new Lexer(sourceCode).scan()
 }
 
@@ -54,7 +45,7 @@ class Lexer {
     }
   }
 
-  scan (): Result {
+  scan (): Result<Token[]> {
     while (true) {
       this.advance()
       const c = this.peek()
@@ -82,12 +73,12 @@ class Lexer {
           })
         }
       } else {
-        this.emitError({ position: c.pos, message: `unrecognized character '${c.c}'` })
+        this.emitError({ kind: ErrorKind.UnexpectedCharacter, position: c.pos, char: c.c })
         this.next()
       }
     }
 
-    return { tokens: this.tokens, errors: this.errors }
+    return { value: this.tokens, errors: this.errors }
   }
 
   private scanWord (): void {
@@ -153,14 +144,16 @@ class Lexer {
       const c = this.peek()
       this.next()
       if (c.c === '\n') {
-        this.emitError({ position: c.pos, message: 'unexpected newline on string literal' })
+        // TODO: improve the error message by differentiating "unexpected character" error for newline and
+        // general error.
+        this.emitError({ kind: ErrorKind.UnexpectedCharacter, char: c.c, position: c.pos })
       }
 
       if (afterBackslash) {
         if (c.c in backslashes) {
           value += backslashes[c.c]
         } else {
-          this.emitError({ position, message: `unexpected ${c.c} character` })
+          this.emitError({ kind: ErrorKind.UnexpectedCharacter, char: c.c, position: c.pos })
         }
         afterBackslash = false
       } else if (c.c === '\\') {
@@ -243,7 +236,7 @@ class Lexer {
       }
     }
 
-    this.emitError({ position: first.pos, message: 'unexpected symbol' })
+    this.emitError({ kind: ErrorKind.UnexpectedCharacter, char: first.c, position: first.pos })
   }
 
   private scanComment (position: Position): void {

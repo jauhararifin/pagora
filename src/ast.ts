@@ -4,13 +4,12 @@ export interface RootNode {
   declarations: DeclNode[]
 }
 
-export interface DeclNode {
-  kind: DeclKind
-}
+export type DeclNode = FunctionDeclNode | VariableDeclNode | MainDeclNode
 
 export enum DeclKind {
   FUNCTION,
   VARIABLE,
+  MAIN,
 }
 
 // TODO: support native function with empty body
@@ -21,9 +20,22 @@ export interface FunctionDeclNode {
   openBrace: Token
   params: ParamsNode
   closeBrace: Token
-  colon: Token
+  arrow: Token
   returnType?: TypeExprNode
   body: StatementNode
+}
+
+export interface VariableDeclNode {
+  kind: DeclKind.VARIABLE
+  var: Token
+  name: Token
+  colon: Token
+  type: TypeExprNode
+}
+
+export interface MainDeclNode {
+  kind: DeclKind.MAIN
+  body: BlockStatementNode
 }
 
 export interface ParamsNode {
@@ -37,9 +49,7 @@ export interface ParamGroup {
   type: TypeExprNode
 }
 
-export interface TypeExprNode {
-  kind: TypeKind
-}
+export type TypeExprNode = PrimitiveTypeNode | ArrayTypeNode
 
 export enum TypeKind {
   PRIMITIVE,
@@ -80,7 +90,8 @@ export interface VarStatementNode {
   kind: StatementKind.VAR
   var: Token
   name: Token
-  type: TypeExprNode
+  colon?: Token
+  type?: TypeExprNode
   assign?: Token
   value?: ExprNode
 }

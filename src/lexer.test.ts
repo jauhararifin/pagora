@@ -1,4 +1,5 @@
-import { Error, tokenize } from './lexer'
+import { Error, ErrorKind } from './errors'
+import { tokenize } from './lexer'
 import { Token, TokenKind } from './tokens'
 
 interface Testcase {
@@ -113,7 +114,7 @@ describe('tokenize test', () => {
       name: 'scan invalid symbol',
       sourceCode: '@',
       expectedTokens: [],
-      expectedErrors: [{ position: { line: 1, col: 1 }, message: "unrecognized character '@'" }]
+      expectedErrors: [{ kind: ErrorKind.UnexpectedCharacter, position: { line: 1, col: 1 }, char: '@' }]
     },
     {
       name: 'number literal',
@@ -134,7 +135,7 @@ describe('tokenize test', () => {
 
   for (const testcase of testcases) {
     it(testcase.name, () => {
-      const { tokens, errors } = tokenize(testcase.sourceCode)
+      const { value: tokens, errors } = tokenize(testcase.sourceCode)
       expect(tokens).toStrictEqual(testcase.expectedTokens)
       expect(errors).toStrictEqual(testcase.expectedErrors)
     })
