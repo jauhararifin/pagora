@@ -29,8 +29,10 @@ export interface VariableDeclNode {
   kind: DeclKind.VARIABLE
   var: Token
   name: Token
-  colon: Token
-  type: TypeExprNode
+  colon?: Token
+  type?: TypeExprNode
+  assign?: Token
+  value?: ExprNode
 }
 
 export interface MainDeclNode {
@@ -142,7 +144,10 @@ IntegerLitExprNode |
 BooleanLitExprNode |
 BinaryExprNode |
 UnaryExprNode |
-CallExprNode
+CallExprNode |
+ArrayIndexExprNode |
+CastExprNode |
+GroupedExprNode
 
 export enum ExprKind {
   IDENT,
@@ -158,6 +163,7 @@ export enum ExprKind {
   TUPLE_INDEX,
   STRUCT_INDEX,
   CAST,
+  GROUPED,
 }
 
 export interface IdentExprNode {
@@ -171,7 +177,7 @@ export interface IntegerLitExprNode {
 }
 
 export interface BooleanLitExprNode {
-  kind: ExprKind.IDENT
+  kind: ExprKind.BOOLEAN_LIT
   value: Token
 }
 
@@ -190,7 +196,7 @@ export interface UnaryExprNode {
 
 export interface CallExprNode {
   kind: ExprKind.CALL
-  callee: ExprKind
+  callee: ExprNode
   openBrac: Token
   arguments: CommaSeparatedExpr
   closeBrac: Token
@@ -228,4 +234,11 @@ export interface CastExprNode {
   source: ExprNode
   as: Token
   target: TypeExprNode
+}
+
+export interface GroupedExprNode {
+  kind: ExprKind.GROUPED
+  openBrac: Token
+  value: ExprNode
+  closeBrac: Token
 }

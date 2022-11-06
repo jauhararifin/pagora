@@ -40,6 +40,8 @@ export enum TokenKind {
   IntegerLiteral = 'IntegerLiteral',
   RealLiteral = 'RealLiteral',
   StringLiteral = 'StringLiteral',
+  True = 'True',
+  False = 'False',
 
   Assign = 'Assign',
 
@@ -48,6 +50,12 @@ export enum TokenKind {
   Multiply = 'Multiply',
   Div = 'Div',
   Mod = 'Mod',
+  BitOr = 'BitOr',
+  BitAnd = 'BitAnd',
+  BitXor = 'BitXor',
+  BitNot = 'BitNot',
+  ShiftLeft = 'ShiftLeft',
+  ShiftRight = 'ShiftRight',
 
   And = 'And',
   Not = 'Not',

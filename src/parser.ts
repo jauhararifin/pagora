@@ -5,7 +5,6 @@ import {
   DeclNode,
   ExprKind,
   ExprNode,
-  IntegerLitExprNode,
   RootNode,
   StatementKind,
   TypeExprNode,
@@ -61,25 +60,10 @@ class Parser {
   }
 
   private parseVariableDecl (): VariableDeclNode | null {
-    const varToken = this.expectEither([TokenKind.Var])
-    if (varToken == null) return null
+    const stmt = this.parseVariable()
+    if (stmt == null) return null
 
-    const varName = this.expectEither([TokenKind.Identifier])
-    if (varName == null) return null
-
-    const colonToken = this.expectEither([TokenKind.Colon])
-    if (colonToken == null) return null
-
-    const typeExpr = this.parseTypeExpr()
-    if (typeExpr == null) return null
-
-    return {
-      kind: DeclKind.VARIABLE,
-      var: varToken,
-      name: varName,
-      colon: colonToken,
-      type: typeExpr
-    }
+    return { ...stmt, kind: DeclKind.VARIABLE }
   }
 
   private parseVariable (): VarStatementNode | null {
@@ -194,22 +178,132 @@ class Parser {
   }
 
   private parseExpr (): ExprNode | null {
-    const token = this.peek()
-    switch (token.kind) {
-      case TokenKind.IntegerLiteral:
-        return this.parseIntegerLiteral()
-      default:
-        return null
+    return this.parseBinaryExpr(TokenKind.Or)
+  }
+
+  private parseBinaryExpr (op: TokenKind): ExprNode | null {
+    const operatorPrecedences = [
+      TokenKind.Or,
+      TokenKind.And,
+      TokenKind.BitOr,
+      TokenKind.BitXor,
+      TokenKind.BitAnd,
+      TokenKind.Equal,
+      TokenKind.NotEqual,
+      TokenKind.LessThan,
+      TokenKind.LessThanEqual,
+      TokenKind.GreaterThan,
+      TokenKind.GreaterThanEqual,
+      TokenKind.ShiftLeft,
+      TokenKind.ShiftRight,
+      TokenKind.Plus,
+      TokenKind.Minus,
+      TokenKind.Multiply,
+      TokenKind.Div,
+      TokenKind.Mod
+    ]
+
+    const i = operatorPrecedences.indexOf(op)
+    const aExpr: ExprNode | null = i === operatorPrecedences.length - 1
+      ? this.parseArrayIndexExp()
+      : this.parseBinaryExpr(operatorPrecedences[i + 1])
+    if (aExpr == null) return null
+
+    const opToken = this.consumeIfMatch([op])
+    if (opToken == null) return aExpr
+
+    const bExpr = this.parseExpr()
+    if (bExpr == null) return null
+
+    return {
+      kind: ExprKind.BINARY,
+      a: aExpr,
+      op: opToken,
+      b: bExpr
     }
   }
 
-  private parseIntegerLiteral (): IntegerLitExprNode | null {
-    const token = this.expectEither([TokenKind.IntegerLiteral])
-    if (token == null) return null
+  private parseArrayIndexExp (): ExprNode | null {
+    const arraySource = this.parseCastExpression()
+    if (arraySource == null) return null
 
-    return {
-      kind: ExprKind.INTEGER_LIT,
-      value: token
+    const openSquare = this.consumeIfMatch([TokenKind.OpenSquare])
+    if (openSquare == null) return arraySource
+
+    const index = this.parseCommaSeparatedExpr()
+    if (index == null) return null
+
+    const closeSquare = this.expectEither([TokenKind.CloseBrac])
+    if (closeSquare == null) return null
+
+    return { kind: ExprKind.ARRAY_INDEX, array: arraySource, openSquare, index, closeSquare }
+  }
+
+  private parseCastExpression (): ExprNode | null {
+    const source = this.parseUnaryExpr()
+    if (source == null) return null
+
+    const asToken = this.consumeIfMatch([TokenKind.As])
+    if (asToken == null) return source
+
+    const target = this.parseTypeExpr()
+    if (target == null) return null
+
+    return { kind: ExprKind.CAST, source, as: asToken, target }
+  }
+
+  private parseUnaryExpr (): ExprNode | null {
+    const op = this.consumeIfMatch([
+      TokenKind.BitNot,
+      TokenKind.Minus,
+      TokenKind.Plus,
+      TokenKind.Not
+    ])
+    if (op == null) return this.parseCallExpr()
+
+    const value = this.parseCallExpr()
+    if (value == null) return null
+
+    return { kind: ExprKind.UNARY, op, value }
+  }
+
+  private parseCallExpr (): ExprNode | null {
+    const callee = this.parsePrimaryExpr()
+    if (callee == null) return null
+
+    const openBrac = this.consumeIfMatch([TokenKind.OpenBrac])
+    if (openBrac == null) return callee
+
+    const args = this.parseCommaSeparatedExpr()
+    if (args == null) return null
+
+    const closeBrac = this.expectEither([TokenKind.CloseBrac])
+    if (closeBrac == null) return null
+
+    return { kind: ExprKind.CALL, callee, openBrac, arguments: args, closeBrac }
+  }
+
+  private parsePrimaryExpr (): ExprNode | null {
+    const token = this.peek()
+    if (token.kind === TokenKind.OpenBrac) {
+      const openBrac = this.next()
+      const value = this.parseExpr()
+      if (value == null) return null
+      const closeBrac = this.expectEither([TokenKind.CloseBrac])
+      if (closeBrac == null) return null
+      return { kind: ExprKind.GROUPED, openBrac, value, closeBrac }
+    } else if (token.kind === TokenKind.IntegerLiteral) {
+      const value = this.next()
+      return { kind: ExprKind.INTEGER_LIT, value }
+    } else if (token.kind === TokenKind.True || token.kind === TokenKind.False) {
+      const value = this.next()
+      return { kind: ExprKind.BOOLEAN_LIT, value }
+    } else if (token.kind === TokenKind.Identifier) {
+      const name = this.next()
+      return { kind: ExprKind.IDENT, name }
+    } else {
+      this.emitError({ kind: ErrorKind.UnexpectedExpr, found: token })
+      return null
     }
   }
 
