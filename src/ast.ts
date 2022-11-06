@@ -120,13 +120,16 @@ export interface IfStatementNode {
   kind: StatementKind.IF
   if: Token
   condition: ExprNode
+  then: Token
   body: StatementNode
+  else?: StatementNode
 }
 
 export interface WhileStatementNode {
   kind: StatementKind.WHILE
   while: Token
   condition: ExprNode
+  do: Token
   body: StatementNode
 }
 

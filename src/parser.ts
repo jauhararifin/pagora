@@ -116,15 +116,53 @@ class Parser {
   }
 
   private parseIfStatement (): StatementNode | null {
-    return null
+    const ifToken = this.expectEither([TokenKind.If])
+    if (ifToken == null) return null
+
+    const condition = this.parseExpr()
+    if (condition == null) return null
+
+    const thenToken = this.expectEither([TokenKind.Then])
+    if (thenToken == null) return null
+
+    const body = this.parseStatement()
+    if (body == null) return null
+
+    const elseToken = this.consumeIfMatch([TokenKind.Else])
+    if (elseToken == null) {
+      return { kind: StatementKind.IF, if: ifToken, condition, then: thenToken, body }
+    }
+
+    const elseBody = this.parseStatement()
+    if (elseBody == null) return null
+
+    return { kind: StatementKind.IF, if: ifToken, condition, then: thenToken, body, else: elseBody }
   }
 
   private parseWhileStatement (): StatementNode | null {
-    return null
+    const whileToken = this.expectEither([TokenKind.While])
+    if (whileToken == null) return null
+
+    const condition = this.parseExpr()
+    if (condition == null) return null
+
+    const doToken = this.expectEither([TokenKind.Do])
+    if (doToken == null) return null
+
+    const body = this.parseStatement()
+    if (body == null) return null
+
+    return { kind: StatementKind.WHILE, while: whileToken, condition, do: doToken, body }
   }
 
   private parseReturnStatement (): StatementNode | null {
-    return null
+    const returnToken = this.expectEither([TokenKind.Return])
+    if (returnToken == null) return null
+
+    const value = this.parseExpr()
+    if (value == null) return null
+
+    return { kind: StatementKind.RETURN, return: returnToken, value }
   }
 
   private parseAssignStatement (): StatementNode | null {
