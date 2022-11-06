@@ -75,9 +75,13 @@ export interface ArrayTypeNode {
   type: TypeExprNode
 }
 
-export interface StatementNode {
-  kind: StatementKind
-}
+export type StatementNode = VarStatementNode |
+AssignStatementNode |
+ReturnStatementNode |
+IfStatementNode |
+WhileStatementNode |
+BlockStatementNode |
+ExprStatementNode
 
 export enum StatementKind {
   VAR,
@@ -101,7 +105,7 @@ export interface VarStatementNode {
 
 export interface AssignStatementNode {
   kind: StatementKind.ASSIGN
-  name: Token
+  receiver: ExprNode
   assign: Token
   value: ExprNode
 }

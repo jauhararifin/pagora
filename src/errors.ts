@@ -1,6 +1,10 @@
 import { Position, Token, TokenKind } from './tokens'
 
-export type Error = UnexpectedCharacter | UnexpectedToken | UnexpectedEOF | UnexpectedExpr
+export type Error = UnexpectedCharacter
+| UnexpectedToken
+| UnexpectedEOF
+| UnexpectedTokenForExpr
+| UnexpectedTokenForStatment
 
 export enum ErrorKind {
   // for lexer phase
@@ -9,7 +13,8 @@ export enum ErrorKind {
   // for parsing phase
   UnexpectedToken = 'UnexpectedToken',
   UnexpectedEOF = 'UnexpectedEOF',
-  UnexpectedExpr = 'UnexpectedExpr',
+  UnexpectedTokenForExpr = 'UnexpectedTokenForExpr',
+  UnexpectedTokenForStatment = 'UnexpectedTokenForStatment',
 }
 
 export interface UnexpectedCharacter {
@@ -29,8 +34,13 @@ export interface UnexpectedEOF {
   expected: TokenKind[]
 }
 
-export interface UnexpectedExpr {
-  kind: ErrorKind.UnexpectedExpr
+export interface UnexpectedTokenForExpr {
+  kind: ErrorKind.UnexpectedTokenForExpr
+  found: Token
+}
+
+export interface UnexpectedTokenForStatment {
+  kind: ErrorKind.UnexpectedTokenForStatment
   found: Token
 }
 

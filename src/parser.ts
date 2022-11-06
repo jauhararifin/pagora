@@ -1,12 +1,15 @@
 import {
   ArrayTypeNode,
+  BlockStatementNode,
   CommaSeparatedExpr,
   DeclKind,
   DeclNode,
   ExprKind,
   ExprNode,
+  MainDeclNode,
   RootNode,
   StatementKind,
+  StatementNode,
   TypeExprNode,
   TypeKind,
   VariableDeclNode,
@@ -50,6 +53,7 @@ class Parser {
         case TokenKind.Function:
           break
         case TokenKind.Begin:
+          decl = this.parseMainDecl()
           break
       }
 
@@ -60,13 +64,87 @@ class Parser {
   }
 
   private parseVariableDecl (): VariableDeclNode | null {
-    const stmt = this.parseVariable()
+    const stmt = this.parseVarStatement()
     if (stmt == null) return null
 
     return { ...stmt, kind: DeclKind.VARIABLE }
   }
 
-  private parseVariable (): VarStatementNode | null {
+  private parseMainDecl (): MainDeclNode | null {
+    const body = this.parseBlockStatement()
+    if (body == null) return null
+    return { kind: DeclKind.MAIN, body }
+  }
+
+  private parseStatement (emitError: boolean = false): StatementNode | null {
+    const token = this.peek()
+    switch (token.kind) {
+      case TokenKind.Begin:
+        return this.parseBlockStatement()
+      case TokenKind.If:
+        return this.parseIfStatement()
+      case TokenKind.While:
+        return this.parseWhileStatement()
+      case TokenKind.Var:
+        return this.parseVarStatement()
+      case TokenKind.Return:
+        return this.parseReturnStatement()
+      case TokenKind.End:
+      case TokenKind.Semicolon:
+      case TokenKind.PhantomSemicolon:
+        return null
+      default:
+        return this.parseAssignStatement()
+    }
+  }
+
+  private parseBlockStatement (): BlockStatementNode | null {
+    const begin = this.expectEither([TokenKind.Begin])
+    if (begin == null) return null
+
+    const statements: StatementNode[] = []
+    while (true) {
+      const stmt = this.parseStatement()
+      if (stmt == null) break
+      statements.push(stmt)
+    }
+
+    const end = this.expectEither([TokenKind.End])
+    if (end == null) return null
+
+    return { kind: StatementKind.BLOCK, begin, statements, end }
+  }
+
+  private parseIfStatement (): StatementNode | null {
+    return null
+  }
+
+  private parseWhileStatement (): StatementNode | null {
+    return null
+  }
+
+  private parseReturnStatement (): StatementNode | null {
+    return null
+  }
+
+  private parseAssignStatement (): StatementNode | null {
+    const receiver = this.parseExpr()
+    if (receiver == null) return null
+
+    const assign = this.consumeIfMatch([TokenKind.Assign])
+    if (assign == null) {
+      return { kind: StatementKind.EXPR, expr: receiver }
+    }
+
+    const value = this.parseExpr()
+    if (value == null) return null
+
+    this.consumeIfMatch([TokenKind.Semicolon, TokenKind.PhantomSemicolon])
+
+    return { kind: StatementKind.ASSIGN, receiver, assign, value }
+  }
+
+  private parseVarStatement (): VarStatementNode | null {
     const varToken = this.expectEither([TokenKind.Var])
     if (varToken == null) return null
 
@@ -302,7 +380,8 @@ class Parser {
       const name = this.next()
       return { kind: ExprKind.IDENT, name }
     } else {
-      this.emitError({ kind: ErrorKind.UnexpectedExpr, found: token })
+      const token = this.next()
+      this.emitError({ kind: ErrorKind.UnexpectedTokenForExpr, found: token })
       return null
     }
   }
