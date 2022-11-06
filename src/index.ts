@@ -8,6 +8,8 @@ export function compile (sourceCode: string): void {
     return
   }
 
+  if (tokens == null) return
+
   const { value: ast, errors: parsingErrors } = parse(tokens)
   if (parsingErrors.length > 0) {
     console.log(parsingErrors)

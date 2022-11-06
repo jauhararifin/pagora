@@ -6,7 +6,10 @@ import {
   DeclNode,
   ExprKind,
   ExprNode,
+  FunctionDeclNode,
   MainDeclNode,
+  ParamGroup,
+  ParamsNode,
   RootNode,
   StatementKind,
   StatementNode,
@@ -45,12 +48,13 @@ class Parser {
       const token = this.expectEither([TokenKind.Var, TokenKind.Function, TokenKind.Begin], false)
       if (token == null) continue
 
-      let decl: DeclNode | null = null
+      let decl: DeclNode | undefined
       switch (token.kind) {
         case TokenKind.Var:
           decl = this.parseVariableDecl()
           break
         case TokenKind.Function:
+          decl = this.parseFunctionDecl()
           break
         case TokenKind.Begin:
           decl = this.parseMainDecl()
@@ -63,20 +67,87 @@ class Parser {
     return { declarations }
   }
 
-  private parseVariableDecl (): VariableDeclNode | null {
+  private parseVariableDecl (): VariableDeclNode | undefined {
     const stmt = this.parseVarStatement()
-    if (stmt == null) return null
+    if (stmt === undefined) return undefined
 
     return { ...stmt, kind: DeclKind.VARIABLE }
   }
 
-  private parseMainDecl (): MainDeclNode | null {
+  private parseFunctionDecl (): FunctionDeclNode | undefined {
+    const functionToken = this.expectEither([TokenKind.Function])
+    if (functionToken === undefined) return undefined
+
+    const name = this.expectEither([TokenKind.Identifier])
+    if (name === undefined) return undefined
+
+    const openBrac = this.expectEither([TokenKind.OpenBrac])
+    if (openBrac === undefined) return undefined
+
+    const params = this.parseParams()
+    if (params === undefined) return undefined
+
+    const closeBrac = this.expectEither([TokenKind.CloseBrac])
+    if (closeBrac === undefined) return undefined
+
+    const arrow = this.consumeIfMatch([TokenKind.Arrow])
+    let returnType: TypeExprNode | undefined
+    if (arrow != null) {
+      returnType = this.parseTypeExpr()
+      if (returnType === undefined) return undefined
+    }
+
     const body = this.parseBlockStatement()
-    if (body == null) return null
+    if (body === undefined) return undefined
+
+    return {
+      kind: DeclKind.FUNCTION,
+      function: functionToken,
+      name,
+      openBrac,
+      params,
+      closeBrac,
+      arrow,
+      returnType,
+      body
+    }
+  }
+
+  // TODO: figure out if `parseParams` can be abstracted away to reduce code duplication in parse comma separated expr.
+  private parseParams (): ParamsNode | undefined {
+    const params: ParamGroup[] = []
+    const commas: Token[] = []
+
+    const token = this.peek()
+    if (token.kind === TokenKind.CloseBrac) {
+      return { params, commas }
+    }
+
+    while (true) {
+      const name = this.expectEither([TokenKind.Identifier])
+      if (name === undefined) return undefined
+
+      const colon = this.expectEither([TokenKind.Colon])
+      if (colon === undefined) return undefined
+
+      const type = this.parseTypeExpr()
+      if (type === undefined) return undefined
+      params.push({ name, colon, type })
+
+      const next = this.peek()
+      if (next.kind !== TokenKind.Comma) break
+    }
+
+    return { params, commas }
+  }
+
+  private parseMainDecl (): MainDeclNode | undefined {
+    const body = this.parseBlockStatement()
+    if (body === undefined) return undefined
     return { kind: DeclKind.MAIN, body }
   }
 
-  private parseStatement (emitError: boolean = false): StatementNode | null {
+  private parseStatement (emitError: boolean = false): StatementNode | undefined {
     const token = this.peek()
     switch (token.kind) {
       case TokenKind.Begin:
@@ -92,112 +163,112 @@ class Parser {
       case TokenKind.End:
       case TokenKind.Semicolon:
       case TokenKind.PhantomSemicolon:
-        return null
+        return undefined
       default:
         return this.parseAssignStatement()
     }
   }
 
-  private parseBlockStatement (): BlockStatementNode | null {
+  private parseBlockStatement (): BlockStatementNode | undefined {
     const begin = this.expectEither([TokenKind.Begin])
-    if (begin == null) return null
+    if (begin === undefined) return undefined
 
     const statements: StatementNode[] = []
     while (true) {
       const stmt = this.parseStatement()
-      if (stmt == null) break
+      if (stmt === undefined) break
       statements.push(stmt)
     }
 
     const end = this.expectEither([TokenKind.End])
-    if (end == null) return null
+    if (end === undefined) return undefined
 
     return { kind: StatementKind.BLOCK, begin, statements, end }
   }
 
-  private parseIfStatement (): StatementNode | null {
+  private parseIfStatement (): StatementNode | undefined {
     const ifToken = this.expectEither([TokenKind.If])
-    if (ifToken == null) return null
+    if (ifToken === undefined) return undefined
 
     const condition = this.parseExpr()
-    if (condition == null) return null
+    if (condition === undefined) return undefined
 
     const thenToken = this.expectEither([TokenKind.Then])
-    if (thenToken == null) return null
+    if (thenToken === undefined) return undefined
 
     const body = this.parseStatement()
-    if (body == null) return null
+    if (body === undefined) return undefined
 
     const elseToken = this.consumeIfMatch([TokenKind.Else])
-    if (elseToken == null) {
+    if (elseToken === undefined) {
       return { kind: StatementKind.IF, if: ifToken, condition, then: thenToken, body }
     }
 
     const elseBody = this.parseStatement()
-    if (elseBody == null) return null
+    if (elseBody === undefined) return undefined
 
     return { kind: StatementKind.IF, if: ifToken, condition, then: thenToken, body, else: elseBody }
   }
 
-  private parseWhileStatement (): StatementNode | null {
+  private parseWhileStatement (): StatementNode | undefined {
     const whileToken = this.expectEither([TokenKind.While])
-    if (whileToken == null) return null
+    if (whileToken === undefined) return undefined
 
     const condition = this.parseExpr()
-    if (condition == null) return null
+    if (condition === undefined) return undefined
 
     const doToken = this.expectEither([TokenKind.Do])
-    if (doToken == null) return null
+    if (doToken === undefined) return undefined
 
     const body = this.parseStatement()
-    if (body == null) return null
+    if (body === undefined) return undefined
 
     return { kind: StatementKind.WHILE, while: whileToken, condition, do: doToken, body }
   }
 
-  private parseReturnStatement (): StatementNode | null {
+  private parseReturnStatement (): StatementNode | undefined {
     const returnToken = this.expectEither([TokenKind.Return])
-    if (returnToken == null) return null
+    if (returnToken === undefined) return undefined
 
     const value = this.parseExpr()
-    if (value == null) return null
+    if (value === undefined) return undefined
 
     return { kind: StatementKind.RETURN, return: returnToken, value }
   }
 
-  private parseAssignStatement (): StatementNode | null {
+  private parseAssignStatement (): StatementNode | undefined {
     const receiver = this.parseExpr()
-    if (receiver == null) return null
+    if (receiver === undefined) return undefined
 
     const assign = this.consumeIfMatch([TokenKind.Assign])
-    if (assign == null) {
+    if (assign === undefined) {
       return { kind: StatementKind.EXPR, expr: receiver }
     }
 
     const value = this.parseExpr()
-    if (value == null) return null
+    if (value === undefined) return undefined
 
     this.consumeIfMatch([TokenKind.Semicolon, TokenKind.PhantomSemicolon])
 
     return { kind: StatementKind.ASSIGN, receiver, assign, value }
   }
 
-  private parseVarStatement (): VarStatementNode | null {
+  private parseVarStatement (): VarStatementNode | undefined {
     const varToken = this.expectEither([TokenKind.Var])
-    if (varToken == null) return null
+    if (varToken === undefined) return undefined
 
     const varName = this.expectEither([TokenKind.Identifier])
-    if (varName == null) return null
+    if (varName === undefined) return undefined
 
     const next = this.expectEither([TokenKind.Colon, TokenKind.Assign])
-    if (next == null) return null
+    if (next === undefined) return undefined
 
     if (next.kind === TokenKind.Colon) {
       const typeExpr = this.parseTypeExpr()
-      if (typeExpr == null) return null
+      if (typeExpr === undefined) return undefined
 
       const assignToken = this.consumeIfMatch([TokenKind.Assign])
-      if (assignToken == null) {
+      if (assignToken === undefined) {
         return {
           kind: StatementKind.VAR,
           var: varToken,
@@ -207,7 +278,7 @@ class Parser {
         }
       } else {
         const valueExpr = this.parseExpr()
-        if (valueExpr == null) return null
+        if (valueExpr === undefined) return undefined
         return {
           kind: StatementKind.VAR,
           var: varToken,
@@ -220,7 +291,7 @@ class Parser {
       }
     } else {
       const valueExpr = this.parseExpr()
-      if (valueExpr == null) return null
+      if (valueExpr === undefined) return undefined
       return {
         kind: StatementKind.VAR,
         var: varToken,
@@ -231,9 +302,9 @@ class Parser {
     }
   }
 
-  private parseTypeExpr (): TypeExprNode | null {
+  private parseTypeExpr (): TypeExprNode | undefined {
     const token = this.expectEither([...PrimitiveTypes, TokenKind.Array])
-    if (token == null) return null
+    if (token === undefined) return undefined
 
     if (PrimitiveTypes.includes(token.kind)) {
       return { kind: TypeKind.PRIMITIVE, type: token }
@@ -243,24 +314,24 @@ class Parser {
     return this.parseArrayTypeExpr()
   }
 
-  private parseArrayTypeExpr (): ArrayTypeNode | null {
+  private parseArrayTypeExpr (): ArrayTypeNode | undefined {
     const arrayToken = this.expectEither([TokenKind.Array])
-    if (arrayToken == null) return null
+    if (arrayToken === undefined) return undefined
 
     const openSquare = this.expectEither([TokenKind.OpenSquare])
-    if (openSquare == null) return null
+    if (openSquare === undefined) return undefined
 
     const commaSeparatedSize = this.parseCommaSeparatedExpr()
-    if (commaSeparatedSize == null) return null
+    if (commaSeparatedSize === undefined) return undefined
 
     const closeSquare = this.expectEither([TokenKind.CloseSquare])
-    if (closeSquare == null) return null
+    if (closeSquare === undefined) return undefined
 
     const ofToken = this.expectEither([TokenKind.Of])
-    if (ofToken == null) return null
+    if (ofToken === undefined) return undefined
 
     const elementType = this.parseTypeExpr()
-    if (elementType == null) return null
+    if (elementType === undefined) return undefined
 
     return {
       kind: TypeKind.ARRAY,
@@ -273,18 +344,18 @@ class Parser {
     }
   }
 
-  private parseCommaSeparatedExpr (): CommaSeparatedExpr | null {
+  private parseCommaSeparatedExpr (): CommaSeparatedExpr | undefined {
     const exprs: ExprNode[] = []
     const commas: Token[] = []
     while (true) {
       const expr = this.parseExpr()
-      if (expr == null) {
+      if (expr === undefined) {
         break
       }
       exprs.push(expr)
 
       const commaTok = this.consumeIfMatch([TokenKind.Comma])
-      if (commaTok == null) {
+      if (commaTok === undefined) {
         break
       }
       commas.push(commaTok)
@@ -293,11 +364,11 @@ class Parser {
     return { values: exprs, commas }
   }
 
-  private parseExpr (): ExprNode | null {
+  private parseExpr (): ExprNode | undefined {
     return this.parseBinaryExpr(TokenKind.Or)
   }
 
-  private parseBinaryExpr (op: TokenKind): ExprNode | null {
+  private parseBinaryExpr (op: TokenKind): ExprNode | undefined {
     const operatorPrecedences = [
       TokenKind.Or,
       TokenKind.And,
@@ -320,16 +391,16 @@ class Parser {
     ]
 
     const i = operatorPrecedences.indexOf(op)
-    const aExpr: ExprNode | null = i === operatorPrecedences.length - 1
+    const aExpr: ExprNode | undefined = i === operatorPrecedences.length - 1
       ? this.parseArrayIndexExp()
       : this.parseBinaryExpr(operatorPrecedences[i + 1])
-    if (aExpr == null) return null
+    if (aExpr === undefined) return undefined
 
     const opToken = this.consumeIfMatch([op])
-    if (opToken == null) return aExpr
+    if (opToken === undefined) return aExpr
 
     const bExpr = this.parseExpr()
-    if (bExpr == null) return null
+    if (bExpr === undefined) return undefined
 
     return {
       kind: ExprKind.BINARY,
@@ -339,36 +410,36 @@ class Parser {
     }
   }
 
-  private parseArrayIndexExp (): ExprNode | null {
+  private parseArrayIndexExp (): ExprNode | undefined {
     const arraySource = this.parseCastExpression()
-    if (arraySource == null) return null
+    if (arraySource === undefined) return undefined
 
     const openSquare = this.consumeIfMatch([TokenKind.OpenSquare])
-    if (openSquare == null) return arraySource
+    if (openSquare === undefined) return arraySource
 
     const index = this.parseCommaSeparatedExpr()
-    if (index == null) return null
+    if (index == null) return undefined
 
     const closeSquare = this.expectEither([TokenKind.CloseBrac])
-    if (closeSquare == null) return null
+    if (closeSquare == null) return undefined
 
     return { kind: ExprKind.ARRAY_INDEX, array: arraySource, openSquare, index, closeSquare }
   }
 
-  private parseCastExpression (): ExprNode | null {
+  private parseCastExpression (): ExprNode | undefined {
     const source = this.parseUnaryExpr()
-    if (source == null) return null
+    if (source == null) return undefined
 
     const asToken = this.consumeIfMatch([TokenKind.As])
     if (asToken == null) return source
 
     const target = this.parseTypeExpr()
-    if (target == null) return null
+    if (target == null) return undefined
 
     return { kind: ExprKind.CAST, source, as: asToken, target }
   }
 
-  private parseUnaryExpr (): ExprNode | null {
+  private parseUnaryExpr (): ExprNode | undefined {
     const op = this.consumeIfMatch([
       TokenKind.BitNot,
       TokenKind.Minus,
@@ -378,35 +449,35 @@ class Parser {
     if (op == null) return this.parseCallExpr()
 
     const value = this.parseCallExpr()
-    if (value == null) return null
+    if (value == null) return undefined
 
     return { kind: ExprKind.UNARY, op, value }
   }
 
-  private parseCallExpr (): ExprNode | null {
+  private parseCallExpr (): ExprNode | undefined {
     const callee = this.parsePrimaryExpr()
-    if (callee == null) return null
+    if (callee == null) return undefined
 
     const openBrac = this.consumeIfMatch([TokenKind.OpenBrac])
     if (openBrac == null) return callee
 
     const args = this.parseCommaSeparatedExpr()
-    if (args == null) return null
+    if (args == null) return undefined
 
     const closeBrac = this.expectEither([TokenKind.CloseBrac])
-    if (closeBrac == null) return null
+    if (closeBrac == null) return undefined
 
     return { kind: ExprKind.CALL, callee, openBrac, arguments: args, closeBrac }
   }
 
-  private parsePrimaryExpr (): ExprNode | null {
+  private parsePrimaryExpr (): ExprNode | undefined {
     const token = this.peek()
     if (token.kind === TokenKind.OpenBrac) {
       const openBrac = this.next()
       const value = this.parseExpr()
-      if (value == null) return null
+      if (value == null) return undefined
       const closeBrac = this.expectEither([TokenKind.CloseBrac])
-      if (closeBrac == null) return null
+      if (closeBrac == null) return undefined
       return { kind: ExprKind.GROUPED, openBrac, value, closeBrac }
     } else if (token.kind === TokenKind.IntegerLiteral) {
       const value = this.next()
@@ -420,21 +491,21 @@ class Parser {
     } else {
       const token = this.next()
       this.emitError({ kind: ErrorKind.UnexpectedTokenForExpr, found: token })
-      return null
+      return undefined
     }
   }
 
-  private consumeIfMatch (expectedKinds: TokenKind[]): Token | null {
+  private consumeIfMatch (expectedKinds: TokenKind[]): Token | undefined {
     const token = this.peek()
     if (expectedKinds.includes(token.kind)) {
       this.next()
       return token
     }
 
-    return null
+    return undefined
   }
 
-  private expectEither (expectedKinds: TokenKind[], consume: boolean = true): Token | null {
+  private expectEither (expectedKinds: TokenKind[], consume: boolean = true): Token | undefined {
     let token = this.peek()
     if (consume) this.next()
 
@@ -451,7 +522,7 @@ class Parser {
       token = this.next()
     }
 
-    return null
+    return undefined
   }
 
   private next (): Token {

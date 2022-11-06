@@ -132,6 +132,8 @@ describe('tokenize test', () => {
         return
       }
 
+      if (tokens == null) fail()
+
       const { value: root, errors: parseErrors } = parse(tokens)
       expect(root).toStrictEqual(testcase.expectedAST)
       expect(parseErrors).toStrictEqual(testcase.expectedErrors)

@@ -45,6 +45,6 @@ export interface UnexpectedTokenForStatment {
 }
 
 export interface Result<T> {
-  value: T
+  value?: T
   errors: Error[]
 }

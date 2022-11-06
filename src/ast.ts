@@ -17,10 +17,10 @@ export interface FunctionDeclNode {
   kind: DeclKind.FUNCTION
   function: Token
   name: Token
-  openBrace: Token
+  openBrac: Token
   params: ParamsNode
-  closeBrace: Token
-  arrow: Token
+  closeBrac: Token
+  arrow?: Token
   returnType?: TypeExprNode
   body: StatementNode
 }
@@ -46,7 +46,7 @@ export interface ParamsNode {
 }
 
 export interface ParamGroup {
-  names: Token[]
+  name: Token // TODO: improve this, introduce multiple args grouping like golang.
   colon: Token
   type: TypeExprNode
 }
