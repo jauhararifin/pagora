@@ -2,15 +2,23 @@ import {
   Argument,
   ArrayType,
   AssignStatement,
+  BinaryExpr,
   BlockStatement,
   Boolean,
+  BooleanLitExpr,
+  CallExpr,
+  CastExpr,
   Char,
   Expr,
+  ExprKind,
   ExprStatement,
   Function,
   FunctionType,
+  IdentExpr,
   IfStatement,
+  IndexExpr,
   Integer,
+  IntegerLitExpr,
   Program,
   Real,
   ReturnStatement,
@@ -18,26 +26,36 @@ import {
   StatementKind,
   Type,
   TypeKind,
+  UnaryExpr,
   VarStatement,
   Variable,
   Void,
   WhileStatement
 } from './semantic'
 import {
+  ArrayIndexExprNode,
   ArrayTypeNode,
   AssignStatementNode,
+  BinaryExprNode,
   BlockStatementNode,
+  BooleanLitExprNode,
+  CallExprNode,
+  CastExprNode,
   DeclKind,
   ExprNode,
+  ExprNodeKind,
   ExprStatementNode,
   FunctionDeclNode,
+  IdentExprNode,
   IfStatementNode,
+  IntegerLitExprNode,
   ReturnStatementNode,
   RootNode,
   StatementNode,
   StatementNodeKind,
   TypeExprNode,
   TypeExprNodeKind,
+  UnaryExprNode,
   VarNode,
   VarStatementNode,
   WhileStatementNode
@@ -342,7 +360,109 @@ class Analyzer {
   }
 
   private analyzeExpr (node: ExprNode): Expr | undefined {
-    throw new Error('not implemented yet')
+    switch (node.kind) {
+      case ExprNodeKind.IDENT:
+        return this.analyzeIdentExpr(node)
+      case ExprNodeKind.INTEGER_LIT:
+        return this.analyzeIntegerLitExpr(node)
+      case ExprNodeKind.BOOLEAN_LIT:
+        return this.analyzeBooleanLitExpr(node)
+      case ExprNodeKind.BINARY:
+        return this.analyzeBinaryExpr(node)
+      case ExprNodeKind.UNARY:
+        return this.analyzeUnaryExpr(node)
+      case ExprNodeKind.CALL:
+        return this.analyzeCallExpr(node)
+      case ExprNodeKind.ARRAY_INDEX:
+        return this.analyzeArrayIndexExpr(node)
+      case ExprNodeKind.CAST:
+        return this.analyzeCastExpr(node)
+      case ExprNodeKind.GROUPED:
+        return this.analyzeExpr(node.value)
+    }
+  }
+
+  private analyzeIdentExpr (expr: IdentExprNode): IdentExpr | undefined {
+    this.assertTokenKind(expr.name, TokenKind.Identifier)
+
+    const name = expr.name.value
+    const symbolTable = this.getCurrentSymbolTable()
+    if (!(name in symbolTable)) {
+      this.emitError({ kind: ErrorKind.Undefined, name: expr.name })
+      return
+    }
+
+    const [, refType] = symbolTable[name]
+
+    return {
+      kind: ExprKind.Ident,
+      type: refType,
+      isConstexpr: false,
+      constValue: undefined,
+      isAssignable: true,
+      ident: name
+    }
+  }
+
+  private analyzeIntegerLitExpr (expr: IntegerLitExprNode): IntegerLitExpr | undefined {
+    this.assertTokenKind(expr.value, TokenKind.IntegerLiteral)
+
+    const value = BigInt(expr.value.value)
+
+    // TODO: IMPORTANT: add bound check here. We should only support 64bit integer in this language.
+
+    return {
+      kind: ExprKind.IntegerLit,
+      type: Integer,
+      isConstexpr: true,
+      constValue: value,
+      isAssignable: false,
+      value
+    }
+  }
+
+  private analyzeBooleanLitExpr (expr: BooleanLitExprNode): BooleanLitExpr | undefined {
+    let value: boolean | undefined
+    if (expr.value.kind === TokenKind.True) {
+      value = true
+    } else if (expr.value.kind === TokenKind.False) {
+      value = false
+    }
+
+    if (value === undefined) {
+      throw new Error('boolean expression should have true or false value')
+    }
+
+    // TODO: IMPORTANT: add bound check here. We should only support 64bit integer in this language.
+
+    return {
+      kind: ExprKind.BooleanLit,
+      type: Boolean,
+      isConstexpr: true,
+      constValue: value,
+      isAssignable: false,
+      value
+    }
+  }
+
+  private analyzeBinaryExpr (expr: BinaryExprNode): BinaryExpr | undefined {
+    return undefined
+  }
+
+  private analyzeUnaryExpr (expr: UnaryExprNode): UnaryExpr | undefined {
+    return undefined
+  }
+
+  private analyzeCallExpr (expr: CallExprNode): CallExpr | undefined {
+    return undefined
+  }
+
+  private analyzeArrayIndexExpr (expr: ArrayIndexExprNode): IndexExpr | undefined {
+    return undefined
+  }
+
+  private analyzeCastExpr (expr: CastExprNode): CastExpr | undefined {
+    return undefined
   }
 
   private valueIsA (value: Type, target: Type): boolean {
@@ -360,6 +480,11 @@ class Analyzer {
     }
 
     throw new Error('unreachable')
+  }
+
+  private valueIsCastable (value: Type, target: Type): boolean {
+    // TODO: implement cast check
+    return this.valueIsA(value, target)
   }
 
   private getCurrentSymbolTable (): { [name: string]: [Token, Type] } {

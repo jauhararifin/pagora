@@ -134,7 +134,7 @@ export enum ExprKind {
   Ident,
 }
 
-export interface BinaryExpr {
+export interface BinaryExpr extends Expr {
   kind: ExprKind.Binary
   a: Expr
   op: BinaryOp
@@ -145,7 +145,7 @@ export enum BinaryOp {
   Plus, Minus, Div, Mul, And, Or, BitAnd, BitOr, BitXor
 }
 
-export interface UnaryExpr {
+export interface UnaryExpr extends Expr {
   kind: ExprKind.Unary
   op: UnaryOp
   value: Expr

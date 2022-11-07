@@ -4,8 +4,8 @@ import {
   CommaSeparatedExpr,
   DeclKind,
   DeclNode,
-  ExprKind,
   ExprNode,
+  ExprNodeKind,
   FunctionDeclNode,
   MainDeclNode,
   ParamGroup,
@@ -410,7 +410,7 @@ class Parser {
     if (bExpr === undefined) return undefined
 
     return {
-      kind: ExprKind.BINARY,
+      kind: ExprNodeKind.BINARY,
       a: aExpr,
       op: opToken,
       b: bExpr
@@ -430,7 +430,7 @@ class Parser {
     const closeSquare = this.expectEither([TokenKind.CloseBrac])
     if (closeSquare == null) return undefined
 
-    return { kind: ExprKind.ARRAY_INDEX, array: arraySource, openSquare, index, closeSquare }
+    return { kind: ExprNodeKind.ARRAY_INDEX, array: arraySource, openSquare, index, closeSquare }
   }
 
   private parseCastExpression (): ExprNode | undefined {
@@ -443,7 +443,7 @@ class Parser {
     const target = this.parseTypeExpr()
     if (target == null) return undefined
 
-    return { kind: ExprKind.CAST, source, as: asToken, target }
+    return { kind: ExprNodeKind.CAST, source, as: asToken, target }
   }
 
   private parseUnaryExpr (): ExprNode | undefined {
@@ -458,7 +458,7 @@ class Parser {
     const value = this.parseCallExpr()
     if (value == null) return undefined
 
-    return { kind: ExprKind.UNARY, op, value }
+    return { kind: ExprNodeKind.UNARY, op, value }
   }
 
   private parseCallExpr (): ExprNode | undefined {
@@ -474,7 +474,7 @@ class Parser {
     const closeBrac = this.expectEither([TokenKind.CloseBrac])
     if (closeBrac == null) return undefined
 
-    return { kind: ExprKind.CALL, callee, openBrac, arguments: args, closeBrac }
+    return { kind: ExprNodeKind.CALL, callee, openBrac, arguments: args, closeBrac }
   }
 
   private parsePrimaryExpr (): ExprNode | undefined {
@@ -485,16 +485,16 @@ class Parser {
       if (value == null) return undefined
       const closeBrac = this.expectEither([TokenKind.CloseBrac])
       if (closeBrac == null) return undefined
-      return { kind: ExprKind.GROUPED, openBrac, value, closeBrac }
+      return { kind: ExprNodeKind.GROUPED, openBrac, value, closeBrac }
     } else if (token.kind === TokenKind.IntegerLiteral) {
       const value = this.next()
-      return { kind: ExprKind.INTEGER_LIT, value }
+      return { kind: ExprNodeKind.INTEGER_LIT, value }
     } else if (token.kind === TokenKind.True || token.kind === TokenKind.False) {
       const value = this.next()
-      return { kind: ExprKind.BOOLEAN_LIT, value }
+      return { kind: ExprNodeKind.BOOLEAN_LIT, value }
     } else if (token.kind === TokenKind.Identifier) {
       const name = this.next()
-      return { kind: ExprKind.IDENT, name }
+      return { kind: ExprNodeKind.IDENT, name }
     } else {
       const token = this.next()
       this.emitError({ kind: ErrorKind.UnexpectedTokenForExpr, found: token })

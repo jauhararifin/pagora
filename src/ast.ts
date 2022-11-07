@@ -155,7 +155,7 @@ ArrayIndexExprNode |
 CastExprNode |
 GroupedExprNode
 
-export enum ExprKind {
+export enum ExprNodeKind {
   IDENT,
   INTEGER_LIT,
   FLOAT_LIT,
@@ -173,35 +173,35 @@ export enum ExprKind {
 }
 
 export interface IdentExprNode {
-  kind: ExprKind.IDENT
+  kind: ExprNodeKind.IDENT
   name: Token
 }
 
 export interface IntegerLitExprNode {
-  kind: ExprKind.INTEGER_LIT
+  kind: ExprNodeKind.INTEGER_LIT
   value: Token
 }
 
 export interface BooleanLitExprNode {
-  kind: ExprKind.BOOLEAN_LIT
+  kind: ExprNodeKind.BOOLEAN_LIT
   value: Token
 }
 
 export interface BinaryExprNode {
-  kind: ExprKind.BINARY
+  kind: ExprNodeKind.BINARY
   a: ExprNode
   op: Token
   b: ExprNode
 }
 
 export interface UnaryExprNode {
-  kind: ExprKind.UNARY
+  kind: ExprNodeKind.UNARY
   op: Token
   value: ExprNode
 }
 
 export interface CallExprNode {
-  kind: ExprKind.CALL
+  kind: ExprNodeKind.CALL
   callee: ExprNode
   openBrac: Token
   arguments: CommaSeparatedExpr
@@ -214,7 +214,7 @@ export interface CommaSeparatedExpr {
 }
 
 export interface ArrayIndexExprNode {
-  kind: ExprKind.ARRAY_INDEX
+  kind: ExprNodeKind.ARRAY_INDEX
   array: ExprNode
   openSquare: Token
   index: CommaSeparatedExpr
@@ -222,28 +222,28 @@ export interface ArrayIndexExprNode {
 }
 
 export interface TupleIndexExprNode {
-  kind: ExprKind.TUPLE_INDEX
+  kind: ExprNodeKind.TUPLE_INDEX
   tuple: ExprNode
   dot: Token
   index: ExprNode
 }
 
 export interface StructIndexExprNode {
-  kind: ExprKind.STRUCT_INDEX
+  kind: ExprNodeKind.STRUCT_INDEX
   struct: ExprNode
   dot: Token
   index: Token
 }
 
 export interface CastExprNode {
-  kind: ExprKind.CAST
+  kind: ExprNodeKind.CAST
   source: ExprNode
   as: Token
   target: TypeExprNode
 }
 
 export interface GroupedExprNode {
-  kind: ExprKind.GROUPED
+  kind: ExprNodeKind.GROUPED
   openBrac: Token
   value: ExprNode
   closeBrac: Token

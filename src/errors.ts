@@ -11,6 +11,7 @@ export type Error = UnexpectedCharacter
 | TypeMismatch
 | NotAConstant
 | CannotAssign
+| Undefined
 
 export enum ErrorKind {
   // for lexer phase
@@ -26,7 +27,8 @@ export enum ErrorKind {
   MultipleDeclaration = 'MultipleDeclaration',
   TypeMismatch = 'TypeMismatch',
   NotAConstant = 'NotAConstant',
-  CannotAssign = 'CannotAssign'
+  CannotAssign = 'CannotAssign',
+  Undefined = 'Undefined'
 }
 
 export interface UnexpectedCharacter {
@@ -77,6 +79,11 @@ export interface CannotAssign {
   kind: ErrorKind.CannotAssign
   expr: ExprNode
   receiver: Type
+}
+
+export interface Undefined {
+  kind: ErrorKind.Undefined
+  name: Token
 }
 
 export interface Result<T> {

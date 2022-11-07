@@ -1,4 +1,4 @@
-import { DeclKind, ExprKind, RootNode, StatementNodeKind, TypeExprNodeKind } from './ast'
+import { DeclKind, ExprNodeKind, RootNode, StatementNodeKind, TypeExprNodeKind } from './ast'
 import { TokenKind } from './tokens'
 import { parse } from './parser'
 import { tokenize } from './lexer'
@@ -48,11 +48,11 @@ describe('tokenize test', () => {
               dimension: {
                 values: [
                   {
-                    kind: ExprKind.INTEGER_LIT,
+                    kind: ExprNodeKind.INTEGER_LIT,
                     value: { kind: TokenKind.IntegerLiteral, position: { line: 1, col: 21 }, value: '10' }
                   },
                   {
-                    kind: ExprKind.INTEGER_LIT,
+                    kind: ExprNodeKind.INTEGER_LIT,
                     value: { kind: TokenKind.IntegerLiteral, position: { line: 1, col: 24 }, value: '20' }
                   }
                 ],
@@ -84,35 +84,35 @@ describe('tokenize test', () => {
               {
                 kind: StatementNodeKind.EXPR,
                 expr: {
-                  kind: ExprKind.BINARY,
+                  kind: ExprNodeKind.BINARY,
                   a: {
-                    kind: ExprKind.INTEGER_LIT,
+                    kind: ExprNodeKind.INTEGER_LIT,
                     value: { kind: TokenKind.IntegerLiteral, position: { line: 1, col: 7 }, value: '1' }
                   },
                   op: { kind: TokenKind.Plus, position: { line: 1, col: 9 }, value: '+' },
                   b: {
-                    kind: ExprKind.BINARY,
+                    kind: ExprNodeKind.BINARY,
                     op: { kind: TokenKind.Multiply, position: { line: 1, col: 13 }, value: '*' },
                     a: {
-                      kind: ExprKind.INTEGER_LIT,
+                      kind: ExprNodeKind.INTEGER_LIT,
                       value: { kind: TokenKind.IntegerLiteral, position: { line: 1, col: 11 }, value: '2' }
                     },
                     b: {
-                      kind: ExprKind.BINARY,
+                      kind: ExprNodeKind.BINARY,
                       op: { kind: TokenKind.Plus, position: { line: 1, col: 17 }, value: '+' },
                       a: {
-                        kind: ExprKind.INTEGER_LIT,
+                        kind: ExprNodeKind.INTEGER_LIT,
                         value: { kind: TokenKind.IntegerLiteral, position: { line: 1, col: 15 }, value: '3' }
                       },
                       b: {
-                        kind: ExprKind.BINARY,
+                        kind: ExprNodeKind.BINARY,
                         op: { kind: TokenKind.Div, position: { line: 1, col: 21 }, value: '/' },
                         a: {
-                          kind: ExprKind.INTEGER_LIT,
+                          kind: ExprNodeKind.INTEGER_LIT,
                           value: { kind: TokenKind.IntegerLiteral, position: { line: 1, col: 19 }, value: '4' }
                         },
                         b: {
-                          kind: ExprKind.INTEGER_LIT,
+                          kind: ExprNodeKind.INTEGER_LIT,
                           value: { kind: TokenKind.IntegerLiteral, position: { line: 1, col: 23 }, value: '5' }
                         }
                       }
