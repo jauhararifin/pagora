@@ -1,5 +1,6 @@
 import { Expr, Type } from './semantic'
 import { Position, Token, TokenKind } from './tokens'
+import { ExprNode } from './ast'
 
 export type Error = UnexpectedCharacter
 | UnexpectedToken
@@ -9,6 +10,7 @@ export type Error = UnexpectedCharacter
 | MultipleDeclaration
 | TypeMismatch
 | NotAConstant
+| CannotAssign
 
 export enum ErrorKind {
   // for lexer phase
@@ -23,7 +25,8 @@ export enum ErrorKind {
   // for analyzing phase
   MultipleDeclaration = 'MultipleDeclaration',
   TypeMismatch = 'TypeMismatch',
-  NotAConstant = 'NotAConstant'
+  NotAConstant = 'NotAConstant',
+  CannotAssign = 'CannotAssign'
 }
 
 export interface UnexpectedCharacter {
@@ -68,6 +71,12 @@ export interface TypeMismatch {
 export interface NotAConstant {
   kind: ErrorKind.NotAConstant
   value: Expr
+}
+
+export interface CannotAssign {
+  kind: ErrorKind.CannotAssign
+  expr: ExprNode
+  receiver: Type
 }
 
 export interface Result<T> {

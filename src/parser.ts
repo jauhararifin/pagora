@@ -11,8 +11,8 @@ import {
   ParamGroup,
   ParamsNode,
   RootNode,
-  StatementKind,
   StatementNode,
+  StatementNodeKind,
   TypeExprNode,
   TypeKind,
   VarStatementNode,
@@ -184,7 +184,7 @@ class Parser {
     const end = this.expectEither([TokenKind.End])
     if (end === undefined) return undefined
 
-    return { kind: StatementKind.BLOCK, begin, statements, end }
+    return { kind: StatementNodeKind.BLOCK, begin, statements, end }
   }
 
   private parseIfStatement (): StatementNode | undefined {
@@ -202,13 +202,13 @@ class Parser {
 
     const elseToken = this.consumeIfMatch([TokenKind.Else])
     if (elseToken === undefined) {
-      return { kind: StatementKind.IF, if: ifToken, condition, then: thenToken, body }
+      return { kind: StatementNodeKind.IF, if: ifToken, condition, then: thenToken, body }
     }
 
     const elseBody = this.parseStatement()
     if (elseBody === undefined) return undefined
 
-    return { kind: StatementKind.IF, if: ifToken, condition, then: thenToken, body, else: elseBody }
+    return { kind: StatementNodeKind.IF, if: ifToken, condition, then: thenToken, body, else: elseBody }
   }
 
   private parseWhileStatement (): StatementNode | undefined {
@@ -224,7 +224,7 @@ class Parser {
     const body = this.parseStatement()
     if (body === undefined) return undefined
 
-    return { kind: StatementKind.WHILE, while: whileToken, condition, do: doToken, body }
+    return { kind: StatementNodeKind.WHILE, while: whileToken, condition, do: doToken, body }
   }
 
   private parseReturnStatement (): StatementNode | undefined {
@@ -234,7 +234,7 @@ class Parser {
     const value = this.parseExpr()
     if (value === undefined) return undefined
 
-    return { kind: StatementKind.RETURN, return: returnToken, value }
+    return { kind: StatementNodeKind.RETURN, return: returnToken, value }
   }
 
   private parseAssignStatement (): StatementNode | undefined {
@@ -243,7 +243,7 @@ class Parser {
 
     const assign = this.consumeIfMatch([TokenKind.Assign])
     if (assign === undefined) {
-      return { kind: StatementKind.EXPR, expr: receiver }
+      return { kind: StatementNodeKind.EXPR, expr: receiver }
     }
 
     const value = this.parseExpr()
@@ -251,7 +251,7 @@ class Parser {
 
     this.consumeIfMatch([TokenKind.Semicolon, TokenKind.PhantomSemicolon])
 
-    return { kind: StatementKind.ASSIGN, receiver, assign, value }
+    return { kind: StatementNodeKind.ASSIGN, receiver, assign, value }
   }
 
   private parseVarStatement (): VarStatementNode | undefined {
@@ -271,34 +271,40 @@ class Parser {
       const assignToken = this.consumeIfMatch([TokenKind.Assign])
       if (assignToken === undefined) {
         return {
-          kind: StatementKind.VAR,
-          var: varToken,
-          name: varName,
-          colon: next,
-          type: typeExpr
+          kind: StatementNodeKind.VAR,
+          variable: {
+            var: varToken,
+            name: varName,
+            colon: next,
+            type: typeExpr
+          }
         }
       } else {
         const valueExpr = this.parseExpr()
         if (valueExpr === undefined) return undefined
         return {
-          kind: StatementKind.VAR,
-          var: varToken,
-          name: varName,
-          colon: next,
-          type: typeExpr,
-          assign: assignToken,
-          value: valueExpr
+          kind: StatementNodeKind.VAR,
+          variable: {
+            var: varToken,
+            name: varName,
+            colon: next,
+            type: typeExpr,
+            assign: assignToken,
+            value: valueExpr
+          }
         }
       }
     } else {
       const valueExpr = this.parseExpr()
       if (valueExpr === undefined) return undefined
       return {
-        kind: StatementKind.VAR,
-        var: varToken,
-        name: varName,
-        assign: next,
-        value: valueExpr
+        kind: StatementNodeKind.VAR,
+        variable: {
+          var: varToken,
+          name: varName,
+          assign: next,
+          value: valueExpr
+        }
       }
     }
   }

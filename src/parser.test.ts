@@ -1,4 +1,4 @@
-import { DeclKind, ExprKind, RootNode, StatementKind, TypeKind } from './ast'
+import { DeclKind, ExprKind, RootNode, StatementNodeKind, TypeKind } from './ast'
 import { TokenKind } from './tokens'
 import { parse } from './parser'
 import { tokenize } from './lexer'
@@ -18,12 +18,14 @@ describe('tokenize test', () => {
       expectedAST: {
         declarations: [{
           kind: DeclKind.VARIABLE,
-          var: { kind: TokenKind.Var, position: { line: 1, col: 1 }, value: 'var' },
-          name: { kind: TokenKind.Identifier, position: { line: 1, col: 5 }, value: 'some_var' },
-          colon: { kind: TokenKind.Colon, position: { line: 1, col: 13 }, value: ':' },
-          type: {
-            kind: TypeKind.PRIMITIVE,
-            type: { kind: TokenKind.Integer, position: { line: 1, col: 15 }, value: 'integer' }
+          variable: {
+            var: { kind: TokenKind.Var, position: { line: 1, col: 1 }, value: 'var' },
+            name: { kind: TokenKind.Identifier, position: { line: 1, col: 5 }, value: 'some_var' },
+            colon: { kind: TokenKind.Colon, position: { line: 1, col: 13 }, value: ':' },
+            type: {
+              kind: TypeKind.PRIMITIVE,
+              type: { kind: TokenKind.Integer, position: { line: 1, col: 15 }, value: 'integer' }
+            }
           }
         }]
       },
@@ -35,31 +37,33 @@ describe('tokenize test', () => {
       expectedAST: {
         declarations: [{
           kind: DeclKind.VARIABLE,
-          var: { kind: TokenKind.Var, position: { line: 1, col: 1 }, value: 'var' },
-          name: { kind: TokenKind.Identifier, position: { line: 1, col: 5 }, value: 'some_var' },
-          colon: { kind: TokenKind.Colon, position: { line: 1, col: 13 }, value: ':' },
-          type: {
-            kind: TypeKind.ARRAY,
-            array: { kind: TokenKind.Array, position: { line: 1, col: 15 }, value: 'array' },
-            openSquare: { kind: TokenKind.OpenSquare, position: { line: 1, col: 20 }, value: '[' },
-            dimension: {
-              values: [
-                {
-                  kind: ExprKind.INTEGER_LIT,
-                  value: { kind: TokenKind.IntegerLiteral, position: { line: 1, col: 21 }, value: '10' }
-                },
-                {
-                  kind: ExprKind.INTEGER_LIT,
-                  value: { kind: TokenKind.IntegerLiteral, position: { line: 1, col: 24 }, value: '20' }
-                }
-              ],
-              commas: [{ kind: TokenKind.Comma, position: { line: 1, col: 23 }, value: ',' }]
-            },
-            closeSquare: { kind: TokenKind.CloseSquare, position: { line: 1, col: 26 }, value: ']' },
-            of: { kind: TokenKind.Of, position: { line: 1, col: 28 }, value: 'of' },
+          variable: {
+            var: { kind: TokenKind.Var, position: { line: 1, col: 1 }, value: 'var' },
+            name: { kind: TokenKind.Identifier, position: { line: 1, col: 5 }, value: 'some_var' },
+            colon: { kind: TokenKind.Colon, position: { line: 1, col: 13 }, value: ':' },
             type: {
-              kind: TypeKind.PRIMITIVE,
-              type: { kind: TokenKind.Integer, position: { line: 1, col: 31 }, value: 'integer' }
+              kind: TypeKind.ARRAY,
+              array: { kind: TokenKind.Array, position: { line: 1, col: 15 }, value: 'array' },
+              openSquare: { kind: TokenKind.OpenSquare, position: { line: 1, col: 20 }, value: '[' },
+              dimension: {
+                values: [
+                  {
+                    kind: ExprKind.INTEGER_LIT,
+                    value: { kind: TokenKind.IntegerLiteral, position: { line: 1, col: 21 }, value: '10' }
+                  },
+                  {
+                    kind: ExprKind.INTEGER_LIT,
+                    value: { kind: TokenKind.IntegerLiteral, position: { line: 1, col: 24 }, value: '20' }
+                  }
+                ],
+                commas: [{ kind: TokenKind.Comma, position: { line: 1, col: 23 }, value: ',' }]
+              },
+              closeSquare: { kind: TokenKind.CloseSquare, position: { line: 1, col: 26 }, value: ']' },
+              of: { kind: TokenKind.Of, position: { line: 1, col: 28 }, value: 'of' },
+              type: {
+                kind: TypeKind.PRIMITIVE,
+                type: { kind: TokenKind.Integer, position: { line: 1, col: 31 }, value: 'integer' }
+              }
             }
           }
         }]
@@ -73,12 +77,12 @@ describe('tokenize test', () => {
         declarations: [{
           kind: DeclKind.MAIN,
           body: {
-            kind: StatementKind.BLOCK,
+            kind: StatementNodeKind.BLOCK,
             begin: { kind: TokenKind.Begin, position: { line: 1, col: 1 }, value: 'begin' },
             end: { kind: TokenKind.End, position: { line: 1, col: 25 }, value: 'end' },
             statements: [
               {
-                kind: StatementKind.EXPR,
+                kind: StatementNodeKind.EXPR,
                 expr: {
                   kind: ExprKind.BINARY,
                   a: {

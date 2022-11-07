@@ -1,25 +1,41 @@
 import {
   Argument,
   ArrayType,
+  AssignStatement,
   BlockStatement,
+  Boolean,
   Expr,
+  ExprStatement,
   Function,
   FunctionType,
+  IfStatement,
   Program,
+  ReturnStatement,
   Statement,
+  StatementKind,
   Type,
   TypeKind,
-  Variable
+  VarStatement,
+  Variable,
+  Void,
+  WhileStatement
 } from './semantic'
 import {
+  AssignStatementNode,
   BlockStatementNode,
   DeclKind,
   ExprNode,
+  ExprStatementNode,
   FunctionDeclNode,
+  IfStatementNode,
+  ReturnStatementNode,
   RootNode,
   StatementNode,
+  StatementNodeKind,
   TypeExprNode,
-  VariableDeclNode
+  VarNode,
+  VarStatementNode,
+  WhileStatementNode
 } from './ast'
 import { Error as CompileError, ErrorKind, Result } from './errors'
 import { Token, TokenKind } from './tokens'
@@ -29,27 +45,19 @@ export function analyze (ast: RootNode): Result<Program> {
 }
 
 class Analyzer {
-  globalSymbolNames: { [key: string]: Token }
+  functions: Function[] = []
+  globals: Variable[] = []
+  errors: CompileError[] = []
 
-  functions: Function[]
-  globals: Variable[]
-  errors: CompileError[]
-
-  currentReturnType: Type | undefined
-
-  constructor () {
-    this.globalSymbolNames = {}
-
-    this.functions = []
-    this.globals = []
-    this.errors = []
-  }
+  symbolTable: Array<{ [key: string]: [Token, Type] }> = []
+  currentReturnType: Type = { kind: TypeKind.Void }
 
   // TODO: skip the whole process if the number errors are too many
   analyze (ast: RootNode): Result<Program> {
     // TODO: improve the language to support struct, tuple and type definition
     // This requires an additional step to load all the type names beforehand.
     // Although, at this phase, we don't need it yet.
+    this.symbolTable = [{}]
 
     for (const declaration of ast.declarations) {
       switch (declaration.kind) {
@@ -57,7 +65,7 @@ class Analyzer {
           this.analyzeFunction(declaration)
           break
         case DeclKind.VARIABLE:
-          this.analyzeVariable(declaration)
+          this.analyzeVariable(declaration.variable)
           break
         case DeclKind.MAIN:
           this.analyzeBlockStatement(declaration.body)
@@ -74,8 +82,10 @@ class Analyzer {
     this.assertTokenKind(functionDecl.name, TokenKind.Identifier)
 
     const name = functionDecl.name.value
-    if (name in this.globalSymbolNames) {
-      const declaredAt = this.globalSymbolNames[name]
+
+    const symbolTable = this.getCurrentSymbolTable()
+    if (name in symbolTable) {
+      const [declaredAt] = symbolTable[name]
       this.emitError({ kind: ErrorKind.MultipleDeclaration, declaredAt, redeclaredAt: functionDecl.name })
 
       // TODO: consider keep analyze the function body for better warning message
@@ -92,26 +102,68 @@ class Analyzer {
     }))
 
     const body = this.analyzeBlockStatement(functionDecl.body)
+
     this.functions.push({ name, type, arguments: args, body })
+    symbolTable[name] = [functionDecl.name, type]
   }
 
-  private analyzeVariable (varDecl: VariableDeclNode): void {
-    this.assertTokenKind(varDecl.name, TokenKind.Identifier)
+  private analyzeStatement (statement: StatementNode): Statement | undefined {
+    switch (statement.kind) {
+      case StatementNodeKind.BLOCK:
+        return this.analyzeBlockStatement(statement)
+      case StatementNodeKind.VAR:
+        return this.analyzeVarStatement(statement)
+      case StatementNodeKind.ASSIGN:
+        return this.analyzeAssignStatement(statement)
+      case StatementNodeKind.EXPR:
+        return this.analyzeExprStatement(statement)
+      case StatementNodeKind.IF:
+        return this.analyzeIfStatement(statement)
+      case StatementNodeKind.WHILE:
+        return this.analyzeWhileStatement(statement)
+      case StatementNodeKind.RETURN:
+        return this.analyzeReturnStatement(statement)
+    }
+  }
 
-    const name = varDecl.name.value
-    if (name in this.globalSymbolNames) {
-      const declaredAt = this.globalSymbolNames[name]
-      this.emitError({ kind: ErrorKind.MultipleDeclaration, declaredAt, redeclaredAt: varDecl.name })
+  private analyzeBlockStatement (blockStatement: BlockStatementNode): BlockStatement {
+    return {
+      kind: StatementKind.Block,
+      body: blockStatement
+        .statements
+        .map((s) => this.analyzeStatement(s))
+        .filter((s): s is Statement => s !== undefined)
+    }
+  }
+
+  private analyzeVarStatement (stmt: VarStatementNode): VarStatement | undefined {
+    const variable = this.analyzeVariable(stmt.variable)
+    if (variable == null) return undefined
+
+    return {
+      kind: StatementKind.Var,
+      variable
+    }
+  }
+
+  private analyzeVariable (variable: VarNode): Variable | undefined {
+    this.assertTokenKind(variable.name, TokenKind.Identifier)
+
+    const name = variable.name.value
+    const symbolTable = this.getCurrentSymbolTable()
+    if (name in symbolTable) {
+      const [declaredAt] = symbolTable[name]
+      this.emitError({ kind: ErrorKind.MultipleDeclaration, declaredAt, redeclaredAt: variable.name })
       return
     }
 
-    if (varDecl.type === undefined && varDecl.value === undefined) {
+    if (variable.type === undefined && variable.value === undefined) {
       throw new Error('variable declaration should have type or value expression')
     }
 
-    const value: Expr | undefined = (varDecl.value != null) ? this.analyzeExpr(varDecl.value) : undefined
+    const value: Expr | undefined = (variable.value != null) ? this.analyzeExpr(variable.value) : undefined
 
-    const type = varDecl.type != null ? this.analyzeType(varDecl.type) : value?.type
+    const type = variable.type != null ? this.analyzeType(variable.type) : value?.type
     if (type == null) {
       throw new Error('variable declaration should have type or value expression')
     }
@@ -129,14 +181,98 @@ class Analyzer {
     }
 
     this.globals.push({ name, type, value })
+    symbolTable[name] = [variable.name, type]
   }
 
-  private analyzeStatement (statement: StatementNode): Statement {
-    throw new Error('not implemented yet')
+  private analyzeAssignStatement (stmt: AssignStatementNode): AssignStatement | undefined {
+    const receiver = this.analyzeExpr(stmt.receiver)
+    if (receiver === undefined) return
+
+    if (!receiver.isAssignable) {
+      this.emitError({ kind: ErrorKind.CannotAssign, expr: stmt.receiver, receiver: receiver.type })
+      return
+    }
+
+    const value = this.analyzeExpr(stmt.value)
+    if (value === undefined) return
+
+    if (!this.valueIsA(value.type, receiver.type)) {
+      this.emitError({ kind: ErrorKind.TypeMismatch, target: receiver.type, source: value.type })
+      return
+    }
+
+    return {
+      kind: StatementKind.Assign,
+      target: receiver,
+      value
+    }
   }
 
-  private analyzeBlockStatement (blockStatement: BlockStatementNode): BlockStatement {
-    throw new Error('not implemented yet')
+  private analyzeExprStatement (stmt: ExprStatementNode): ExprStatement | undefined {
+    const value = this.analyzeExpr(stmt.expr)
+    if (value === undefined) return
+
+    return { kind: StatementKind.Expr, value }
+  }
+
+  private analyzeIfStatement (stmt: IfStatementNode): IfStatement | undefined {
+    const condition = this.analyzeExpr(stmt.condition)
+    if (condition === undefined) return
+
+    if (!this.valueIsA(condition.type, Boolean)) {
+      this.emitError({ kind: ErrorKind.TypeMismatch, target: Boolean, source: condition.type })
+      return
+    }
+
+    const body = this.analyzeStatement(stmt.body)
+    if (body === undefined) return
+
+    const elseStmt = (stmt.else != null) ? this.analyzeStatement(stmt.else) : undefined
+
+    return {
+      kind: StatementKind.If,
+      condition,
+      body,
+      else: elseStmt
+    }
+  }
+
+  private analyzeWhileStatement (stmt: WhileStatementNode): WhileStatement | undefined {
+    const condition = this.analyzeExpr(stmt.condition)
+    if (condition === undefined) return
+
+    const boolType: Type = { kind: TypeKind.Boolean }
+    if (!this.valueIsA(condition.type, boolType)) {
+      this.emitError({ kind: ErrorKind.TypeMismatch, target: boolType, source: condition.type })
+      return
+    }
+
+    const body = this.analyzeStatement(stmt.body)
+    if (body === undefined) return
+
+    return {
+      kind: StatementKind.While,
+      condition,
+      body
+    }
+  }
+
+  private analyzeReturnStatement (stmt: ReturnStatementNode): ReturnStatement | undefined {
+    if (stmt.value != null) {
+      const value = this.analyzeExpr(stmt.value)
+      if (value === undefined) return
+      if (!this.valueIsA(value.type, this.currentReturnType)) {
+        this.emitError({ kind: ErrorKind.TypeMismatch, source: value.type, target: this.currentReturnType })
+        return
+      }
+      return { kind: StatementKind.Return, value }
+    } else {
+      if (this.currentReturnType.kind !== TypeKind.Void) {
+        this.emitError({ kind: ErrorKind.TypeMismatch, source: Void, target: this.currentReturnType })
+        return
+      }
+      return { kind: StatementKind.Return }
+    }
   }
 
   private analyzeType (node: TypeExprNode): Type {
@@ -150,12 +286,13 @@ class Analyzer {
       args.push(type)
     }
 
-    const returnType = (node.returnType !== undefined) ? this.analyzeType(node.returnType) : undefined
+    const voidType: Type = { kind: TypeKind.Void }
+    const returnType = (node.returnType !== undefined) ? this.analyzeType(node.returnType) : voidType
 
     return { kind: TypeKind.Function, arguments: args, return: returnType }
   }
 
-  private analyzeExpr (node: ExprNode): Expr {
+  private analyzeExpr (node: ExprNode): Expr | undefined {
     throw new Error('not implemented yet')
   }
 
@@ -174,6 +311,10 @@ class Analyzer {
     }
 
     throw new Error('unreachable')
+  }
+
+  private getCurrentSymbolTable (): { [name: string]: [Token, Type] } {
+    return this.symbolTable[this.symbolTable.length - 1]
   }
 
   private emitError (error: CompileError): void {

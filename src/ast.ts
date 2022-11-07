@@ -27,6 +27,10 @@ export interface FunctionDeclNode {
 
 export interface VariableDeclNode {
   kind: DeclKind.VARIABLE
+  variable: VarNode
+}
+
+export interface VarNode {
   var: Token
   name: Token
   colon?: Token
@@ -83,7 +87,7 @@ WhileStatementNode |
 BlockStatementNode |
 ExprStatementNode
 
-export enum StatementKind {
+export enum StatementNodeKind {
   VAR,
   ASSIGN,
   RETURN,
@@ -94,30 +98,25 @@ export enum StatementKind {
 }
 
 export interface VarStatementNode {
-  kind: StatementKind.VAR
-  var: Token
-  name: Token
-  colon?: Token
-  type?: TypeExprNode
-  assign?: Token
-  value?: ExprNode
+  kind: StatementNodeKind.VAR
+  variable: VarNode
 }
 
 export interface AssignStatementNode {
-  kind: StatementKind.ASSIGN
+  kind: StatementNodeKind.ASSIGN
   receiver: ExprNode
   assign: Token
   value: ExprNode
 }
 
 export interface ReturnStatementNode {
-  kind: StatementKind.RETURN
+  kind: StatementNodeKind.RETURN
   return: Token
   value?: ExprNode
 }
 
 export interface IfStatementNode {
-  kind: StatementKind.IF
+  kind: StatementNodeKind.IF
   if: Token
   condition: ExprNode
   then: Token
@@ -126,7 +125,7 @@ export interface IfStatementNode {
 }
 
 export interface WhileStatementNode {
-  kind: StatementKind.WHILE
+  kind: StatementNodeKind.WHILE
   while: Token
   condition: ExprNode
   do: Token
@@ -134,14 +133,14 @@ export interface WhileStatementNode {
 }
 
 export interface BlockStatementNode {
-  kind: StatementKind.BLOCK
+  kind: StatementNodeKind.BLOCK
   begin: Token
   statements: StatementNode[]
   end: Token
 }
 
 export interface ExprStatementNode {
-  kind: StatementKind.EXPR
+  kind: StatementNodeKind.EXPR
   expr: ExprNode
 }
 

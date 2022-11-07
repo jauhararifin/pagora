@@ -3,12 +3,6 @@ export interface Program {
   functions: Function[]
 }
 
-export interface Variable {
-  name: string
-  type: Type
-  value?: Expr
-}
-
 export interface Function {
   name: string
   type: FunctionType
@@ -24,6 +18,7 @@ export interface Argument {
 export type Type = PrimitiveType | ArrayType | FunctionType
 
 export enum TypeKind {
+  Void,
   Integer,
   Real,
   Boolean,
@@ -34,8 +29,15 @@ export enum TypeKind {
 }
 
 export interface PrimitiveType {
-  kind: TypeKind.Integer | TypeKind.Real | TypeKind.Boolean | TypeKind.String | TypeKind.Char
+  kind: TypeKind.Integer | TypeKind.Real | TypeKind.Boolean | TypeKind.String | TypeKind.Char | TypeKind.Void
 }
+
+export const Integer: Type = { kind: TypeKind.Integer }
+export const Real: Type = { kind: TypeKind.Real }
+export const Boolean: Type = { kind: TypeKind.Boolean }
+export const String: Type = { kind: TypeKind.String }
+export const Char: Type = { kind: TypeKind.Char }
+export const Void: Type = { kind: TypeKind.Void }
 
 export interface ArrayType {
   kind: TypeKind.Array
@@ -50,6 +52,7 @@ export interface FunctionType {
 }
 
 export type Statement = BlockStatement
+| VarStatement
 | IfStatement
 | WhileStatement
 | AssignStatement
@@ -58,6 +61,7 @@ export type Statement = BlockStatement
 
 export enum StatementKind {
   Block,
+  Var,
   If,
   While,
   Assign,
@@ -68,6 +72,17 @@ export enum StatementKind {
 export interface BlockStatement {
   kind: StatementKind.Block
   body: Statement[]
+}
+
+export interface VarStatement {
+  kind: StatementKind.Var
+  variable: Variable
+}
+
+export interface Variable {
+  name: string
+  type: Type
+  value?: Expr
 }
 
 export interface IfStatement {
@@ -101,7 +116,8 @@ export interface ReturnStatement {
 
 export interface Expr {
   kind: ExprKind
-  isConstexpr: true
+  isConstexpr: boolean
+  isAssignable: boolean
   type: Type
 }
 
