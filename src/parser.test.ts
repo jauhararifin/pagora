@@ -1,7 +1,7 @@
 import { DeclKind, ExprKind, RootNode, StatementKind, TypeKind } from './ast'
-import { tokenize } from './lexer'
-import { parse } from './parser'
 import { TokenKind } from './tokens'
+import { parse } from './parser'
+import { tokenize } from './lexer'
 
 interface Testcase {
   name: string

@@ -22,7 +22,7 @@ export interface FunctionDeclNode {
   closeBrac: Token
   arrow?: Token
   returnType?: TypeExprNode
-  body: StatementNode
+  body: BlockStatementNode
 }
 
 export interface VariableDeclNode {

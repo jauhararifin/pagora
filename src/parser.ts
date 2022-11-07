@@ -15,17 +15,18 @@ import {
   StatementNode,
   TypeExprNode,
   TypeKind,
-  VariableDeclNode,
-  VarStatementNode
+  VarStatementNode,
+  VariableDeclNode
 } from './ast'
+import { Error, ErrorKind, Result } from './errors'
 import { PrimitiveTypes, Token, TokenKind } from './tokens'
-import { Result, Error, ErrorKind } from './errors'
 
 export function parse (tokens: Token[]): Result<RootNode> {
   return new Parser(tokens).parse()
 }
 
 // TODO: improve the recursive descent parser to use non-recursive style to avoid stack overflow.
+// TODO: skip the whole process if the number errors are too many
 class Parser {
   tokens: Token[]
   index: number

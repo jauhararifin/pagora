@@ -1,5 +1,5 @@
-import { tokenize } from './lexer'
 import { parse } from './parser'
+import { tokenize } from './lexer'
 
 export function compile (sourceCode: string): void {
   const { value: tokens, errors: lexerErrors } = tokenize(sourceCode)

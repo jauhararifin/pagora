@@ -12,6 +12,7 @@
     },
     "ignorePatterns": ["dist/*.js"],
     "rules": {
-        "max-len": ["warn", { "code": 120 }]
+        "max-len": ["warn", { "code": 120 }],
+        "sort-imports":"error"
     }
 }

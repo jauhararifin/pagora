@@ -6,13 +6,14 @@ export interface Program {
 export interface Variable {
   name: string
   type: Type
+  value?: Expr
 }
 
 export interface Function {
   name: string
+  type: FunctionType
   arguments: Argument[]
-  returnType: Type
-  body: Statement
+  body: BlockStatement
 }
 
 export interface Argument {
@@ -20,7 +21,7 @@ export interface Argument {
   type: Type
 }
 
-export type Type = PrimitiveType | ArrayType
+export type Type = PrimitiveType | ArrayType | FunctionType
 
 export enum TypeKind {
   Integer,
@@ -29,6 +30,7 @@ export enum TypeKind {
   String,
   Char,
   Array,
+  Function,
 }
 
 export interface PrimitiveType {
@@ -36,8 +38,15 @@ export interface PrimitiveType {
 }
 
 export interface ArrayType {
+  kind: TypeKind.Array
   dimension: number[]
-  type: TypeKind
+  type: Type
+}
+
+export interface FunctionType {
+  kind: TypeKind.Function
+  arguments: Type[]
+  return?: Type
 }
 
 export type Statement = BlockStatement
@@ -90,15 +99,11 @@ export interface ReturnStatement {
   value?: Expr
 }
 
-export type Expr = BinaryExpr
-| UnaryExpr
-| IndexExpr
-| CastExpr
-| CallExpr
-| IntegerLitExpr
-| CharLitExpr
-| BooleanLitExpr
-| IdentExpr
+export interface Expr {
+  kind: ExprKind
+  isConstexpr: true
+  type: Type
+}
 
 export enum ExprKind {
   Binary,
@@ -133,40 +138,40 @@ export enum UnaryOp {
   Plus, Minus, Not, BitNot
 }
 
-export interface IndexExpr {
+export interface IndexExpr extends Expr {
   kind: ExprKind.Index
   array: Expr
   index: Expr
 }
 
-export interface CastExpr {
+export interface CastExpr extends Expr {
   kind: ExprKind.Cast
   source: Expr
   type: Type
 }
 
-export interface CallExpr {
+export interface CallExpr extends Expr {
   kind: ExprKind.Call
   function: Expr
   arguments: Expr[]
 }
 
-export interface IntegerLitExpr {
+export interface IntegerLitExpr extends Expr {
   kind: ExprKind.IntegerLit
   value: BigInt
 }
 
-export interface CharLitExpr {
+export interface CharLitExpr extends Expr {
   kind: ExprKind.CharLit
   value: string
 }
 
-export interface BooleanLitExpr {
+export interface BooleanLitExpr extends Expr {
   kind: ExprKind.BooleanLit
   value: boolean
 }
 
-export interface IdentExpr {
+export interface IdentExpr extends Expr {
   kind: ExprKind.Ident
   ident: string
 }

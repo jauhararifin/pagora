@@ -1,6 +1,6 @@
 import { Error, ErrorKind } from './errors'
-import { tokenize } from './lexer'
 import { Token, TokenKind } from './tokens'
+import { tokenize } from './lexer'
 
 interface Testcase {
   name: string

@@ -1,5 +1,5 @@
 import { Error, ErrorKind, Result } from './errors'
-import { Token, TokenKind, Position } from './tokens'
+import { Position, Token, TokenKind } from './tokens'
 
 export function tokenize (sourceCode: string): Result<Token[]> {
   return new Lexer(sourceCode).scan()
@@ -45,6 +45,7 @@ class Lexer {
     }
   }
 
+  // TODO: skip the whole process if the number errors are too many
   scan (): Result<Token[]> {
     while (true) {
       this.advance()
