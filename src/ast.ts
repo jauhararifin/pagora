@@ -57,20 +57,20 @@ export interface ParamGroup {
 
 export type TypeExprNode = PrimitiveTypeNode | ArrayTypeNode
 
-export enum TypeKind {
-  PRIMITIVE,
-  ARRAY,
-  STRUCT,
-  TUPLE,
+export enum TypeExprNodeKind {
+  PRIMITIVE = 'PRIMITIVE',
+  ARRAY = 'ARRAY',
+  STRUCT = 'STRUCT',
+  TUPLE = 'TUPLE',
 }
 
 export interface PrimitiveTypeNode {
-  kind: TypeKind.PRIMITIVE
+  kind: TypeExprNodeKind.PRIMITIVE
   type: Token
 }
 
 export interface ArrayTypeNode {
-  kind: TypeKind.ARRAY
+  kind: TypeExprNodeKind.ARRAY
   array: Token
   openSquare: Token
   dimension: CommaSeparatedExpr // capture the commas position

@@ -1,4 +1,4 @@
-import { DeclKind, ExprKind, RootNode, StatementNodeKind, TypeKind } from './ast'
+import { DeclKind, ExprKind, RootNode, StatementNodeKind, TypeExprNodeKind } from './ast'
 import { TokenKind } from './tokens'
 import { parse } from './parser'
 import { tokenize } from './lexer'
@@ -23,7 +23,7 @@ describe('tokenize test', () => {
             name: { kind: TokenKind.Identifier, position: { line: 1, col: 5 }, value: 'some_var' },
             colon: { kind: TokenKind.Colon, position: { line: 1, col: 13 }, value: ':' },
             type: {
-              kind: TypeKind.PRIMITIVE,
+              kind: TypeExprNodeKind.PRIMITIVE,
               type: { kind: TokenKind.Integer, position: { line: 1, col: 15 }, value: 'integer' }
             }
           }
@@ -42,7 +42,7 @@ describe('tokenize test', () => {
             name: { kind: TokenKind.Identifier, position: { line: 1, col: 5 }, value: 'some_var' },
             colon: { kind: TokenKind.Colon, position: { line: 1, col: 13 }, value: ':' },
             type: {
-              kind: TypeKind.ARRAY,
+              kind: TypeExprNodeKind.ARRAY,
               array: { kind: TokenKind.Array, position: { line: 1, col: 15 }, value: 'array' },
               openSquare: { kind: TokenKind.OpenSquare, position: { line: 1, col: 20 }, value: '[' },
               dimension: {
@@ -61,7 +61,7 @@ describe('tokenize test', () => {
               closeSquare: { kind: TokenKind.CloseSquare, position: { line: 1, col: 26 }, value: ']' },
               of: { kind: TokenKind.Of, position: { line: 1, col: 28 }, value: 'of' },
               type: {
-                kind: TypeKind.PRIMITIVE,
+                kind: TypeExprNodeKind.PRIMITIVE,
                 type: { kind: TokenKind.Integer, position: { line: 1, col: 31 }, value: 'integer' }
               }
             }

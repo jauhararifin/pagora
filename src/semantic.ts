@@ -41,7 +41,7 @@ export const Void: Type = { kind: TypeKind.Void }
 
 export interface ArrayType {
   kind: TypeKind.Array
-  dimension: number[]
+  dimension: BigInt[]
   type: Type
 }
 
@@ -117,6 +117,7 @@ export interface ReturnStatement {
 export interface Expr {
   kind: ExprKind
   isConstexpr: boolean
+  constValue: any
   isAssignable: boolean
   type: Type
 }

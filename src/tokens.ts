@@ -82,6 +82,7 @@ export enum TokenKind {
   Integer = 'Integer',
   Char = 'Char',
   Real = 'Real',
+  Boolean = 'Boolean',
 }
 
 export const PrimitiveTypes = [

@@ -4,12 +4,15 @@ import {
   AssignStatement,
   BlockStatement,
   Boolean,
+  Char,
   Expr,
   ExprStatement,
   Function,
   FunctionType,
   IfStatement,
+  Integer,
   Program,
+  Real,
   ReturnStatement,
   Statement,
   StatementKind,
@@ -21,6 +24,7 @@ import {
   WhileStatement
 } from './semantic'
 import {
+  ArrayTypeNode,
   AssignStatementNode,
   BlockStatementNode,
   DeclKind,
@@ -33,6 +37,7 @@ import {
   StatementNode,
   StatementNodeKind,
   TypeExprNode,
+  TypeExprNodeKind,
   VarNode,
   VarStatementNode,
   WhileStatementNode
@@ -93,6 +98,8 @@ class Analyzer {
     }
 
     const type = this.analyzeFunctionType(functionDecl)
+    if (type === undefined) return
+
     this.currentReturnType = type
 
     this.assert(type.arguments.length === functionDecl.params.params.length)
@@ -275,14 +282,56 @@ class Analyzer {
     }
   }
 
-  private analyzeType (node: TypeExprNode): Type {
-    throw new Error('not implemented yet')
+  private analyzeType (node: TypeExprNode): Type | undefined {
+    switch (node.kind) {
+      case TypeExprNodeKind.PRIMITIVE:
+        switch (node.type.kind) {
+          case TokenKind.Integer:
+            return Integer
+          case TokenKind.Boolean:
+            return Boolean
+          case TokenKind.Char:
+            return Char
+          case TokenKind.Real:
+            return Real
+          default:
+            throw new Error(`unrecognized type ${node.kind}`)
+        }
+      case TypeExprNodeKind.ARRAY:
+        return this.analyzeArrayType(node)
+    }
   }
 
-  private analyzeFunctionType (node: FunctionDeclNode): FunctionType {
+  private analyzeArrayType (node: ArrayTypeNode): ArrayType | undefined {
+    const dimension = node.dimension.values.map(n => this.analyzeExpr(n))
+
+    const dimensionNum = []
+    for (let i = 0; i < dimension.length; i++) {
+      const dim = dimension[i]
+      if (dim === undefined) return
+      if (!dim.isConstexpr) {
+        this.emitError({ kind: ErrorKind.NotAConstant, value: dim })
+        return
+      }
+      if (!this.valueIsA(dim.type, Integer)) {
+        this.emitError({ kind: ErrorKind.TypeMismatch, source: dim.type, target: Integer })
+        return
+      }
+
+      dimensionNum.push(dim.constValue as BigInt)
+    }
+
+    const elementType = this.analyzeType(node.type)
+    if (elementType === undefined) return
+
+    return { kind: TypeKind.Array, dimension: dimensionNum, type: elementType }
+  }
+
+  private analyzeFunctionType (node: FunctionDeclNode): FunctionType | undefined {
     const args: Type[] = []
     for (const param of node.params.params) {
       const type = this.analyzeType(param.type)
+      if (type === undefined) return
       args.push(type)
     }
 

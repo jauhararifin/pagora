@@ -102,6 +102,7 @@ class Lexer {
       array: TokenKind.Array,
       of: TokenKind.Of,
       integer: TokenKind.Integer,
+      boolean: TokenKind.Boolean,
       char: TokenKind.Char,
       and: TokenKind.And,
       not: TokenKind.Not,

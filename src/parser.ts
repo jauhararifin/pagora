@@ -14,7 +14,7 @@ import {
   StatementNode,
   StatementNodeKind,
   TypeExprNode,
-  TypeKind,
+  TypeExprNodeKind,
   VarStatementNode,
   VariableDeclNode
 } from './ast'
@@ -314,7 +314,7 @@ class Parser {
     if (token === undefined) return undefined
 
     if (PrimitiveTypes.includes(token.kind)) {
-      return { kind: TypeKind.PRIMITIVE, type: token }
+      return { kind: TypeExprNodeKind.PRIMITIVE, type: token }
     }
 
     this.prev()
@@ -341,7 +341,7 @@ class Parser {
     if (elementType === undefined) return undefined
 
     return {
-      kind: TypeKind.ARRAY,
+      kind: TypeExprNodeKind.ARRAY,
       array: arrayToken,
       openSquare,
       dimension: commaSeparatedSize,
