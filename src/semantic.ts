@@ -115,7 +115,17 @@ export interface ReturnStatement {
   value?: Expr
 }
 
-export interface Expr {
+export type Expr = BinaryExpr
+| UnaryExpr
+| IndexExpr
+| CastExpr
+| CallExpr
+| IntegerLitExpr
+| CharLitExpr
+| BooleanLitExpr
+| IdentExpr
+
+export interface ExprBase {
   kind: ExprKind
   isConstexpr: boolean
   constValue: any
@@ -135,7 +145,7 @@ export enum ExprKind {
   IDENT = 'IDENT',
 }
 
-export interface BinaryExpr extends Expr {
+export interface BinaryExpr extends ExprBase {
   kind: ExprKind.BINARY
   a: Expr
   op: BinaryOp
@@ -162,7 +172,7 @@ export enum BinaryOp {
   SHIFT_RIGHT = 'SHIFT_RIGHT',
 }
 
-export interface UnaryExpr extends Expr {
+export interface UnaryExpr extends ExprBase {
   kind: ExprKind.UNARY
   op: UnaryOp
   value: Expr
@@ -175,40 +185,40 @@ export enum UnaryOp {
   BIT_NOT = 'BIT_NOT'
 }
 
-export interface IndexExpr extends Expr {
+export interface IndexExpr extends ExprBase {
   kind: ExprKind.INDEX
   array: Expr
   indices: Expr[]
 }
 
-export interface CastExpr extends Expr {
+export interface CastExpr extends ExprBase {
   kind: ExprKind.CAST
   source: Expr
   type: Type
 }
 
-export interface CallExpr extends Expr {
+export interface CallExpr extends ExprBase {
   kind: ExprKind.CALL
   function: Expr
   arguments: Expr[]
 }
 
-export interface IntegerLitExpr extends Expr {
+export interface IntegerLitExpr extends ExprBase {
   kind: ExprKind.INTEGER_LIT
   value: BigInt
 }
 
-export interface CharLitExpr extends Expr {
+export interface CharLitExpr extends ExprBase {
   kind: ExprKind.CHAR_LIT
   value: string
 }
 
-export interface BooleanLitExpr extends Expr {
+export interface BooleanLitExpr extends ExprBase {
   kind: ExprKind.BOOLEAN_LIT
   value: boolean
 }
 
-export interface IdentExpr extends Expr {
+export interface IdentExpr extends ExprBase {
   kind: ExprKind.IDENT
   ident: string
 }
