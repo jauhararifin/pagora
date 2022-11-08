@@ -3,6 +3,7 @@ import {
   ArrayType,
   AssignStatement,
   BinaryExpr,
+  BinaryOp,
   BlockStatement,
   Boolean,
   BooleanLitExpr,
@@ -73,7 +74,7 @@ class Analyzer {
   errors: CompileError[] = []
 
   symbolTable: Array<{ [key: string]: [Token, Type] }> = []
-  currentReturnType: Type = { kind: TypeKind.Void }
+  currentReturnType: Type = { kind: TypeKind.VOID }
 
   // TODO: skip the whole process if the number errors are too many
   analyze (ast: RootNode): Result<Program> {
@@ -82,34 +83,47 @@ class Analyzer {
     // Although, at this phase, we don't need it yet.
     this.symbolTable = [{}]
 
+    let main: BlockStatement | undefined
     for (const declaration of ast.declarations) {
-      switch (declaration.kind) {
-        case DeclKind.FUNCTION:
-          this.analyzeFunction(declaration)
-          break
-        case DeclKind.VARIABLE:
-          this.analyzeVariable(declaration.variable)
-          break
-        case DeclKind.MAIN:
-          this.analyzeBlockStatement(declaration.body)
+      if (declaration.kind === DeclKind.FUNCTION) {
+        this.analyzeFunction(declaration)
+      } else if (declaration.kind === DeclKind.VARIABLE) {
+        const variable = this.analyzeVariable(declaration.variable)
+        if (variable !== undefined) {
+          this.globals.push(variable)
+        }
+      } else if (declaration.kind === DeclKind.MAIN) {
+        this.addScope()
+        const stmt = this.analyzeBlockStatement(declaration.body)
+        this.removeScope()
+        if (main !== undefined) {
+          this.emitError({ kind: ErrorKind.DUPLICATED_MAIN })
+        } else {
+          main = stmt
+        }
       }
     }
 
+    if (main === undefined) {
+      this.emitError({ kind: ErrorKind.MISSING_MAIN })
+      return { errors: this.errors }
+    }
+
     return {
-      value: { functions: this.functions, globals: this.globals },
+      value: { functions: this.functions, globals: this.globals, main },
       errors: this.errors
     }
   }
 
   private analyzeFunction (functionDecl: FunctionDeclNode): void {
-    this.assertTokenKind(functionDecl.name, TokenKind.Identifier)
+    this.assertTokenKind(functionDecl.name, TokenKind.IDENTIFIER)
 
     const name = functionDecl.name.value
 
-    const symbolTable = this.getCurrentSymbolTable()
-    if (name in symbolTable) {
-      const [declaredAt] = symbolTable[name]
-      this.emitError({ kind: ErrorKind.MultipleDeclaration, declaredAt, redeclaredAt: functionDecl.name })
+    const symbol = this.getSymbol(name)
+    if (symbol !== undefined) {
+      const [declaredAt] = symbol
+      this.emitError({ kind: ErrorKind.MULTIPLE_DECLARATION, declaredAt, redeclaredAt: functionDecl.name })
 
       // TODO: consider keep analyze the function body for better warning message
       return
@@ -118,7 +132,7 @@ class Analyzer {
     const type = this.analyzeFunctionType(functionDecl)
     if (type === undefined) return
 
-    this.currentReturnType = type
+    this.currentReturnType = (type.return != null) ? type.return : Void
 
     this.assert(type.arguments.length === functionDecl.params.params.length)
     const args: Argument[] = functionDecl.params.params.map((p, i): Argument => ({
@@ -126,10 +140,16 @@ class Analyzer {
       type: type.arguments[i]
     }))
 
+    this.addScope()
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i]
+      this.addSymbol(arg.name, functionDecl.params.params[i].name, arg.type)
+    }
     const body = this.analyzeBlockStatement(functionDecl.body)
+    this.removeScope()
 
     this.functions.push({ name, type, arguments: args, body })
-    symbolTable[name] = [functionDecl.name, type]
+    this.addSymbol(name, functionDecl.name, type)
   }
 
   private analyzeStatement (statement: StatementNode): Statement | undefined {
@@ -153,7 +173,7 @@ class Analyzer {
 
   private analyzeBlockStatement (blockStatement: BlockStatementNode): BlockStatement {
     return {
-      kind: StatementKind.Block,
+      kind: StatementKind.BLOCK,
       body: blockStatement
         .statements
         .map((s) => this.analyzeStatement(s))
@@ -166,19 +186,19 @@ class Analyzer {
     if (variable == null) return undefined
 
     return {
-      kind: StatementKind.Var,
+      kind: StatementKind.VAR,
       variable
     }
   }
 
   private analyzeVariable (variable: VarNode): Variable | undefined {
-    this.assertTokenKind(variable.name, TokenKind.Identifier)
+    this.assertTokenKind(variable.name, TokenKind.IDENTIFIER)
 
     const name = variable.name.value
-    const symbolTable = this.getCurrentSymbolTable()
-    if (name in symbolTable) {
-      const [declaredAt] = symbolTable[name]
-      this.emitError({ kind: ErrorKind.MultipleDeclaration, declaredAt, redeclaredAt: variable.name })
+    const symbol = this.getSymbol(name)
+    if (symbol !== undefined) {
+      const [declaredAt] = symbol
+      this.emitError({ kind: ErrorKind.MULTIPLE_DECLARATION, declaredAt, redeclaredAt: variable.name })
       return
     }
 
@@ -195,18 +215,18 @@ class Analyzer {
 
     if (value != null) {
       if (!this.valueIsA(value.type, type)) {
-        this.emitError({ kind: ErrorKind.TypeMismatch, source: value.type, target: type })
+        this.emitError({ kind: ErrorKind.TYPE_MISMATCH, source: value, targetType: type })
         return
       }
 
       if (!value.isConstexpr) {
-        this.emitError({ kind: ErrorKind.NotAConstant, value })
+        this.emitError({ kind: ErrorKind.NOT_A_CONSTANT, value })
         return
       }
     }
 
-    this.globals.push({ name, type, value })
-    symbolTable[name] = [variable.name, type]
+    this.addSymbol(name, variable.name, type)
+    return { name, type, value }
   }
 
   private analyzeAssignStatement (stmt: AssignStatementNode): AssignStatement | undefined {
@@ -214,7 +234,7 @@ class Analyzer {
     if (receiver === undefined) return
 
     if (!receiver.isAssignable) {
-      this.emitError({ kind: ErrorKind.CannotAssign, expr: stmt.receiver, receiver: receiver.type })
+      this.emitError({ kind: ErrorKind.CANNOT_ASSIGN, expr: stmt.receiver, receiver: receiver.type })
       return
     }
 
@@ -222,12 +242,12 @@ class Analyzer {
     if (value === undefined) return
 
     if (!this.valueIsA(value.type, receiver.type)) {
-      this.emitError({ kind: ErrorKind.TypeMismatch, target: receiver.type, source: value.type })
+      this.emitError({ kind: ErrorKind.TYPE_MISMATCH, targetType: receiver.type, source: value })
       return
     }
 
     return {
-      kind: StatementKind.Assign,
+      kind: StatementKind.ASSIGN,
       target: receiver,
       value
     }
@@ -237,7 +257,7 @@ class Analyzer {
     const value = this.analyzeExpr(stmt.expr)
     if (value === undefined) return
 
-    return { kind: StatementKind.Expr, value }
+    return { kind: StatementKind.EXPR, value }
   }
 
   private analyzeIfStatement (stmt: IfStatementNode): IfStatement | undefined {
@@ -245,7 +265,7 @@ class Analyzer {
     if (condition === undefined) return
 
     if (!this.valueIsA(condition.type, Boolean)) {
-      this.emitError({ kind: ErrorKind.TypeMismatch, target: Boolean, source: condition.type })
+      this.emitError({ kind: ErrorKind.TYPE_MISMATCH, targetType: Boolean, source: condition })
       return
     }
 
@@ -255,7 +275,7 @@ class Analyzer {
     const elseStmt = (stmt.else != null) ? this.analyzeStatement(stmt.else) : undefined
 
     return {
-      kind: StatementKind.If,
+      kind: StatementKind.IF,
       condition,
       body,
       else: elseStmt
@@ -266,9 +286,9 @@ class Analyzer {
     const condition = this.analyzeExpr(stmt.condition)
     if (condition === undefined) return
 
-    const boolType: Type = { kind: TypeKind.Boolean }
+    const boolType: Type = { kind: TypeKind.BOOLEAN }
     if (!this.valueIsA(condition.type, boolType)) {
-      this.emitError({ kind: ErrorKind.TypeMismatch, target: boolType, source: condition.type })
+      this.emitError({ kind: ErrorKind.TYPE_MISMATCH, targetType: boolType, source: condition })
       return
     }
 
@@ -276,7 +296,7 @@ class Analyzer {
     if (body === undefined) return
 
     return {
-      kind: StatementKind.While,
+      kind: StatementKind.WHILE,
       condition,
       body
     }
@@ -287,16 +307,16 @@ class Analyzer {
       const value = this.analyzeExpr(stmt.value)
       if (value === undefined) return
       if (!this.valueIsA(value.type, this.currentReturnType)) {
-        this.emitError({ kind: ErrorKind.TypeMismatch, source: value.type, target: this.currentReturnType })
+        this.emitError({ kind: ErrorKind.TYPE_MISMATCH, source: value, targetType: this.currentReturnType })
         return
       }
-      return { kind: StatementKind.Return, value }
+      return { kind: StatementKind.RETURN, value }
     } else {
-      if (this.currentReturnType.kind !== TypeKind.Void) {
-        this.emitError({ kind: ErrorKind.TypeMismatch, source: Void, target: this.currentReturnType })
+      if (this.currentReturnType.kind !== TypeKind.VOID) {
+        this.emitError({ kind: ErrorKind.FUNCTION_IS_VOID, return: stmt.return })
         return
       }
-      return { kind: StatementKind.Return }
+      return { kind: StatementKind.RETURN }
     }
   }
 
@@ -304,13 +324,13 @@ class Analyzer {
     switch (node.kind) {
       case TypeExprNodeKind.PRIMITIVE:
         switch (node.type.kind) {
-          case TokenKind.Integer:
+          case TokenKind.INTEGER:
             return Integer
-          case TokenKind.Boolean:
+          case TokenKind.BOOLEAN:
             return Boolean
-          case TokenKind.Char:
+          case TokenKind.CHAR:
             return Char
-          case TokenKind.Real:
+          case TokenKind.REAL:
             return Real
           default:
             throw new Error(`unrecognized type ${node.kind}`)
@@ -328,11 +348,11 @@ class Analyzer {
       const dim = dimension[i]
       if (dim === undefined) return
       if (!dim.isConstexpr) {
-        this.emitError({ kind: ErrorKind.NotAConstant, value: dim })
+        this.emitError({ kind: ErrorKind.NOT_A_CONSTANT, value: dim })
         return
       }
       if (!this.valueIsA(dim.type, Integer)) {
-        this.emitError({ kind: ErrorKind.TypeMismatch, source: dim.type, target: Integer })
+        this.emitError({ kind: ErrorKind.TYPE_MISMATCH, source: dim, targetType: Integer })
         return
       }
 
@@ -342,7 +362,7 @@ class Analyzer {
     const elementType = this.analyzeType(node.type)
     if (elementType === undefined) return
 
-    return { kind: TypeKind.Array, dimension: dimensionNum, type: elementType }
+    return { kind: TypeKind.ARRAY, dimension: dimensionNum, type: elementType }
   }
 
   private analyzeFunctionType (node: FunctionDeclNode): FunctionType | undefined {
@@ -353,10 +373,10 @@ class Analyzer {
       args.push(type)
     }
 
-    const voidType: Type = { kind: TypeKind.Void }
+    const voidType: Type = { kind: TypeKind.VOID }
     const returnType = (node.returnType !== undefined) ? this.analyzeType(node.returnType) : voidType
 
-    return { kind: TypeKind.Function, arguments: args, return: returnType }
+    return { kind: TypeKind.FUNCTION, arguments: args, return: returnType }
   }
 
   private analyzeExpr (node: ExprNode): Expr | undefined {
@@ -383,19 +403,19 @@ class Analyzer {
   }
 
   private analyzeIdentExpr (expr: IdentExprNode): IdentExpr | undefined {
-    this.assertTokenKind(expr.name, TokenKind.Identifier)
+    this.assertTokenKind(expr.name, TokenKind.IDENTIFIER)
 
     const name = expr.name.value
-    const symbolTable = this.getCurrentSymbolTable()
-    if (!(name in symbolTable)) {
-      this.emitError({ kind: ErrorKind.Undefined, name: expr.name })
+    const symbol = this.getSymbol(name)
+    if (symbol === undefined) {
+      this.emitError({ kind: ErrorKind.UNDEFINED, name: expr.name })
       return
     }
 
-    const [, refType] = symbolTable[name]
+    const [, refType] = symbol
 
     return {
-      kind: ExprKind.Ident,
+      kind: ExprKind.IDENT,
       type: refType,
       isConstexpr: false,
       constValue: undefined,
@@ -405,14 +425,14 @@ class Analyzer {
   }
 
   private analyzeIntegerLitExpr (expr: IntegerLitExprNode): IntegerLitExpr | undefined {
-    this.assertTokenKind(expr.value, TokenKind.IntegerLiteral)
+    this.assertTokenKind(expr.value, TokenKind.INTEGER_LITERAL)
 
     const value = BigInt(expr.value.value)
 
     // TODO: IMPORTANT: add bound check here. We should only support 64bit integer in this language.
 
     return {
-      kind: ExprKind.IntegerLit,
+      kind: ExprKind.INTEGER_LIT,
       type: Integer,
       isConstexpr: true,
       constValue: value,
@@ -423,9 +443,9 @@ class Analyzer {
 
   private analyzeBooleanLitExpr (expr: BooleanLitExprNode): BooleanLitExpr | undefined {
     let value: boolean | undefined
-    if (expr.value.kind === TokenKind.True) {
+    if (expr.value.kind === TokenKind.TRUE) {
       value = true
-    } else if (expr.value.kind === TokenKind.False) {
+    } else if (expr.value.kind === TokenKind.FALSE) {
       value = false
     }
 
@@ -436,7 +456,7 @@ class Analyzer {
     // TODO: IMPORTANT: add bound check here. We should only support 64bit integer in this language.
 
     return {
-      kind: ExprKind.BooleanLit,
+      kind: ExprKind.BOOLEAN_LIT,
       type: Boolean,
       isConstexpr: true,
       constValue: value,
@@ -446,7 +466,122 @@ class Analyzer {
   }
 
   private analyzeBinaryExpr (expr: BinaryExprNode): BinaryExpr | undefined {
-    return undefined
+    const a = this.analyzeExpr(expr.a)
+    if (a === undefined) return
+
+    const b = this.analyzeExpr(expr.b)
+    if (b === undefined) return
+
+    const operatorMap: {
+      [K in TokenKind]?: {
+        acceptedTypes: Array<[Type, Type, Type]>
+        op: BinaryOp
+      }
+    } = {
+      [TokenKind.PLUS]: {
+        acceptedTypes: [[Integer, Integer, Integer], [Real, Real, Real]],
+        op: BinaryOp.PLUS
+      },
+      [TokenKind.MINUS]: {
+        acceptedTypes: [[Integer, Integer, Integer], [Real, Real, Real]],
+        op: BinaryOp.MINUS
+      },
+      [TokenKind.MULTIPLY]: {
+        acceptedTypes: [[Integer, Integer, Integer], [Real, Real, Real]],
+        op: BinaryOp.MUL
+      },
+      [TokenKind.DIV]: {
+        acceptedTypes: [[Integer, Integer, Integer], [Real, Real, Real]],
+        op: BinaryOp.DIV
+      },
+      [TokenKind.GREATER_THAN]: {
+        acceptedTypes: [[Integer, Integer, Integer], [Real, Real, Real]],
+        op: BinaryOp.GREATER_THAN
+      },
+      [TokenKind.GREATER_THAN_EQUAL]: {
+        acceptedTypes: [[Integer, Integer, Integer], [Real, Real, Real]],
+        op: BinaryOp.GREATER_THAN_EQUAL
+      },
+      [TokenKind.LESS_THAN]: {
+        acceptedTypes: [[Integer, Integer, Integer], [Real, Real, Real]],
+        op: BinaryOp.LESS_THAN
+      },
+      [TokenKind.LESS_THAN_EQUAL]: {
+        acceptedTypes: [[Integer, Integer, Integer], [Real, Real, Real]],
+        op: BinaryOp.LESS_THAN_EQUAL
+      },
+      [TokenKind.EQUAL]: {
+        acceptedTypes: [
+          [Integer, Integer, Integer],
+          [Real, Real, Real],
+          [Boolean, Boolean, Boolean]
+        ],
+        op: BinaryOp.EQUAL
+      },
+      [TokenKind.NOT_EQUAL]: {
+        acceptedTypes: [
+          [Integer, Integer, Integer],
+          [Real, Real, Real],
+          [Boolean, Boolean, Boolean]
+        ],
+        op: BinaryOp.NOT_EQUAL
+      },
+      [TokenKind.AND]: {
+        acceptedTypes: [[Boolean, Boolean, Boolean]],
+        op: BinaryOp.AND
+      },
+      [TokenKind.OR]: {
+        acceptedTypes: [[Boolean, Boolean, Boolean]],
+        op: BinaryOp.AND
+      },
+      [TokenKind.BIT_AND]: {
+        acceptedTypes: [[Integer, Integer, Integer]],
+        op: BinaryOp.BIT_AND
+      },
+      [TokenKind.BIT_OR]: {
+        acceptedTypes: [[Integer, Integer, Integer]],
+        op: BinaryOp.BIT_OR
+      },
+      [TokenKind.BIT_XOR]: {
+        acceptedTypes: [[Integer, Integer, Integer]],
+        op: BinaryOp.BIT_XOR
+      },
+      [TokenKind.SHIFT_LEFT]: {
+        acceptedTypes: [[Integer, Integer, Integer]],
+        op: BinaryOp.SHIFT_LEFT
+      },
+      [TokenKind.SHIFT_RIGHT]: {
+        acceptedTypes: [[Integer, Integer, Integer]],
+        op: BinaryOp.SHIFT_RIGHT
+      }
+    }
+
+    if (!(expr.op.kind in operatorMap)) {
+      throw new Error(`invalid binary operator ${expr.op.kind}`)
+    }
+
+    const spec = operatorMap[expr.op.kind]
+    if (spec === undefined) return
+
+    const { acceptedTypes, op } = spec
+
+    const result = acceptedTypes.find(([aType, bType, rType]) => a.type === aType && b.type === bType)
+    if (result === undefined) {
+      this.emitError({ kind: ErrorKind.INVALID_OPERATOR, a, b, op: expr.op })
+      return
+    }
+    const [,,resultType] = result
+
+    return {
+      kind: ExprKind.BINARY,
+      isConstexpr: false,
+      constValue: undefined,
+      isAssignable: false,
+      type: resultType,
+      a,
+      b,
+      op
+    }
   }
 
   private analyzeUnaryExpr (expr: UnaryExprNode): UnaryExpr | undefined {
@@ -468,18 +603,18 @@ class Analyzer {
   private valueIsA (value: Type, target: Type): boolean {
     if (value.kind !== target.kind) return false
 
-    if (value.kind === TypeKind.Array) {
+    if (value.kind === TypeKind.ARRAY) {
       const targetType = target as ArrayType
       return value.dimension === targetType.dimension && this.valueIsA(value.type, targetType.type)
     }
 
-    if (value.kind === TypeKind.Function) {
+    if (value.kind === TypeKind.FUNCTION) {
       const targetType = target as FunctionType
       return value.return === targetType.return &&
       value.arguments.every((t, i) => this.valueIsA(t, targetType.arguments[i]))
     }
 
-    throw new Error('unreachable')
+    return value.kind === target.kind
   }
 
   private valueIsCastable (value: Type, target: Type): boolean {
@@ -487,8 +622,24 @@ class Analyzer {
     return this.valueIsA(value, target)
   }
 
-  private getCurrentSymbolTable (): { [name: string]: [Token, Type] } {
-    return this.symbolTable[this.symbolTable.length - 1]
+  private getSymbol (name: string): [Token, Type] | undefined {
+    for (let i = this.symbolTable.length - 1; i >= 0; i--) {
+      if (name in this.symbolTable[i]) {
+        return this.symbolTable[i][name]
+      }
+    }
+  }
+
+  private addSymbol (name: string, token: Token, type: Type): void {
+    this.symbolTable[this.symbolTable.length - 1][name] = [token, type]
+  }
+
+  private addScope (): void {
+    this.symbolTable.push({})
+  }
+
+  private removeScope (): void {
+    this.symbolTable.pop()
   }
 
   private emitError (error: CompileError): void {
