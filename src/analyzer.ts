@@ -28,6 +28,7 @@ import {
   Type,
   TypeKind,
   UnaryExpr,
+  UnaryOp,
   VarStatement,
   Variable,
   Void,
@@ -375,6 +376,7 @@ class Analyzer {
 
     const voidType: Type = { kind: TypeKind.VOID }
     const returnType = (node.returnType !== undefined) ? this.analyzeType(node.returnType) : voidType
+    if (returnType === undefined) return
 
     return { kind: TypeKind.FUNCTION, arguments: args, return: returnType }
   }
@@ -567,7 +569,7 @@ class Analyzer {
 
     const result = acceptedTypes.find(([aType, bType, rType]) => a.type === aType && b.type === bType)
     if (result === undefined) {
-      this.emitError({ kind: ErrorKind.INVALID_OPERATOR, a, b, op: expr.op })
+      this.emitError({ kind: ErrorKind.INVALID_BINARY_OP, a, b, op: expr.op })
       return
     }
     const [,,resultType] = result
@@ -585,19 +587,186 @@ class Analyzer {
   }
 
   private analyzeUnaryExpr (expr: UnaryExprNode): UnaryExpr | undefined {
-    return undefined
+    const value = this.analyzeExpr(expr.value)
+    if (value === undefined) return
+
+    const operatorMap: {
+      [K in TokenKind]?: {
+        acceptedTypes: Array<[Type, Type]>
+        op: UnaryOp
+      }
+    } = {
+      [TokenKind.PLUS]: {
+        acceptedTypes: [[Integer, Integer], [Real, Real]],
+        op: UnaryOp.PLUS
+      },
+      [TokenKind.MINUS]: {
+        acceptedTypes: [[Integer, Integer], [Real, Real]],
+        op: UnaryOp.MINUS
+      },
+      [TokenKind.NOT]: {
+        acceptedTypes: [[Boolean, Boolean]],
+        op: UnaryOp.NOT
+      },
+      [TokenKind.BIT_NOT]: {
+        acceptedTypes: [[Integer, Integer]],
+        op: UnaryOp.BIT_NOT
+      }
+    }
+
+    if (!(expr.op.kind in operatorMap)) {
+      throw new Error(`invalid unary operator ${expr.op.kind}`)
+    }
+
+    const spec = operatorMap[expr.op.kind]
+    if (spec === undefined) return
+
+    const { acceptedTypes, op } = spec
+
+    const result = acceptedTypes.find(([vType, rType]) => value.type === vType)
+    if (result === undefined) {
+      this.emitError({ kind: ErrorKind.INVALID_UNARY_OP, value, op: expr.op })
+      return
+    }
+    const [,resultType] = result
+
+    return {
+      kind: ExprKind.UNARY,
+      isConstexpr: false,
+      constValue: undefined,
+      isAssignable: false,
+      type: resultType,
+      value,
+      op
+    }
   }
 
   private analyzeCallExpr (expr: CallExprNode): CallExpr | undefined {
-    return undefined
+    const callee = this.analyzeExpr(expr.callee)
+    if (callee === undefined) return
+
+    if (callee.type.kind !== TypeKind.FUNCTION) {
+      this.emitError({
+        kind: ErrorKind.TYPE_MISMATCH,
+        source: callee,
+        targetType: TypeKind.FUNCTION
+      })
+      return
+    }
+
+    if (callee.type.arguments.length !== expr.arguments.values.length) {
+      this.emitError({
+        kind: ErrorKind.WRONG_NUMBER_OF_ARGUMENT,
+        expected: callee.type.arguments.length,
+        got: expr.arguments.values.length
+      })
+      return
+    }
+
+    const args: Expr[] = []
+    for (let i = 0; i < callee.type.arguments.length; i++) {
+      const arg = this.analyzeExpr(expr.arguments.values[i])
+      if (arg === undefined) return
+
+      const paramType = callee.type.arguments[i]
+
+      if (!this.valueIsCastable(arg.type, paramType)) {
+        this.emitError({
+          kind: ErrorKind.TYPE_MISMATCH,
+          source: arg,
+          targetType: paramType
+        })
+        return
+      }
+
+      args.push(arg)
+    }
+
+    return {
+      kind: ExprKind.CALL,
+      isConstexpr: false,
+      constValue: undefined,
+      isAssignable: false,
+      type: callee.type.return,
+      function: callee,
+      arguments: args
+    }
   }
 
   private analyzeArrayIndexExpr (expr: ArrayIndexExprNode): IndexExpr | undefined {
-    return undefined
+    const array = this.analyzeExpr(expr.array)
+    if (array === undefined) return
+
+    if (array.type.kind !== TypeKind.ARRAY) {
+      this.emitError({
+        kind: ErrorKind.TYPE_MISMATCH,
+        source: array,
+        targetType: TypeKind.ARRAY
+      })
+      return
+    }
+
+    if (array.type.dimension.length !== expr.index.values.length) {
+      this.emitError({
+        kind: ErrorKind.WRONG_NUMBER_OF_ARGUMENT,
+        expected: array.type.dimension.length,
+        got: expr.index.values.length
+      })
+      return
+    }
+
+    const indices: Expr[] = []
+    for (let i = 0; i < array.type.dimension.length; i++) {
+      const index = this.analyzeExpr(expr.index.values[i])
+      if (index === undefined) return
+
+      if (index.type.kind !== TypeKind.INTEGER) {
+        this.emitError({
+          kind: ErrorKind.TYPE_MISMATCH,
+          source: index,
+          targetType: TypeKind.INTEGER
+        })
+        return
+      }
+
+      indices.push(index)
+    }
+
+    return {
+      kind: ExprKind.INDEX,
+      isConstexpr: false,
+      constValue: undefined,
+      isAssignable: false,
+      type: array.type.type,
+      array,
+      indices
+    }
   }
 
   private analyzeCastExpr (expr: CastExprNode): CastExpr | undefined {
-    return undefined
+    const value = this.analyzeExpr(expr.source)
+    if (value === undefined) return
+
+    const target = this.analyzeType(expr.target)
+    if (target === undefined) return
+
+    if (!this.valueIsCastable(value.type, target)) {
+      this.emitError({
+        kind: ErrorKind.TYPE_MISMATCH,
+        source: value,
+        targetType: target
+      })
+      return
+    }
+
+    return {
+      kind: ExprKind.CAST,
+      isConstexpr: false,
+      constValue: undefined,
+      isAssignable: false,
+      source: value,
+      type: target
+    }
   }
 
   private valueIsA (value: Type, target: Type): boolean {

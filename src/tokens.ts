@@ -83,6 +83,7 @@ export enum TokenKind {
   CHAR = 'CHAR',
   REAL = 'REAL',
   BOOLEAN = 'BOOLEAN',
+  // TODO: change "CHAR" to "BYTE" and support string literal as array of bytes.
 }
 
 export const PrimitiveTypes = [

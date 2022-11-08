@@ -49,7 +49,7 @@ export interface ArrayType {
 export interface FunctionType {
   kind: TypeKind.FUNCTION
   arguments: Type[]
-  return?: Type
+  return: Type
 }
 
 export type Statement = BlockStatement
@@ -169,13 +169,16 @@ export interface UnaryExpr extends Expr {
 }
 
 export enum UnaryOp {
-  Plus, Minus, Not, BitNot
+  PLUS = 'PLUS',
+  MINUS = 'MINUS',
+  NOT = 'NOT',
+  BIT_NOT = 'BIT_NOT'
 }
 
 export interface IndexExpr extends Expr {
   kind: ExprKind.INDEX
   array: Expr
-  index: Expr
+  indices: Expr[]
 }
 
 export interface CastExpr extends Expr {
