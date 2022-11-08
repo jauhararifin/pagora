@@ -70,11 +70,11 @@ class Lexer {
           this.emitToken({
             value: '/',
             position: c.pos,
-            kind: TokenKind.Div
+            kind: TokenKind.DIV
           })
         }
       } else {
-        this.emitError({ kind: ErrorKind.UnexpectedCharacter, position: c.pos, char: c.c })
+        this.emitError({ kind: ErrorKind.UNEXPECTED_CHARACTER, position: c.pos, char: c.c })
         this.next()
       }
     }
@@ -92,33 +92,33 @@ class Lexer {
     )
 
     const map: { [key: string]: TokenKind } = {
-      var: TokenKind.Var,
-      type: TokenKind.Type,
-      struct: TokenKind.Struct,
-      as: TokenKind.As,
-      function: TokenKind.Function,
-      begin: TokenKind.Begin,
-      end: TokenKind.End,
-      array: TokenKind.Array,
-      of: TokenKind.Of,
-      integer: TokenKind.Integer,
-      boolean: TokenKind.Boolean,
-      char: TokenKind.Char,
-      and: TokenKind.And,
-      not: TokenKind.Not,
-      or: TokenKind.Or,
-      if: TokenKind.If,
-      then: TokenKind.Then,
-      else: TokenKind.Else,
-      while: TokenKind.While,
-      for: TokenKind.For,
-      do: TokenKind.Do,
-      continue: TokenKind.Continue,
-      break: TokenKind.Break,
-      return: TokenKind.Real
+      var: TokenKind.VAR,
+      type: TokenKind.TYPE,
+      struct: TokenKind.STRUCT,
+      as: TokenKind.AS,
+      function: TokenKind.FUNCTION,
+      begin: TokenKind.BEGIN,
+      end: TokenKind.END,
+      array: TokenKind.ARRAY,
+      of: TokenKind.OF,
+      integer: TokenKind.INTEGER,
+      boolean: TokenKind.BOOLEAN,
+      char: TokenKind.CHAR,
+      and: TokenKind.AND,
+      not: TokenKind.NOT,
+      or: TokenKind.OR,
+      if: TokenKind.IF,
+      then: TokenKind.THEN,
+      else: TokenKind.ELSE,
+      while: TokenKind.WHILE,
+      for: TokenKind.FOR,
+      do: TokenKind.DO,
+      continue: TokenKind.CONTINUE,
+      break: TokenKind.BREAK,
+      return: TokenKind.RETURN
     }
 
-    const kind = word in map ? map[word] : TokenKind.Identifier
+    const kind = word in map ? map[word] : TokenKind.IDENTIFIER
     this.emitToken({ value: word, position, kind })
   }
 
@@ -148,14 +148,14 @@ class Lexer {
       if (c.c === '\n') {
         // TODO: improve the error message by differentiating "unexpected character" error for newline and
         // general error.
-        this.emitError({ kind: ErrorKind.UnexpectedCharacter, char: c.c, position: c.pos })
+        this.emitError({ kind: ErrorKind.UNEXPECTED_CHARACTER, char: c.c, position: c.pos })
       }
 
       if (afterBackslash) {
         if (c.c in backslashes) {
           value += backslashes[c.c]
         } else {
-          this.emitError({ kind: ErrorKind.UnexpectedCharacter, char: c.c, position: c.pos })
+          this.emitError({ kind: ErrorKind.UNEXPECTED_CHARACTER, char: c.c, position: c.pos })
         }
         afterBackslash = false
       } else if (c.c === '\\') {
@@ -170,7 +170,7 @@ class Lexer {
     this.emitToken({
       value,
       position,
-      kind: TokenKind.StringLiteral
+      kind: TokenKind.STRING_LITERAL
     })
   }
 
@@ -184,7 +184,7 @@ class Lexer {
     this.emitToken({
       value,
       position: c.pos,
-      kind: TokenKind.IntegerLiteral
+      kind: TokenKind.INTEGER_LITERAL
     })
   }
 
@@ -194,26 +194,26 @@ class Lexer {
     const second = this.peek()
 
     const symbolMap: Array<[string[], TokenKind]> = [
-      [['!', '='], TokenKind.NotEqual],
-      [['!'], TokenKind.Not],
-      [['='], TokenKind.Equal],
-      [['*'], TokenKind.Multiply],
-      [['+'], TokenKind.Plus],
-      [['->'], TokenKind.Arrow],
-      [['-'], TokenKind.Minus],
-      [['/'], TokenKind.Div],
-      [[':', '='], TokenKind.Assign],
-      [[':'], TokenKind.Colon],
-      [[';'], TokenKind.Semicolon],
-      [['<', '='], TokenKind.LessThanEqual],
-      [['<'], TokenKind.LessThan],
-      [['>', '='], TokenKind.GreaterThanEqual],
-      [['>'], TokenKind.GreaterThan],
-      [['['], TokenKind.OpenSquare],
-      [[']'], TokenKind.CloseSquare],
-      [['('], TokenKind.OpenBrac],
-      [[')'], TokenKind.CloseBrac],
-      [[','], TokenKind.Comma]
+      [['!', '='], TokenKind.NOT_EQUAL],
+      [['!'], TokenKind.NOT],
+      [['='], TokenKind.EQUAL],
+      [['*'], TokenKind.MULTIPLY],
+      [['+'], TokenKind.PLUS],
+      [['-', '>'], TokenKind.ARROW],
+      [['-'], TokenKind.MINUS],
+      [['/'], TokenKind.DIV],
+      [[':', '='], TokenKind.ASSIGN],
+      [[':'], TokenKind.COLON],
+      [[';'], TokenKind.SEMICOLON],
+      [['<', '='], TokenKind.LESS_THAN_EQUAL],
+      [['<'], TokenKind.LESS_THAN],
+      [['>', '='], TokenKind.GREATER_THAN_EQUAL],
+      [['>'], TokenKind.GREATER_THAN],
+      [['['], TokenKind.OPEN_SQUARE],
+      [[']'], TokenKind.CLOSE_SQUARE],
+      [['('], TokenKind.OPEN_BRAC],
+      [[')'], TokenKind.CLOSE_BRAC],
+      [[','], TokenKind.COMMA]
     ]
 
     const key = [first.c, second.c]
@@ -239,7 +239,7 @@ class Lexer {
       }
     }
 
-    this.emitError({ kind: ErrorKind.UnexpectedCharacter, char: first.c, position: first.pos })
+    this.emitError({ kind: ErrorKind.UNEXPECTED_CHARACTER, char: first.c, position: first.pos })
   }
 
   private scanComment (position: Position): void {
@@ -247,7 +247,7 @@ class Lexer {
     this.emitToken({
       value,
       position,
-      kind: TokenKind.Comment
+      kind: TokenKind.COMMENT
     })
   }
 
@@ -260,22 +260,22 @@ class Lexer {
         if (this.tokens.length > 0) {
           const lastToken = this.tokens[this.tokens.length - 1]
           const needPhantomToken = [
-            TokenKind.Break,
-            TokenKind.Continue,
-            TokenKind.IntegerLiteral,
-            TokenKind.RealLiteral,
-            TokenKind.StringLiteral,
-            TokenKind.Break,
-            TokenKind.Continue,
-            TokenKind.Return,
-            TokenKind.CloseBrac,
-            TokenKind.CloseSquare,
-            TokenKind.Integer,
-            TokenKind.Char,
-            TokenKind.Real
+            TokenKind.BREAK,
+            TokenKind.CONTINUE,
+            TokenKind.INTEGER_LITERAL,
+            TokenKind.REAL_LITERAL,
+            TokenKind.STRING_LITERAL,
+            TokenKind.BREAK,
+            TokenKind.CONTINUE,
+            TokenKind.RETURN,
+            TokenKind.CLOSE_BRAC,
+            TokenKind.CLOSE_SQUARE,
+            TokenKind.INTEGER,
+            TokenKind.CHAR,
+            TokenKind.REAL
           ]
           if (needPhantomToken.includes(lastToken.kind)) {
-            this.emitToken({ value: ';', position: c.pos, kind: TokenKind.PhantomSemicolon })
+            this.emitToken({ value: ';', position: c.pos, kind: TokenKind.PHANTOM_SEMICOLON })
           }
         }
         this.next()

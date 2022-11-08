@@ -7,9 +7,9 @@ export interface RootNode {
 export type DeclNode = FunctionDeclNode | VariableDeclNode | MainDeclNode
 
 export enum DeclKind {
-  FUNCTION,
-  VARIABLE,
-  MAIN,
+  FUNCTION = 'FUNCTION',
+  VARIABLE = 'VARIABLE',
+  MAIN = 'MAIN',
 }
 
 // TODO: support native function with empty body
@@ -88,13 +88,13 @@ BlockStatementNode |
 ExprStatementNode
 
 export enum StatementNodeKind {
-  VAR,
-  ASSIGN,
-  RETURN,
-  IF,
-  WHILE,
-  BLOCK,
-  EXPR,
+  VAR = 'VAR',
+  ASSIGN = 'ASSIGN',
+  RETURN = 'RETURN',
+  IF = 'IF',
+  WHILE = 'WHILE',
+  BLOCK = 'BLOCK',
+  EXPR = 'EXPR',
 }
 
 export interface VarStatementNode {
@@ -156,20 +156,20 @@ CastExprNode |
 GroupedExprNode
 
 export enum ExprNodeKind {
-  IDENT,
-  INTEGER_LIT,
-  FLOAT_LIT,
-  BOOLEAN_LIT,
-  ARRAY_LIT,
-  TUPLE_LIT,
-  BINARY,
-  UNARY,
-  CALL,
-  ARRAY_INDEX,
-  TUPLE_INDEX,
-  STRUCT_INDEX,
-  CAST,
-  GROUPED,
+  IDENT = 'IDENT',
+  INTEGER_LIT = 'INTEGER_LIT',
+  FLOAT_LIT = 'FLOAT_LIT',
+  BOOLEAN_LIT = 'BOOLEAN_LIT',
+  ARRAY_LIT = 'ARRAY_LIT',
+  TUPLE_LIT = 'TUPLE_LIT',
+  BINARY = 'BINARY',
+  UNARY = 'UNARY',
+  CALL = 'CALL',
+  ARRAY_INDEX = 'ARRAY_INDEX',
+  TUPLE_INDEX = 'TUPLE_INDEX',
+  STRUCT_INDEX = 'STRUCT_INDEX',
+  CAST = 'CAST',
+  GROUPED = 'GROUPED',
 }
 
 export interface IdentExprNode {

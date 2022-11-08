@@ -17,31 +17,31 @@ end
 `
 
 const expectedSimpleForLoop = [
-  { kind: TokenKind.For, value: 'for', position: { line: 2, col: 1 } },
-  { kind: TokenKind.Var, value: 'var', position: { line: 2, col: 5 } },
-  { kind: TokenKind.Identifier, value: 'i', position: { line: 2, col: 9 } },
-  { kind: TokenKind.Colon, value: ':', position: { line: 2, col: 10 } },
-  { kind: TokenKind.Integer, value: 'integer', position: { line: 2, col: 12 } },
-  { kind: TokenKind.Assign, value: ':=', position: { line: 2, col: 20 } },
-  { kind: TokenKind.IntegerLiteral, value: '0', position: { line: 2, col: 23 } },
-  { kind: TokenKind.Semicolon, value: ';', position: { line: 2, col: 24 } },
-  { kind: TokenKind.Identifier, value: 'i', position: { line: 2, col: 26 } },
-  { kind: TokenKind.LessThan, value: '<', position: { line: 2, col: 28 } },
-  { kind: TokenKind.Identifier, value: 'n', position: { line: 2, col: 30 } },
-  { kind: TokenKind.Semicolon, value: ';', position: { line: 2, col: 31 } },
-  { kind: TokenKind.Identifier, value: 'i', position: { line: 2, col: 33 } },
-  { kind: TokenKind.Assign, value: ':=', position: { line: 2, col: 35 } },
-  { kind: TokenKind.Identifier, value: 'i', position: { line: 2, col: 38 } },
-  { kind: TokenKind.Plus, value: '+', position: { line: 2, col: 40 } },
-  { kind: TokenKind.IntegerLiteral, value: '1', position: { line: 2, col: 42 } },
-  { kind: TokenKind.Do, value: 'do', position: { line: 2, col: 44 } },
-  { kind: TokenKind.Begin, value: 'begin', position: { line: 3, col: 1 } },
-  { kind: TokenKind.Identifier, value: 'output', position: { line: 4, col: 5 } },
-  { kind: TokenKind.OpenBrac, value: '(', position: { line: 4, col: 11 } },
-  { kind: TokenKind.Identifier, value: 'i', position: { line: 4, col: 12 } },
-  { kind: TokenKind.CloseBrac, value: ')', position: { line: 4, col: 13 } },
-  { kind: TokenKind.PhantomSemicolon, value: ';', position: { line: 4, col: 14 } },
-  { kind: TokenKind.End, value: 'end', position: { line: 5, col: 1 } }
+  { kind: TokenKind.FOR, value: 'for', position: { line: 2, col: 1 } },
+  { kind: TokenKind.VAR, value: 'var', position: { line: 2, col: 5 } },
+  { kind: TokenKind.IDENTIFIER, value: 'i', position: { line: 2, col: 9 } },
+  { kind: TokenKind.COLON, value: ':', position: { line: 2, col: 10 } },
+  { kind: TokenKind.INTEGER, value: 'integer', position: { line: 2, col: 12 } },
+  { kind: TokenKind.ASSIGN, value: ':=', position: { line: 2, col: 20 } },
+  { kind: TokenKind.INTEGER_LITERAL, value: '0', position: { line: 2, col: 23 } },
+  { kind: TokenKind.SEMICOLON, value: ';', position: { line: 2, col: 24 } },
+  { kind: TokenKind.IDENTIFIER, value: 'i', position: { line: 2, col: 26 } },
+  { kind: TokenKind.LESS_THAN, value: '<', position: { line: 2, col: 28 } },
+  { kind: TokenKind.IDENTIFIER, value: 'n', position: { line: 2, col: 30 } },
+  { kind: TokenKind.SEMICOLON, value: ';', position: { line: 2, col: 31 } },
+  { kind: TokenKind.IDENTIFIER, value: 'i', position: { line: 2, col: 33 } },
+  { kind: TokenKind.ASSIGN, value: ':=', position: { line: 2, col: 35 } },
+  { kind: TokenKind.IDENTIFIER, value: 'i', position: { line: 2, col: 38 } },
+  { kind: TokenKind.PLUS, value: '+', position: { line: 2, col: 40 } },
+  { kind: TokenKind.INTEGER_LITERAL, value: '1', position: { line: 2, col: 42 } },
+  { kind: TokenKind.DO, value: 'do', position: { line: 2, col: 44 } },
+  { kind: TokenKind.BEGIN, value: 'begin', position: { line: 3, col: 1 } },
+  { kind: TokenKind.IDENTIFIER, value: 'output', position: { line: 4, col: 5 } },
+  { kind: TokenKind.OPEN_BRAC, value: '(', position: { line: 4, col: 11 } },
+  { kind: TokenKind.IDENTIFIER, value: 'i', position: { line: 4, col: 12 } },
+  { kind: TokenKind.CLOSE_BRAC, value: ')', position: { line: 4, col: 13 } },
+  { kind: TokenKind.PHANTOM_SEMICOLON, value: ';', position: { line: 4, col: 14 } },
+  { kind: TokenKind.END, value: 'end', position: { line: 5, col: 1 } }
 ]
 
 describe('tokenize test', () => {
@@ -49,17 +49,17 @@ describe('tokenize test', () => {
     {
       name: 'if token',
       sourceCode: 'if',
-      expectedTokens: [{ kind: TokenKind.If, value: 'if', position: { line: 1, col: 1 } }],
+      expectedTokens: [{ kind: TokenKind.IF, value: 'if', position: { line: 1, col: 1 } }],
       expectedErrors: []
     },
     {
       name: 'simple if with expression',
       sourceCode: 'if a < b',
       expectedTokens: [
-        { kind: TokenKind.If, value: 'if', position: { line: 1, col: 1 } },
-        { kind: TokenKind.Identifier, value: 'a', position: { line: 1, col: 4 } },
-        { kind: TokenKind.LessThan, value: '<', position: { line: 1, col: 6 } },
-        { kind: TokenKind.Identifier, value: 'b', position: { line: 1, col: 8 } }
+        { kind: TokenKind.IF, value: 'if', position: { line: 1, col: 1 } },
+        { kind: TokenKind.IDENTIFIER, value: 'a', position: { line: 1, col: 4 } },
+        { kind: TokenKind.LESS_THAN, value: '<', position: { line: 1, col: 6 } },
+        { kind: TokenKind.IDENTIFIER, value: 'b', position: { line: 1, col: 8 } }
       ],
       expectedErrors: []
     },
@@ -67,8 +67,8 @@ describe('tokenize test', () => {
       name: 'zero number literal',
       sourceCode: '0;',
       expectedTokens: [
-        { kind: TokenKind.IntegerLiteral, value: '0', position: { line: 1, col: 1 } },
-        { kind: TokenKind.Semicolon, value: ';', position: { line: 1, col: 2 } }
+        { kind: TokenKind.INTEGER_LITERAL, value: '0', position: { line: 1, col: 1 } },
+        { kind: TokenKind.SEMICOLON, value: ';', position: { line: 1, col: 2 } }
       ],
       expectedErrors: []
     },
@@ -76,10 +76,10 @@ describe('tokenize test', () => {
       name: 'function call',
       sourceCode: 'some_function(some_var)',
       expectedTokens: [
-        { kind: TokenKind.Identifier, value: 'some_function', position: { line: 1, col: 1 } },
-        { kind: TokenKind.OpenBrac, value: '(', position: { line: 1, col: 14 } },
-        { kind: TokenKind.Identifier, value: 'some_var', position: { line: 1, col: 15 } },
-        { kind: TokenKind.CloseBrac, value: ')', position: { line: 1, col: 23 } }
+        { kind: TokenKind.IDENTIFIER, value: 'some_function', position: { line: 1, col: 1 } },
+        { kind: TokenKind.OPEN_BRAC, value: '(', position: { line: 1, col: 14 } },
+        { kind: TokenKind.IDENTIFIER, value: 'some_var', position: { line: 1, col: 15 } },
+        { kind: TokenKind.CLOSE_BRAC, value: ')', position: { line: 1, col: 23 } }
       ],
       expectedErrors: []
     },
@@ -93,10 +93,10 @@ describe('tokenize test', () => {
       name: 'comment and div',
       sourceCode: 'a / b // this is a comment',
       expectedTokens: [
-        { kind: TokenKind.Identifier, value: 'a', position: { line: 1, col: 1 } },
-        { kind: TokenKind.Div, value: '/', position: { line: 1, col: 3 } },
-        { kind: TokenKind.Identifier, value: 'b', position: { line: 1, col: 5 } },
-        { kind: TokenKind.Comment, value: '// this is a comment', position: { line: 1, col: 7 } }
+        { kind: TokenKind.IDENTIFIER, value: 'a', position: { line: 1, col: 1 } },
+        { kind: TokenKind.DIV, value: '/', position: { line: 1, col: 3 } },
+        { kind: TokenKind.IDENTIFIER, value: 'b', position: { line: 1, col: 5 } },
+        { kind: TokenKind.COMMENT, value: '// this is a comment', position: { line: 1, col: 7 } }
       ],
       expectedErrors: []
     },
@@ -104,9 +104,9 @@ describe('tokenize test', () => {
       name: 'scan symbols',
       sourceCode: '>!a',
       expectedTokens: [
-        { kind: TokenKind.GreaterThan, value: '>', position: { line: 1, col: 1 } },
-        { kind: TokenKind.Not, value: '!', position: { line: 1, col: 2 } },
-        { kind: TokenKind.Identifier, value: 'a', position: { line: 1, col: 3 } }
+        { kind: TokenKind.GREATER_THAN, value: '>', position: { line: 1, col: 1 } },
+        { kind: TokenKind.NOT, value: '!', position: { line: 1, col: 2 } },
+        { kind: TokenKind.IDENTIFIER, value: 'a', position: { line: 1, col: 3 } }
       ],
       expectedErrors: []
     },
@@ -114,20 +114,20 @@ describe('tokenize test', () => {
       name: 'scan invalid symbol',
       sourceCode: '@',
       expectedTokens: [],
-      expectedErrors: [{ kind: ErrorKind.UnexpectedCharacter, position: { line: 1, col: 1 }, char: '@' }]
+      expectedErrors: [{ kind: ErrorKind.UNEXPECTED_CHARACTER, position: { line: 1, col: 1 }, char: '@' }]
     },
     {
       name: 'number literal',
       sourceCode: '123',
-      expectedTokens: [{ kind: TokenKind.IntegerLiteral, value: '123', position: { line: 1, col: 1 } }],
+      expectedTokens: [{ kind: TokenKind.INTEGER_LITERAL, value: '123', position: { line: 1, col: 1 } }],
       expectedErrors: []
     },
     {
       name: 'negative number literal',
       sourceCode: '-123',
       expectedTokens: [
-        { kind: TokenKind.Minus, value: '-', position: { line: 1, col: 1 } },
-        { kind: TokenKind.IntegerLiteral, value: '123', position: { line: 1, col: 2 } }
+        { kind: TokenKind.MINUS, value: '-', position: { line: 1, col: 1 } },
+        { kind: TokenKind.INTEGER_LITERAL, value: '123', position: { line: 1, col: 2 } }
       ],
       expectedErrors: []
     },
@@ -135,10 +135,10 @@ describe('tokenize test', () => {
       name: 'variable decl',
       sourceCode: 'var some_var: integer',
       expectedTokens: [
-        { kind: TokenKind.Var, value: 'var', position: { line: 1, col: 1 } },
-        { kind: TokenKind.Identifier, value: 'some_var', position: { line: 1, col: 5 } },
-        { kind: TokenKind.Colon, value: ':', position: { line: 1, col: 13 } },
-        { kind: TokenKind.Integer, value: 'integer', position: { line: 1, col: 15 } }
+        { kind: TokenKind.VAR, value: 'var', position: { line: 1, col: 1 } },
+        { kind: TokenKind.IDENTIFIER, value: 'some_var', position: { line: 1, col: 5 } },
+        { kind: TokenKind.COLON, value: ':', position: { line: 1, col: 13 } },
+        { kind: TokenKind.INTEGER, value: 'integer', position: { line: 1, col: 15 } }
       ],
       expectedErrors: []
     },
@@ -146,17 +146,17 @@ describe('tokenize test', () => {
       name: 'variable with array type',
       sourceCode: 'var some_var: array[10,20] of integer',
       expectedTokens: [
-        { kind: TokenKind.Var, value: 'var', position: { line: 1, col: 1 } },
-        { kind: TokenKind.Identifier, value: 'some_var', position: { line: 1, col: 5 } },
-        { kind: TokenKind.Colon, value: ':', position: { line: 1, col: 13 } },
-        { kind: TokenKind.Array, value: 'array', position: { line: 1, col: 15 } },
-        { kind: TokenKind.OpenSquare, value: '[', position: { line: 1, col: 20 } },
-        { kind: TokenKind.IntegerLiteral, value: '10', position: { line: 1, col: 21 } },
-        { kind: TokenKind.Comma, value: ',', position: { line: 1, col: 23 } },
-        { kind: TokenKind.IntegerLiteral, value: '20', position: { line: 1, col: 24 } },
-        { kind: TokenKind.CloseSquare, value: ']', position: { line: 1, col: 26 } },
-        { kind: TokenKind.Of, value: 'of', position: { line: 1, col: 28 } },
-        { kind: TokenKind.Integer, value: 'integer', position: { line: 1, col: 31 } }
+        { kind: TokenKind.VAR, value: 'var', position: { line: 1, col: 1 } },
+        { kind: TokenKind.IDENTIFIER, value: 'some_var', position: { line: 1, col: 5 } },
+        { kind: TokenKind.COLON, value: ':', position: { line: 1, col: 13 } },
+        { kind: TokenKind.ARRAY, value: 'array', position: { line: 1, col: 15 } },
+        { kind: TokenKind.OPEN_SQUARE, value: '[', position: { line: 1, col: 20 } },
+        { kind: TokenKind.INTEGER_LITERAL, value: '10', position: { line: 1, col: 21 } },
+        { kind: TokenKind.COMMA, value: ',', position: { line: 1, col: 23 } },
+        { kind: TokenKind.INTEGER_LITERAL, value: '20', position: { line: 1, col: 24 } },
+        { kind: TokenKind.CLOSE_SQUARE, value: ']', position: { line: 1, col: 26 } },
+        { kind: TokenKind.OF, value: 'of', position: { line: 1, col: 28 } },
+        { kind: TokenKind.INTEGER, value: 'integer', position: { line: 1, col: 31 } }
       ],
       expectedErrors: []
     }

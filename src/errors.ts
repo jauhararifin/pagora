@@ -2,6 +2,9 @@ import { Expr, Type } from './semantic'
 import { Position, Token, TokenKind } from './tokens'
 import { ExprNode } from './ast'
 
+// TODO: currently, I feel the way the error is oraganized is very messy. The namings are not good, doesn't have error
+// message, and some of the error are quite duplicated. Need to refactor this.
+
 export type Error = UnexpectedCharacter
 | UnexpectedToken
 | UnexpectedEOF
@@ -12,78 +15,107 @@ export type Error = UnexpectedCharacter
 | NotAConstant
 | CannotAssign
 | Undefined
+| InvalidOperator
+| FunctionIsVoid
+| MissingMain
+| DuplicatedMain
 
 export enum ErrorKind {
   // for lexer phase
-  UnexpectedCharacter = 'UnexpectedCharacter',
+  UNEXPECTED_CHARACTER = 'UNEXPECTED_CHARACTER',
 
   // for parsing phase
-  UnexpectedToken = 'UnexpectedToken',
-  UnexpectedEOF = 'UnexpectedEOF',
-  UnexpectedTokenForExpr = 'UnexpectedTokenForExpr',
-  UnexpectedTokenForStatment = 'UnexpectedTokenForStatment',
+  UNEXPECTED_TOKEN = 'UNEXPECTED_TOKEN',
+  UNEXPECTED_EOF = 'UNEXPECTED_EOF',
+  UNEXPECTED_TOKEN_FOR_EXPR = 'UNEXPECTED_TOKEN_FOR_EXPR',
+  UNEXPECTED_TOKEN_FOR_STATMENT = 'UNEXPECTED_TOKEN_FOR_STATMENT',
 
   // for analyzing phase
-  MultipleDeclaration = 'MultipleDeclaration',
-  TypeMismatch = 'TypeMismatch',
-  NotAConstant = 'NotAConstant',
-  CannotAssign = 'CannotAssign',
-  Undefined = 'Undefined'
+  MULTIPLE_DECLARATION = 'MULTIPLE_DECLARATION',
+  TYPE_MISMATCH = 'TYPE_MISMATCH',
+  FUNCTION_IS_VOID = 'FUNCTION_IS_VOID',
+  NOT_A_CONSTANT = 'NOT_A_CONSTANT',
+  CANNOT_ASSIGN = 'CANNOT_ASSIGN',
+  UNDEFINED = 'UNDEFINED',
+  INVALID_OPERATOR = 'INVALID_OPERATOR',
+  MISSING_MAIN = 'MISSING_MAIN',
+  DUPLICATED_MAIN = 'DUPLICATED_MAIN'
 }
 
 export interface UnexpectedCharacter {
-  kind: ErrorKind.UnexpectedCharacter
+  kind: ErrorKind.UNEXPECTED_CHARACTER
   char: string
   position: Position
 }
 
 export interface UnexpectedToken {
-  kind: ErrorKind.UnexpectedToken
+  kind: ErrorKind.UNEXPECTED_TOKEN
   expected: TokenKind[]
   found: Token
 }
 
 export interface UnexpectedEOF {
-  kind: ErrorKind.UnexpectedEOF
+  kind: ErrorKind.UNEXPECTED_EOF
   expected: TokenKind[]
 }
 
 export interface UnexpectedTokenForExpr {
-  kind: ErrorKind.UnexpectedTokenForExpr
+  kind: ErrorKind.UNEXPECTED_TOKEN_FOR_EXPR
   found: Token
 }
 
 export interface UnexpectedTokenForStatment {
-  kind: ErrorKind.UnexpectedTokenForStatment
+  kind: ErrorKind.UNEXPECTED_TOKEN_FOR_STATMENT
   found: Token
 }
 
 export interface MultipleDeclaration {
-  kind: ErrorKind.MultipleDeclaration
+  kind: ErrorKind.MULTIPLE_DECLARATION
   declaredAt: Token
   redeclaredAt: Token
 }
 
 export interface TypeMismatch {
-  kind: ErrorKind.TypeMismatch
-  source: Type
-  target: Type
+  kind: ErrorKind.TYPE_MISMATCH
+  source: Expr
+  targetType: Type
+}
+
+export interface FunctionIsVoid {
+  kind: ErrorKind.FUNCTION_IS_VOID
+  return: Token
 }
 
 export interface NotAConstant {
-  kind: ErrorKind.NotAConstant
+  kind: ErrorKind.NOT_A_CONSTANT
   value: Expr
 }
 
 export interface CannotAssign {
-  kind: ErrorKind.CannotAssign
+  kind: ErrorKind.CANNOT_ASSIGN
   expr: ExprNode
   receiver: Type
 }
 
 export interface Undefined {
-  kind: ErrorKind.Undefined
+  kind: ErrorKind.UNDEFINED
   name: Token
+}
+
+export interface InvalidOperator {
+  kind: ErrorKind.INVALID_OPERATOR
+  a: Expr
+  op: Token
+  b: Expr
+}
+
+export interface MissingMain {
+  kind: ErrorKind.MISSING_MAIN
+}
+
+export interface DuplicatedMain {
+  // TODO: add position of the first main
+  kind: ErrorKind.DUPLICATED_MAIN
 }
 
 export interface Result<T> {
