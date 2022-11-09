@@ -1,5 +1,5 @@
-import { BinaryOp, ExprKind, Program, StatementKind, TypeKind } from './semantic'
 import { analyze } from './analyzer'
+import { encodeProgram } from './semantic_util'
 import { parse } from './parser'
 import { tokenize } from './lexer'
 
@@ -16,135 +16,21 @@ begin
 end
 `
 
-const program1: Program = {
-  functions: [
-    {
-      name: 'aplusb',
-      type: {
-        kind: TypeKind.FUNCTION,
-        arguments: [{ kind: TypeKind.INTEGER }, { kind: TypeKind.INTEGER }],
-        return: { kind: TypeKind.INTEGER }
-      },
-      arguments: [
-        { name: 'a', type: { kind: TypeKind.INTEGER } },
-        { name: 'b', type: { kind: TypeKind.INTEGER } }
-      ],
-      body: {
-        kind: StatementKind.BLOCK,
-        body: [
-          {
-            kind: StatementKind.RETURN,
-            value: {
-              kind: ExprKind.BINARY,
-              constValue: undefined,
-              isAssignable: false,
-              isConstexpr: false,
-              type: { kind: TypeKind.INTEGER },
-              a: {
-                ident: 'a',
-                isAssignable: true,
-                isConstexpr: false,
-                constValue: undefined,
-                kind: ExprKind.IDENT,
-                type: { kind: TypeKind.INTEGER }
-              },
-              op: BinaryOp.PLUS,
-              b: {
-                ident: 'b',
-                isAssignable: true,
-                isConstexpr: false,
-                constValue: undefined,
-                kind: ExprKind.IDENT,
-                type: { kind: TypeKind.INTEGER }
-              }
-            }
-          }
-        ]
-      }
-    }
-  ],
-  globals: [],
-  main: {
-    kind: StatementKind.BLOCK,
-    body: [
-      {
-        kind: StatementKind.VAR,
-        variable: {
-          name: 'a',
-          type: { kind: TypeKind.INTEGER },
-          value: {
-            constValue: BigInt(10),
-            isAssignable: false,
-            isConstexpr: true,
-            kind: ExprKind.INTEGER_LIT,
-            type: { kind: TypeKind.INTEGER },
-            value: BigInt(10)
-          }
-        }
-      },
-      {
-        kind: StatementKind.VAR,
-        variable: {
-          name: 'b',
-          type: { kind: TypeKind.INTEGER },
-          value: {
-            constValue: BigInt(20),
-            isAssignable: false,
-            isConstexpr: true,
-            kind: ExprKind.INTEGER_LIT,
-            type: { kind: TypeKind.INTEGER },
-            value: BigInt(20)
-          }
-        }
-      },
-      {
-        kind: StatementKind.EXPR,
-        value: {
-          arguments: [
-            {
-              ident: 'a',
-              isAssignable: true,
-              isConstexpr: false,
-              constValue: undefined,
-              kind: ExprKind.IDENT,
-              type: { kind: TypeKind.INTEGER }
-            },
-            {
-              ident: 'b',
-              isAssignable: true,
-              isConstexpr: false,
-              constValue: undefined,
-              kind: ExprKind.IDENT,
-              type: { kind: TypeKind.INTEGER }
-            }
-          ],
-          function: {
-            ident: 'aplusb',
-            isAssignable: true,
-            isConstexpr: false,
-            constValue: undefined,
-            kind: ExprKind.IDENT,
-            type: {
-              arguments: [{ kind: TypeKind.INTEGER }, { kind: TypeKind.INTEGER }],
-              kind: TypeKind.FUNCTION,
-              return: { kind: TypeKind.INTEGER }
-            }
-          },
-          isAssignable: false,
-          isConstexpr: false,
-          constValue: undefined,
-          kind: ExprKind.CALL,
-          type: { kind: TypeKind.INTEGER }
-        }
-      }
-    ]
-  }
-}
+const program1 = [
+  ['func', 'aplusb', [['a', 'INTEGER'], ['b', 'INTEGER']], 'INTEGER', [
+    ['return', ['PLUS', ['ident', 'a'], ['ident', 'b']]]
+  ]],
+  ['main', [
+    ['var', 'a', 'INTEGER', '10'],
+    ['var', 'b', 'INTEGER', '20'],
+    ['call', ['ident', 'aplusb'], [['ident', 'a'], ['ident', 'b']]]
+  ]]
+]
 
 interface Testcase {
   name: string
   sourceCode: string
-  expectedProgram?: Program
+  expectedProgram?: any
   expectedErrors: Error[]
 }
 
@@ -176,8 +62,11 @@ describe('analyzer test', () => {
 
       const { value: program, errors } = analyze(ast)
 
-      expect(program).toStrictEqual(testcase.expectedProgram)
-      expect(errors).toStrictEqual(testcase.expectedErrors)
+      if (program != null) {
+        expect(encodeProgram(program)).toStrictEqual(testcase.expectedProgram)
+      } else {
+        expect(errors).toStrictEqual(testcase.expectedErrors)
+      }
     })
   }
 })
