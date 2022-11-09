@@ -69,6 +69,20 @@ const program2 = [
   ]]
 ]
 
+const program3Source = `
+var some_array: array [10,10] of integer
+begin
+  some_array[10,10] := 2
+end
+`
+
+const program3: any = [
+  ['var', 'some_array', ['array', ['10', '10'], 'INTEGER'], undefined],
+  ['main', [
+    ['assign', ['index', ['ident', 'some_array'], ['10', '10']], '2']
+  ]]
+]
+
 interface Testcase {
   name: string
   sourceCode: string
@@ -86,6 +100,11 @@ describe('analyzer test', () => {
     name: 'program 2',
     sourceCode: program2Source,
     expectedProgram: program2,
+    expectedErrors: []
+  }, {
+    name: 'program 3',
+    sourceCode: program3Source,
+    expectedProgram: program3,
     expectedErrors: []
   }]
 
@@ -109,11 +128,11 @@ describe('analyzer test', () => {
 
       const { value: program, errors } = analyze(ast)
 
-      if (program != null) {
+      if (program !== undefined && testcase.expectedProgram !== undefined) {
         expect(encodeProgram(program)).toStrictEqual(testcase.expectedProgram)
-      } else {
-        expect(errors).toStrictEqual(testcase.expectedErrors)
       }
+
+      expect(errors).toStrictEqual(testcase.expectedErrors)
     })
   }
 })

@@ -735,7 +735,7 @@ class Analyzer {
       kind: ExprKind.INDEX,
       isConstexpr: false,
       constValue: undefined,
-      isAssignable: false,
+      isAssignable: true,
       type: array.type.type,
       array,
       indices

@@ -280,6 +280,7 @@ class Parser {
 
       const assignToken = this.consumeIfMatch([TokenKind.ASSIGN])
       if (assignToken === undefined) {
+        this.consumeIfMatch([TokenKind.PHANTOM_SEMICOLON, TokenKind.SEMICOLON])
         return {
           kind: StatementNodeKind.VAR,
           variable: {
@@ -292,6 +293,7 @@ class Parser {
       } else {
         const valueExpr = this.parseExpr()
         if (valueExpr === undefined) return undefined
+        this.consumeIfMatch([TokenKind.PHANTOM_SEMICOLON, TokenKind.SEMICOLON])
         return {
           kind: StatementNodeKind.VAR,
           variable: {
@@ -307,6 +309,7 @@ class Parser {
     } else {
       const valueExpr = this.parseExpr()
       if (valueExpr === undefined) return undefined
+      this.consumeIfMatch([TokenKind.PHANTOM_SEMICOLON, TokenKind.SEMICOLON])
       return {
         kind: StatementNodeKind.VAR,
         variable: {
@@ -437,7 +440,7 @@ class Parser {
     const index = this.parseCommaSeparatedExpr()
     if (index == null) return undefined
 
-    const closeSquare = this.expectEither([TokenKind.CLOSE_BRAC])
+    const closeSquare = this.expectEither([TokenKind.CLOSE_SQUARE])
     if (closeSquare == null) return undefined
 
     return { kind: ExprNodeKind.ARRAY_INDEX, array: arraySource, openSquare, index, closeSquare }
