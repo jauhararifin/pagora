@@ -98,31 +98,71 @@ describe('tokenize test', () => {
                   op: { kind: TokenKind.PLUS, position: { line: 1, col: 9 }, value: '+' },
                   b: {
                     kind: ExprNodeKind.BINARY,
-                    op: { kind: TokenKind.MULTIPLY, position: { line: 1, col: 13 }, value: '*' },
                     a: {
-                      kind: ExprNodeKind.INTEGER_LIT,
-                      value: { kind: TokenKind.INTEGER_LITERAL, position: { line: 1, col: 11 }, value: '2' }
-                    },
-                    b: {
                       kind: ExprNodeKind.BINARY,
-                      op: { kind: TokenKind.PLUS, position: { line: 1, col: 17 }, value: '+' },
                       a: {
                         kind: ExprNodeKind.INTEGER_LIT,
-                        value: { kind: TokenKind.INTEGER_LITERAL, position: { line: 1, col: 15 }, value: '3' }
+                        value: { kind: TokenKind.INTEGER_LITERAL, position: { line: 1, col: 11 }, value: '2' }
                       },
+                      op: { kind: TokenKind.MULTIPLY, position: { line: 1, col: 13 }, value: '*' },
                       b: {
-                        kind: ExprNodeKind.BINARY,
-                        op: { kind: TokenKind.DIV, position: { line: 1, col: 21 }, value: '/' },
-                        a: {
-                          kind: ExprNodeKind.INTEGER_LIT,
-                          value: { kind: TokenKind.INTEGER_LITERAL, position: { line: 1, col: 19 }, value: '4' }
-                        },
-                        b: {
-                          kind: ExprNodeKind.INTEGER_LIT,
-                          value: { kind: TokenKind.INTEGER_LITERAL, position: { line: 1, col: 23 }, value: '5' }
-                        }
+                        kind: ExprNodeKind.INTEGER_LIT,
+                        value: { kind: TokenKind.INTEGER_LITERAL, position: { line: 1, col: 15 }, value: '3' }
+                      }
+                    },
+                    op: { kind: TokenKind.PLUS, position: { line: 1, col: 17 }, value: '+' },
+                    b: {
+                      kind: ExprNodeKind.BINARY,
+                      a: {
+                        kind: ExprNodeKind.INTEGER_LIT,
+                        value: { kind: TokenKind.INTEGER_LITERAL, position: { line: 1, col: 19 }, value: '4' }
+                      },
+                      op: { kind: TokenKind.DIV, position: { line: 1, col: 21 }, value: '/' },
+                      b: {
+                        kind: ExprNodeKind.INTEGER_LIT,
+                        value: { kind: TokenKind.INTEGER_LITERAL, position: { line: 1, col: 23 }, value: '5' }
                       }
                     }
+                  }
+                }
+              }
+            ]
+          }
+        }]
+      },
+      expectedErrors: []
+    },
+    {
+      name: 'plus and multiply precedence 2',
+      sourceCode: 'begin i*2+1 end',
+      expectedAST: {
+        declarations: [{
+          kind: DeclKind.MAIN,
+          body: {
+            kind: StatementNodeKind.BLOCK,
+            begin: { kind: TokenKind.BEGIN, position: { line: 1, col: 1 }, value: 'begin' },
+            end: { kind: TokenKind.END, position: { line: 1, col: 13 }, value: 'end' },
+            statements: [
+              {
+                kind: StatementNodeKind.EXPR,
+                expr: {
+                  kind: ExprNodeKind.BINARY,
+                  a: {
+                    kind: ExprNodeKind.BINARY,
+                    a: {
+                      kind: ExprNodeKind.IDENT,
+                      name: { kind: TokenKind.IDENTIFIER, position: { line: 1, col: 7 }, value: 'i' }
+                    },
+                    op: { kind: TokenKind.MULTIPLY, position: { line: 1, col: 8 }, value: '*' },
+                    b: {
+                      kind: ExprNodeKind.INTEGER_LIT,
+                      value: { kind: TokenKind.INTEGER_LITERAL, position: { line: 1, col: 9 }, value: '2' }
+                    }
+                  },
+                  op: { kind: TokenKind.PLUS, position: { line: 1, col: 10 }, value: '+' },
+                  b: {
+                    kind: ExprNodeKind.INTEGER_LIT,
+                    value: { kind: TokenKind.INTEGER_LITERAL, position: { line: 1, col: 11 }, value: '1' }
                   }
                 }
               }

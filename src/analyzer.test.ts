@@ -61,7 +61,7 @@ const program2 = [
         ['assign', ['ident', 'j'], ['PLUS', ['ident', 'j'], '1']]
       ]],
       ['assign', ['ident', 'j'], '0'],
-      ['while', ['LESS_THAN', ['ident', 'j'], ['MUL', ['ident', 'i'], ['PLUS', '2', '1']]], [
+      ['while', ['LESS_THAN', ['ident', 'j'], ['PLUS', ['MUL', ['ident', 'i'], '2'], '1']], [
         ['assign', ['ident', 'j'], ['PLUS', ['ident', 'j'], '1']]
       ]],
       ['assign', ['ident', 'i'], ['PLUS', ['ident', 'i'], '1']]

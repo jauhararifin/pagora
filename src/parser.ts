@@ -416,7 +416,7 @@ class Parser {
     const opToken = this.consumeIfMatch([op])
     if (opToken === undefined) return aExpr
 
-    const bExpr = this.parseExpr()
+    const bExpr: ExprNode | undefined = this.parseBinaryExpr(op)
     if (bExpr === undefined) return undefined
 
     return {
