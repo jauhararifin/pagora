@@ -707,7 +707,7 @@ class Analyzer {
 
     if (array.type.dimension.length !== expr.index.values.length) {
       this.emitError({
-        kind: ErrorKind.WRONG_NUMBER_OF_ARGUMENT,
+        kind: ErrorKind.WRONG_NUMBER_OF_INDEX,
         expected: array.type.dimension.length,
         got: expr.index.values.length
       })

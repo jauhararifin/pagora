@@ -1,3 +1,4 @@
+import { Error, ErrorKind } from './errors'
 import { analyze } from './analyzer'
 import { encodeProgram } from './semantic_util'
 import { parse } from './parser'
@@ -76,12 +77,25 @@ begin
 end
 `
 
-const program3: any = [
+const program3 = [
   ['var', 'some_array', ['array', ['10', '10'], 'INTEGER'], undefined],
   ['main', [
     ['assign', ['index', ['ident', 'some_array'], ['10', '10']], '2']
   ]]
 ]
+
+const arrayDimMismatchSource = `
+var some_array: array [10,10,10] of integer
+begin
+  some_array[0,0] := 2
+end
+`
+
+const arrayDimMismatchError: Error[] = [{
+  kind: ErrorKind.WRONG_NUMBER_OF_INDEX,
+  expected: 3,
+  got: 2
+}]
 
 interface Testcase {
   name: string
@@ -106,6 +120,10 @@ describe('analyzer test', () => {
     sourceCode: program3Source,
     expectedProgram: program3,
     expectedErrors: []
+  }, {
+    name: 'array dimension mismatch',
+    sourceCode: arrayDimMismatchSource,
+    expectedErrors: arrayDimMismatchError
   }]
 
   for (const testcase of testcases) {
@@ -128,11 +146,14 @@ describe('analyzer test', () => {
 
       const { value: program, errors } = analyze(ast)
 
-      if (program !== undefined && testcase.expectedProgram !== undefined) {
+      expect(errors).toStrictEqual(testcase.expectedErrors)
+
+      if (testcase.expectedProgram !== undefined) {
+        if (program === undefined) {
+          fail()
+        }
         expect(encodeProgram(program)).toStrictEqual(testcase.expectedProgram)
       }
-
-      expect(errors).toStrictEqual(testcase.expectedErrors)
     })
   }
 })
