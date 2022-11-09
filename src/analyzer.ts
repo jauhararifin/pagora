@@ -287,9 +287,8 @@ class Analyzer {
     const condition = this.analyzeExpr(stmt.condition)
     if (condition === undefined) return
 
-    const boolType: Type = { kind: TypeKind.BOOLEAN }
-    if (!this.valueIsA(condition.type, boolType)) {
-      this.emitError({ kind: ErrorKind.TYPE_MISMATCH, targetType: boolType, source: condition })
+    if (!this.valueIsA(condition.type, Boolean)) {
+      this.emitError({ kind: ErrorKind.TYPE_MISMATCH, targetType: Boolean, source: condition })
       return
     }
 
@@ -497,33 +496,33 @@ class Analyzer {
         op: BinaryOp.DIV
       },
       [TokenKind.GREATER_THAN]: {
-        acceptedTypes: [[Integer, Integer, Integer], [Real, Real, Real]],
+        acceptedTypes: [[Integer, Integer, Boolean], [Real, Real, Boolean]],
         op: BinaryOp.GREATER_THAN
       },
       [TokenKind.GREATER_THAN_EQUAL]: {
-        acceptedTypes: [[Integer, Integer, Integer], [Real, Real, Real]],
+        acceptedTypes: [[Integer, Integer, Boolean], [Real, Real, Boolean]],
         op: BinaryOp.GREATER_THAN_EQUAL
       },
       [TokenKind.LESS_THAN]: {
-        acceptedTypes: [[Integer, Integer, Integer], [Real, Real, Real]],
+        acceptedTypes: [[Integer, Integer, Boolean], [Real, Real, Boolean]],
         op: BinaryOp.LESS_THAN
       },
       [TokenKind.LESS_THAN_EQUAL]: {
-        acceptedTypes: [[Integer, Integer, Integer], [Real, Real, Real]],
+        acceptedTypes: [[Integer, Integer, Boolean], [Real, Real, Boolean]],
         op: BinaryOp.LESS_THAN_EQUAL
       },
       [TokenKind.EQUAL]: {
         acceptedTypes: [
-          [Integer, Integer, Integer],
-          [Real, Real, Real],
+          [Integer, Integer, Boolean],
+          [Real, Real, Boolean],
           [Boolean, Boolean, Boolean]
         ],
         op: BinaryOp.EQUAL
       },
       [TokenKind.NOT_EQUAL]: {
         acceptedTypes: [
-          [Integer, Integer, Integer],
-          [Real, Real, Real],
+          [Integer, Integer, Boolean],
+          [Real, Real, Boolean],
           [Boolean, Boolean, Boolean]
         ],
         op: BinaryOp.NOT_EQUAL

@@ -27,6 +27,48 @@ const program1 = [
   ]]
 ]
 
+const program2Source = `
+begin
+  var n := 10
+
+  var i := 0
+  while i < n do
+  begin
+    var j := 0
+    while j < n-i-1 do
+    begin
+      j := j + 1
+    end
+
+    j := 0
+    while j < i*2+1 do
+    begin
+      j := j + 1
+    end
+
+    i := i + 1
+  end
+end
+`
+
+const program2 = [
+  ['main', [
+    ['var', 'n', 'INTEGER', '10'],
+    ['var', 'i', 'INTEGER', '0'],
+    ['while', ['LESS_THAN', ['ident', 'i'], ['ident', 'n']], [
+      ['var', 'j', 'INTEGER', '0'],
+      ['while', ['LESS_THAN', ['ident', 'j'], ['MINUS', ['ident', 'n'], ['MINUS', ['ident', 'i'], '1']]], [
+        ['assign', ['ident', 'j'], ['PLUS', ['ident', 'j'], '1']]
+      ]],
+      ['assign', ['ident', 'j'], '0'],
+      ['while', ['LESS_THAN', ['ident', 'j'], ['MUL', ['ident', 'i'], ['PLUS', '2', '1']]], [
+        ['assign', ['ident', 'j'], ['PLUS', ['ident', 'j'], '1']]
+      ]],
+      ['assign', ['ident', 'i'], ['PLUS', ['ident', 'i'], '1']]
+    ]]
+  ]]
+]
+
 interface Testcase {
   name: string
   sourceCode: string
@@ -39,6 +81,11 @@ describe('analyzer test', () => {
     name: 'program 1',
     sourceCode: program1Source,
     expectedProgram: program1,
+    expectedErrors: []
+  }, {
+    name: 'program 2',
+    sourceCode: program2Source,
+    expectedProgram: program2,
     expectedErrors: []
   }]
 
