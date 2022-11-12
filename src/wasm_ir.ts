@@ -30,19 +30,20 @@ export type Name = string
 
 // Instructions
 
-export type Instr = NumbericInstr | ReferenceInstr | ParametricInstr | VariableInstr | TableInstr | MemoryInstr
+export type Instr = NumericInstr | ReferenceInstr | ParametricInstr | VariableInstr | TableInstr | MemoryInstr
 | ControlInstr
 
-export type NumbericInstr = ['i64.const', I64]
+export type NumericInstr = ['i64.const', I64]
 // unary
-| ['clz'] | ['ctz'] | ['popcnt']
+| ['i64.clz'] | ['i64.ctz'] | ['i64.popcnt']
 // binary
 | ['i64.add'] | ['i64.sub'] | ['i64.mul'] | ['i64.div_u'] | ['i64.div_s'] | ['i64.rem_u'] | ['i64.rem_s'] | ['i64.and']
 | ['i64.or'] | ['i64.xor'] | ['i64.shl'] | ['i64.shl_u'] | ['i64.shl_s'] | ['i64.rotl'] | ['i64.rotr']
 // test
-| ['eqz']
+| ['i64.eqz']
 // comparison
-| ['eq'] | ['ne'] | ['lt_u'] | ['lt_s'] | ['gt_u'] | ['gt_s'] | ['le_u'] | ['le_s'] | ['ge_u'] | ['ge_s']
+| ['i64.eq'] | ['i64.ne'] | ['i64.lt_u'] | ['i64.lt_s'] | ['i64.gt_u'] | ['i64.gt_s'] | ['i64.le_u'] | ['i64.le_s']
+| ['i64.ge_u'] | ['i64.ge_s']
 
 export type ReferenceInstr = ['ref.null', RefType] | ['ref.is_null'] | ['ref.func', FuncIdx]
 
@@ -74,7 +75,7 @@ export type ControlInstr = ['nop']
 
 export type BlockType = TypeIdx | ValType | undefined
 
-export type Expr = [...Instr[], 'end']
+export type Expr = [Instr[], 'end']
 
 // Modules
 

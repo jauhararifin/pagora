@@ -8,13 +8,12 @@ const simpleProgram: Module = {
   funcs: [
     {
       type: 0,
-      locals: ['i64', 'i64'],
-      body: [
+      locals: [],
+      body: [[
         ['local.get', 0],
         ['local.get', 1],
-        ['i64.add'],
-        'end'
-      ]
+        ['i64.add']
+      ], 'end']
     }
   ],
   tables: [],
@@ -40,7 +39,17 @@ const simpleProgramBin = [
   0x7e, // i64
   0x7e, // i64
   0x01, // with 1 output
-  0x7e // i64
+  0x7e, // i64
+
+  0x0a, // section type = code
+  0x09, // size of the section
+  0x01, // there is 1 function
+  0x07, // function size
+  0x00, // there is 0 locals
+  0x20, 0x00, // local.get 0
+  0x20, 0x01, // local.get 1
+  0x7c, // i64.add
+  0x0b // end
 ]
 
 describe('encode', () => {
