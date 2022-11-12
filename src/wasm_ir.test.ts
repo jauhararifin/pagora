@@ -41,6 +41,11 @@ const simpleProgramBin = [
   0x01, // with 1 output
   0x7e, // i64
 
+  0x03, // section type = func
+  0x02, // section size
+  0x01, // there are 2 functions
+  0x00, // func 0 type is in idx 0
+
   0x0a, // section type = code
   0x09, // size of the section
   0x01, // there is 1 function

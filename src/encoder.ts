@@ -5,12 +5,17 @@ export function encodeModule (mod: Module): Uint8Array {
     0x00, 0x61, 0x73, 0x6d,
     0x01, 0x00, 0x00, 0x00,
     ...encodeTypeSec(mod.types),
+    ...encodeFuncSec(mod.funcs),
     ...encodeCodeSec(mod.funcs)
   ])
 }
 
 function encodeTypeSec (types: FunctionType[]): number[] {
   return encodeSection(0x01, encodeVec(types, encodeFuncType))
+}
+
+function encodeFuncSec (funcs: Func[]): number[] {
+  return encodeSection(0x03, encodeVec(funcs.map(f => f.type), encodeU32))
 }
 
 function encodeCodeSec (funcs: Func[]): number[] {
