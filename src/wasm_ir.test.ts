@@ -46,6 +46,12 @@ const simpleProgramBin = [
   0x01, // there are 2 functions
   0x00, // func 0 type is in idx 0
 
+  0x07, // section type = export
+  0x0a, // section size
+  0x01, // there is 1 exported function
+  0x06, 0x61, 0x64, 0x64, 0x54, 0x77, 0x6f, // the func name = "addTwo"
+  0x00, 0x00, // it's a function at index 0,
+
   0x0a, // section type = code
   0x09, // size of the section
   0x01, // there is 1 function

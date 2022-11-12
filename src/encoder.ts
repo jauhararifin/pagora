@@ -1,4 +1,17 @@
-import { BlockType, Expr, Func, FunctionType, Instr, MemArg, Module, RefType, ResultType, ValType } from './wasm_ir'
+import {
+  BlockType,
+  Export,
+  ExportDesc,
+  Expr,
+  Func,
+  FunctionType,
+  Instr,
+  MemArg,
+  Module,
+  RefType,
+  ResultType,
+  ValType
+} from './wasm_ir'
 
 export function encodeModule (mod: Module): Uint8Array {
   return new Uint8Array([
@@ -6,6 +19,7 @@ export function encodeModule (mod: Module): Uint8Array {
     0x01, 0x00, 0x00, 0x00,
     ...encodeTypeSec(mod.types),
     ...encodeFuncSec(mod.funcs),
+    ...encodeExportSec(mod.exports),
     ...encodeCodeSec(mod.funcs)
   ])
 }
@@ -16,6 +30,10 @@ function encodeTypeSec (types: FunctionType[]): number[] {
 
 function encodeFuncSec (funcs: Func[]): number[] {
   return encodeSection(0x03, encodeVec(funcs.map(f => f.type), encodeU32))
+}
+
+function encodeExportSec (exports: Export[]): number[] {
+  return encodeSection(0x07, encodeVec(exports, encodeExport))
 }
 
 function encodeCodeSec (funcs: Func[]): number[] {
@@ -291,6 +309,31 @@ function encodeBlockType (blockType: BlockType): number[] {
 
   // TODO: implement s33
   return []
+}
+
+function encodeExport (exp: Export): number[] {
+  return [...encodeName(exp.name), ...encodeExportDesc(exp.desc)]
+}
+
+function encodeName (name: string): number[] {
+  // TODO: check if this is correct way to do it.
+  const v = Array.from(new TextEncoder().encode(name))
+  return [...encodeU32(v.length), ...v]
+}
+
+function encodeExportDesc (desc: ExportDesc): number[] {
+  const [t, id] = desc
+  const c = encodeU32(id)
+  switch (t) {
+    case 'func':
+      return [0x00, ...c]
+    case 'table':
+      return [0x01, ...c]
+    case 'mem':
+      return [0x02, ...c]
+    case 'global':
+      return [0x03, ...c]
+  }
 }
 
 function encodeU32 (n: number): number[] {
