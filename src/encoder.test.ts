@@ -3,7 +3,7 @@ import { encodeModule } from './encoder'
 
 const simpleProgram: Module = {
   types: [
-    [['i64', 'i64'], '->', ['i64']]
+    [[['i64', 'i64']], '->', [['i64']]]
   ],
   funcs: [
     {

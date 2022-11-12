@@ -89,7 +89,7 @@ class Analyzer {
       if (declaration.kind === DeclKind.FUNCTION) {
         this.analyzeFunction(declaration)
       } else if (declaration.kind === DeclKind.VARIABLE) {
-        const variable = this.analyzeVariable(declaration.variable)
+        const variable = this.analyzeVariable(declaration.variable, false)
         if (variable !== undefined) {
           this.globals.push(variable)
         }
@@ -183,7 +183,7 @@ class Analyzer {
   }
 
   private analyzeVarStatement (stmt: VarStatementNode): VarStatement | undefined {
-    const variable = this.analyzeVariable(stmt.variable)
+    const variable = this.analyzeVariable(stmt.variable, true)
     if (variable == null) return undefined
 
     return {
@@ -192,7 +192,7 @@ class Analyzer {
     }
   }
 
-  private analyzeVariable (variable: VarNode): Variable | undefined {
+  private analyzeVariable (variable: VarNode, allowNonConstant: boolean): Variable | undefined {
     this.assertTokenKind(variable.name, TokenKind.IDENTIFIER)
 
     const name = variable.name.value
@@ -220,7 +220,7 @@ class Analyzer {
         return
       }
 
-      if (!value.isConstexpr) {
+      if (!allowNonConstant && !value.isConstexpr) {
         this.emitError({ kind: ErrorKind.NOT_A_CONSTANT, value })
         return
       }
@@ -356,7 +356,7 @@ class Analyzer {
         return
       }
 
-      dimensionNum.push(dim.constValue as BigInt)
+      dimensionNum.push(dim.constValue as bigint)
     }
 
     const elementType = this.analyzeType(node.type)

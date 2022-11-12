@@ -42,7 +42,7 @@ export const Void: Type = { kind: TypeKind.VOID }
 
 export interface ArrayType {
   kind: TypeKind.ARRAY
-  dimension: BigInt[]
+  dimension: bigint[]
   type: Type
 }
 
@@ -205,7 +205,7 @@ export interface CallExpr extends ExprBase {
 
 export interface IntegerLitExpr extends ExprBase {
   kind: ExprKind.INTEGER_LIT
-  value: BigInt
+  value: bigint
 }
 
 export interface CharLitExpr extends ExprBase {

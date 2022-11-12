@@ -8,42 +8,13 @@ import {
   Instr,
   MemArg,
   Module,
+  NumType,
   RefType,
   ResultType,
   ValType
 } from './wasm_ir'
 
-export function encodeModule (mod: Module): Uint8Array {
-  return new Uint8Array([
-    0x00, 0x61, 0x73, 0x6d,
-    0x01, 0x00, 0x00, 0x00,
-    ...encodeTypeSec(mod.types),
-    ...encodeFuncSec(mod.funcs),
-    ...encodeExportSec(mod.exports),
-    ...encodeCodeSec(mod.funcs)
-  ])
-}
-
-function encodeTypeSec (types: FunctionType[]): number[] {
-  return encodeSection(0x01, encodeVec(types, encodeFuncType))
-}
-
-function encodeFuncSec (funcs: Func[]): number[] {
-  return encodeSection(0x03, encodeVec(funcs.map(f => f.type), encodeU32))
-}
-
-function encodeExportSec (exports: Export[]): number[] {
-  return encodeSection(0x07, encodeVec(exports, encodeExport))
-}
-
-function encodeCodeSec (funcs: Func[]): number[] {
-  return encodeSection(0x0a, encodeVec(funcs, encodeCode))
-}
-
-function encodeSection (id: number, content: number[]): number[] {
-  return [id, ...encodeU32(content.length), ...content]
-}
-
+// Reference: https://webassembly.github.io/spec/core/binary/conventions.html#vectors
 function encodeVec<T> (content: T[], encoder: (v: T) => number[]): number[] {
   return [
     ...encodeU32(content.length),
@@ -51,22 +22,37 @@ function encodeVec<T> (content: T[], encoder: (v: T) => number[]): number[] {
   ]
 }
 
-function encodeFuncType (type: FunctionType): number[] {
-  return [
-    0x60,
-    ...encodeResultType(type[0]),
-    ...encodeResultType(type[2])
-  ]
+// Integers. Reference: https://webassembly.github.io/spec/core/binary/values.html#integers
+
+function encodeU32 (n: number): number[] {
+  if (n === 0) return [0]
+
+  const result: number[] = []
+  while (n > 0) {
+    result.push((n & 0b01111111) | (0b10000000))
+    n = n >> 7
+  }
+  result[result.length - 1] &= 0b01111111
+  return result.reverse()
 }
 
-function encodeResultType (type: ResultType): number[] {
-  return [
-    ...encodeU32(type.length),
-    ...type.flatMap(encodeValType)
-  ]
+function encodeI64 (n: bigint): number[] {
+  const zero = BigInt(0)
+  if (n === zero) return [0]
+
+  const result: number[] = []
+  while (n > zero) {
+    result.push(Number((n & BigInt(0b01111111)) | BigInt(0b10000000)))
+    n = n / BigInt(128)
+  }
+  result[result.length - 1] &= 0b01111111
+  return result.reverse()
 }
 
-function encodeValType (t: ValType): number[] {
+// Types. Reference: https://webassembly.github.io/spec/core/binary/types.html#
+
+// Reference: https://webassembly.github.io/spec/core/binary/types.html#number-types
+function encodeNumType (t: NumType): number[] {
   switch (t) {
     case 'i32':
       return [0x7f]
@@ -76,12 +62,10 @@ function encodeValType (t: ValType): number[] {
       return [0x7d]
     case 'f64':
       return [0x7c]
-    case 'funcref':
-    case 'externref':
-      return encodeRefType(t)
   }
 }
 
+// Reference: https://webassembly.github.io/spec/core/binary/types.html#reference-types
 function encodeRefType (t: RefType): number[] {
   switch (t) {
     case 'funcref':
@@ -91,39 +75,38 @@ function encodeRefType (t: RefType): number[] {
   }
 }
 
-// reference: https://webassembly.github.io/spec/core/binary/modules.html#binary-code
-function encodeCode (func: Func): number[] {
-  const f = encodeFunc(func)
+// Reference: https://webassembly.github.io/spec/core/binary/types.html#value-types
+function encodeValType (t: ValType): number[] {
+  switch (t) {
+    case 'i32':
+    case 'i64':
+    case 'f32':
+    case 'f64':
+      return encodeNumType(t)
+    case 'funcref':
+    case 'externref':
+      return encodeRefType(t)
+  }
+}
+
+// Reference: https://webassembly.github.io/spec/core/binary/types.html#result-types
+function encodeResultType (type: ResultType): number[] {
   return [
-    ...encodeU32(f.length),
-    ...f
+    ...encodeU32(type.length),
+    ...type[0].flatMap(encodeValType)
   ]
 }
 
-// reference: https://webassembly.github.io/spec/core/binary/modules.html#binary-func
-function encodeFunc (func: Func): number[] {
-  // TODO(jauhararifin): technically we can combine multiple locals with the same type together to reduce the binary
-  // size. But, let's make it simple for now.
+// Reference: https://webassembly.github.io/spec/core/binary/types.html#function-types
+function encodeFuncType (type: FunctionType): number[] {
   return [
-    ...encodeVec(func.locals, encodeLocal),
-    ...encodeExpr(func.body)
+    0x60,
+    ...encodeResultType(type[0]),
+    ...encodeResultType(type[2])
   ]
 }
 
-function encodeLocal (local: ValType): number[] {
-  return [
-    ...encodeU32(1),
-    ...encodeValType(local)
-  ]
-}
-
-function encodeExpr (expr: Expr): number[] {
-  return [
-    ...expr[0].flatMap(encodeInstr),
-    0x0b
-  ]
-}
-
+// Instruction. Reference: https://webassembly.github.io/spec/core/binary/instructions.html
 function encodeInstr (instr: Instr): number[] {
   const [op, arg1, arg2, , arg4] = instr
   switch (op) {
@@ -289,10 +272,7 @@ function encodeInstr (instr: Instr): number[] {
   throw new Error(`unknown instruction ${op}`)
 }
 
-function encodeMemarg (memarg: MemArg): number[] {
-  return [...encodeU32(memarg.align), ...encodeU32(memarg.offset)]
-}
-
+// Reference: https://webassembly.github.io/spec/core/binary/instructions.html#control-instructions
 function encodeBlockType (blockType: BlockType): number[] {
   if (blockType === undefined) return [0x40]
 
@@ -309,6 +289,41 @@ function encodeBlockType (blockType: BlockType): number[] {
 
   // TODO: implement s33
   return []
+}
+
+// Reference: https://webassembly.github.io/spec/core/binary/instructions.html#memory-instructions
+function encodeMemarg (memarg: MemArg): number[] {
+  return [...encodeU32(memarg.align), ...encodeU32(memarg.offset)]
+}
+
+// Reference: https://webassembly.github.io/spec/core/binary/instructions.html#expressions
+function encodeExpr (expr: Expr): number[] {
+  return [
+    ...expr[0].flatMap(encodeInstr),
+    0x0b
+  ]
+}
+
+// Modules. Reference: https://webassembly.github.io/spec/core/binary/modules.html#sections
+
+// Reference: https://webassembly.github.io/spec/core/binary/modules.html#sections
+function encodeSection (id: number, content: number[]): number[] {
+  return [id, ...encodeU32(content.length), ...content]
+}
+
+// Reference: https://webassembly.github.io/spec/core/binary/modules.html#type-section
+function encodeTypeSec (types: FunctionType[]): number[] {
+  return encodeSection(0x01, encodeVec(types, encodeFuncType))
+}
+
+// Reference: https://webassembly.github.io/spec/core/binary/modules.html#function-section
+function encodeFuncSec (funcs: Func[]): number[] {
+  return encodeSection(0x03, encodeVec(funcs.map(f => f.type), encodeU32))
+}
+
+// Reference: https://webassembly.github.io/spec/core/binary/modules.html#export-section
+function encodeExportSec (exports: Export[]): number[] {
+  return encodeSection(0x07, encodeVec(exports, encodeExport))
 }
 
 function encodeExport (exp: Export): number[] {
@@ -336,19 +351,43 @@ function encodeExportDesc (desc: ExportDesc): number[] {
   }
 }
 
-function encodeU32 (n: number): number[] {
-  if (n === 0) return [0]
-
-  const result: number[] = []
-  while (n > 0) {
-    result.push((n & 0b01111111) | (0b10000000))
-    n = n >> 7
-  }
-  result[result.length - 1] &= 0b01111111
-  return result.reverse()
+// Reference: https://webassembly.github.io/spec/core/binary/modules.html#code-section
+function encodeCodeSec (funcs: Func[]): number[] {
+  return encodeSection(0x0a, encodeVec(funcs, encodeCode))
 }
 
-function encodeI64 (n: BigInt): number[] {
-  // TODO: impl
-  return [0x00]
+function encodeCode (func: Func): number[] {
+  const f = encodeFunc(func)
+  return [
+    ...encodeU32(f.length),
+    ...f
+  ]
+}
+
+function encodeFunc (func: Func): number[] {
+  // TODO(jauhararifin): technically we can combine multiple locals with the same type together to reduce the binary
+  // size. But, let's make it simple for now.
+  return [
+    ...encodeVec(func.locals, encodeLocal),
+    ...encodeExpr(func.body)
+  ]
+}
+
+function encodeLocal (local: ValType): number[] {
+  return [
+    ...encodeU32(1),
+    ...encodeValType(local)
+  ]
+}
+
+// Reference: https://webassembly.github.io/spec/core/binary/modules.html#binary-module
+export function encodeModule (mod: Module): Uint8Array {
+  return new Uint8Array([
+    0x00, 0x61, 0x73, 0x6d,
+    0x01, 0x00, 0x00, 0x00,
+    ...encodeTypeSec(mod.types),
+    ...encodeFuncSec(mod.funcs),
+    ...encodeExportSec(mod.exports),
+    ...encodeCodeSec(mod.funcs)
+  ])
 }
