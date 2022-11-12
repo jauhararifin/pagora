@@ -63,9 +63,15 @@ const simpleProgramBin = [
   0x0b // end
 ]
 
-describe('encode', () => {
-  it('jauhar', () => {
+describe('wasm encoder test', () => {
+  it('run simple addTwo function', () => {
     const encoded = encodeModule(simpleProgram)
     expect(encoded).toStrictEqual(new Uint8Array(simpleProgramBin))
+
+    const mod = new WebAssembly.Module(encoded)
+    const instance = new WebAssembly.Instance(mod)
+    const { addTwo }: any = instance.exports
+    const result = addTwo(BigInt(29), BigInt(41))
+    expect(result).toStrictEqual(BigInt(70))
   })
 })
