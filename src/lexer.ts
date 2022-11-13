@@ -67,11 +67,7 @@ class Lexer {
           this.back()
           this.scanComment(c.pos)
         } else {
-          this.emitToken({
-            value: '/',
-            position: c.pos,
-            kind: TokenKind.DIV
-          })
+          this.emitToken(new Token(TokenKind.DIV, '/', c.pos))
         }
       } else {
         this.emitError({ kind: ErrorKind.UNEXPECTED_CHARACTER, position: c.pos, char: c.c })
@@ -103,7 +99,7 @@ class Lexer {
       of: TokenKind.OF,
       integer: TokenKind.INTEGER,
       boolean: TokenKind.BOOLEAN,
-      char: TokenKind.CHAR,
+      byte: TokenKind.BYTE,
       and: TokenKind.AND,
       not: TokenKind.NOT,
       or: TokenKind.OR,
@@ -111,7 +107,6 @@ class Lexer {
       then: TokenKind.THEN,
       else: TokenKind.ELSE,
       while: TokenKind.WHILE,
-      for: TokenKind.FOR,
       do: TokenKind.DO,
       continue: TokenKind.CONTINUE,
       break: TokenKind.BREAK,
@@ -119,7 +114,7 @@ class Lexer {
     }
 
     const kind = word in map ? map[word] : TokenKind.IDENTIFIER
-    this.emitToken({ value: word, position, kind })
+    this.emitToken(new Token(kind, word, position))
   }
 
   private scanString (): void {
@@ -167,11 +162,7 @@ class Lexer {
       }
     }
 
-    this.emitToken({
-      value,
-      position,
-      kind: TokenKind.STRING_LITERAL
-    })
+    this.emitToken(new Token(TokenKind.STRING_LITERAL, value, position))
   }
 
   private scanNumberLiteral (): void {
@@ -181,11 +172,7 @@ class Lexer {
     // - exponent expression
     const c = this.peek()
     const value = this.consumeWhile((c) => (c >= '0' && c <= '9') || c === '_')
-    this.emitToken({
-      value,
-      position: c.pos,
-      kind: TokenKind.INTEGER_LITERAL
-    })
+    this.emitToken(new Token(TokenKind.INTEGER_LITERAL, value, c.pos))
   }
 
   private scanSymbol (): void {
@@ -229,11 +216,7 @@ class Lexer {
       }
 
       if (matched) {
-        this.emitToken({
-          value,
-          position: first.pos,
-          kind: item[1]
-        })
+        this.emitToken(new Token(item[1], value, first.pos))
         if (item[0].length > 1) { this.next() }
         return
       }
@@ -244,11 +227,7 @@ class Lexer {
 
   private scanComment (position: Position): void {
     const value = this.consumeWhile((c) => c !== '\n')
-    this.emitToken({
-      value,
-      position,
-      kind: TokenKind.COMMENT
-    })
+    this.emitToken(new Token(TokenKind.COMMENT, value, position))
   }
 
   private advance (): CharPos {
@@ -257,27 +236,6 @@ class Lexer {
       if (c.c === ' ' || c.c === '\t' || c.c === '\r') {
         this.next()
       } else if (c.c === '\n') {
-        if (this.tokens.length > 0) {
-          const lastToken = this.tokens[this.tokens.length - 1]
-          const needPhantomToken = [
-            TokenKind.BREAK,
-            TokenKind.CONTINUE,
-            TokenKind.INTEGER_LITERAL,
-            TokenKind.REAL_LITERAL,
-            TokenKind.STRING_LITERAL,
-            TokenKind.BREAK,
-            TokenKind.CONTINUE,
-            TokenKind.RETURN,
-            TokenKind.CLOSE_BRAC,
-            TokenKind.CLOSE_SQUARE,
-            TokenKind.INTEGER,
-            TokenKind.CHAR,
-            TokenKind.REAL
-          ]
-          if (needPhantomToken.includes(lastToken.kind)) {
-            this.emitToken({ value: ';', position: c.pos, kind: TokenKind.PHANTOM_SEMICOLON })
-          }
-        }
         this.next()
       } else {
         return c

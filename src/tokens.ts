@@ -1,17 +1,33 @@
-export interface Token {
+export class Token {
+  kind: TokenKind
   value: string
   position: Position
-  kind: TokenKind
+
+  constructor (kind: TokenKind, value: string, pos: Position) {
+    this.kind = kind
+    this.value = value
+    this.position = pos
+  }
+
+  repr (): string {
+    return this.kind.toString() + (!KEYWORD.has(this.kind)
+      ? `(${this.value.toString()})`
+      : '')
+  }
 }
 
-export interface Position {
+export class Position {
   line: number
   col: number
+
+  constructor (line: number, col: number) {
+    this.line = line
+    this.col = col
+  }
 }
 
 export enum TokenKind {
   EOF = 'EOF',
-  PHANTOM_SEMICOLON = 'PHANTOM_SEMICOLON',
   INVALID = 'INVALID',
   COMMENT = 'COMMENT',
 
@@ -72,7 +88,6 @@ export enum TokenKind {
   THEN = 'THEN',
   ELSE = 'ELSE',
   WHILE = 'WHILE',
-  FOR = 'FOR',
   DO = 'DO',
 
   CONTINUE = 'CONTINUE',
@@ -80,7 +95,7 @@ export enum TokenKind {
   RETURN = 'RETURN',
 
   INTEGER = 'INTEGER',
-  CHAR = 'CHAR',
+  BYTE = 'BYTE',
   REAL = 'REAL',
   BOOLEAN = 'BOOLEAN',
   // TODO: change "CHAR" to "BYTE" and support string literal as array of bytes.
@@ -88,7 +103,64 @@ export enum TokenKind {
 
 export const PrimitiveTypes = [
   TokenKind.INTEGER,
-  TokenKind.CHAR,
+  TokenKind.BYTE,
   TokenKind.REAL,
   TokenKind.BOOLEAN
 ]
+
+const KEYWORD = new Set([
+  TokenKind.EOF,
+  TokenKind.INVALID,
+  TokenKind.VAR,
+  TokenKind.TYPE,
+  TokenKind.STRUCT,
+  TokenKind.AS,
+  TokenKind.FUNCTION,
+  TokenKind.COMMA,
+  TokenKind.COLON,
+  TokenKind.ARROW,
+  TokenKind.SEMICOLON,
+  TokenKind.BEGIN,
+  TokenKind.END,
+  TokenKind.ARRAY,
+  TokenKind.OF,
+  TokenKind.OPEN_SQUARE,
+  TokenKind.CLOSE_SQUARE,
+  TokenKind.OPEN_BRAC,
+  TokenKind.CLOSE_BRAC,
+  TokenKind.TRUE,
+  TokenKind.FALSE,
+  TokenKind.ASSIGN,
+  TokenKind.PLUS,
+  TokenKind.MINUS,
+  TokenKind.MULTIPLY,
+  TokenKind.DIV,
+  TokenKind.MOD,
+  TokenKind.BIT_OR,
+  TokenKind.BIT_AND,
+  TokenKind.BIT_XOR,
+  TokenKind.BIT_NOT,
+  TokenKind.SHIFT_LEFT,
+  TokenKind.SHIFT_RIGHT,
+  TokenKind.AND,
+  TokenKind.NOT,
+  TokenKind.OR,
+  TokenKind.EQUAL,
+  TokenKind.NOT_EQUAL,
+  TokenKind.GREATER_THAN,
+  TokenKind.GREATER_THAN_EQUAL,
+  TokenKind.LESS_THAN,
+  TokenKind.LESS_THAN_EQUAL,
+  TokenKind.IF,
+  TokenKind.THEN,
+  TokenKind.ELSE,
+  TokenKind.WHILE,
+  TokenKind.DO,
+  TokenKind.CONTINUE,
+  TokenKind.BREAK,
+  TokenKind.RETURN,
+  TokenKind.INTEGER,
+  TokenKind.BYTE,
+  TokenKind.REAL,
+  TokenKind.BOOLEAN
+])
