@@ -9,7 +9,6 @@ import {
   BooleanLitExpr,
   CallExpr,
   CastExpr,
-  Char,
   Expr,
   ExprKind,
   ExprStatement,
@@ -32,7 +31,8 @@ import {
   VarStatement,
   Variable,
   Void,
-  WhileStatement
+  WhileStatement,
+  Byte
 } from './semantic'
 import {
   ArrayIndexExprNode,
@@ -328,8 +328,8 @@ class Analyzer {
             return Integer
           case TokenKind.BOOLEAN:
             return Boolean
-          case TokenKind.CHAR:
-            return Char
+          case TokenKind.BYTE:
+            return Byte
           case TokenKind.REAL:
             return Real
           default:

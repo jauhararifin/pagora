@@ -24,6 +24,10 @@ export class Position {
     this.line = line
     this.col = col
   }
+
+  toString (): string {
+    return `${this.line}:${this.col}`
+  }
 }
 
 export enum TokenKind {

@@ -50,7 +50,7 @@ function encodeType (type: Type): any {
     TypeKind.REAL,
     TypeKind.BOOLEAN,
     TypeKind.STRING,
-    TypeKind.CHAR,
+    TypeKind.BYTE,
     TypeKind.VOID
   ]
   if (primitiveKind.includes(type.kind)) {

@@ -1,11 +1,11 @@
-import { Error, ErrorKind } from './errors'
+import { CompileError, CompileErrorItem, UnexpectedCharacter } from './errors'
 import { tokenize } from './lexer'
+import { Position } from './tokens'
 
 interface Testcase {
   name: string
   sourceCode: string
-  expectedTokens: string[]
-  expectedErrors: Error[]
+  expectedResult: string[] | CompileErrorItem[]
 }
 
 const simpleWhileLoop = `
@@ -29,73 +29,62 @@ describe('tokenize test', () => {
     {
       name: 'if token',
       sourceCode: 'if',
-      expectedTokens: ['IF'],
-      expectedErrors: []
+      expectedResult: ['IF']
     },
     {
       name: 'simple if with expression',
       sourceCode: 'if a < b',
-      expectedTokens: ['IF', 'IDENTIFIER(a)', 'LESS_THAN', 'IDENTIFIER(b)'],
-      expectedErrors: []
+      expectedResult: ['IF', 'IDENTIFIER(a)', 'LESS_THAN', 'IDENTIFIER(b)']
     },
     {
       name: 'zero number literal',
       sourceCode: '0;',
-      expectedTokens: ['INTEGER_LITERAL(0)', 'SEMICOLON'],
-      expectedErrors: []
+      expectedResult: ['INTEGER_LITERAL(0)', 'SEMICOLON']
     },
     {
       name: 'function call',
       sourceCode: 'some_function(some_var)',
-      expectedTokens: ['IDENTIFIER(some_function)', 'OPEN_BRAC', 'IDENTIFIER(some_var)', 'CLOSE_BRAC'],
-      expectedErrors: []
+      expectedResult: ['IDENTIFIER(some_function)', 'OPEN_BRAC', 'IDENTIFIER(some_var)', 'CLOSE_BRAC']
     },
     {
       name: 'simple for loop',
       sourceCode: simpleWhileLoop,
-      expectedTokens: expectedSimpleWhileLoop,
-      expectedErrors: []
+      expectedResult: expectedSimpleWhileLoop
     },
     {
       name: 'comment and div',
       sourceCode: 'a / b // this is a comment',
-      expectedTokens: ['IDENTIFIER(a)', 'DIV', 'IDENTIFIER(b)', 'COMMENT(// this is a comment)'],
-      expectedErrors: []
+      expectedResult: ['IDENTIFIER(a)', 'DIV', 'IDENTIFIER(b)', 'COMMENT(// this is a comment)']
     },
     {
       name: 'scan symbols',
       sourceCode: '>!a',
-      expectedTokens: ['GREATER_THAN', 'NOT', 'IDENTIFIER(a)'],
-      expectedErrors: []
+      expectedResult: ['GREATER_THAN', 'NOT', 'IDENTIFIER(a)']
     },
     {
       name: 'scan invalid symbol',
       sourceCode: '@',
-      expectedTokens: [],
-      expectedErrors: [{ kind: ErrorKind.UNEXPECTED_CHARACTER, position: { line: 1, col: 1 }, char: '@' }]
+      expectedResult: [new UnexpectedCharacter('@', new Position(1, 1))]
     },
     {
       name: 'number literal',
       sourceCode: '123',
-      expectedTokens: ['INTEGER_LITERAL(123)'],
-      expectedErrors: []
+      expectedResult: ['INTEGER_LITERAL(123)']
     },
     {
       name: 'negative number literal',
       sourceCode: '-123',
-      expectedTokens: ['MINUS', 'INTEGER_LITERAL(123)'],
-      expectedErrors: []
+      expectedResult: ['MINUS', 'INTEGER_LITERAL(123)']
     },
     {
       name: 'variable decl',
       sourceCode: 'var some_var: integer',
-      expectedTokens: ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'INTEGER'],
-      expectedErrors: []
+      expectedResult: ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'INTEGER']
     },
     {
       name: 'variable with array type',
       sourceCode: 'var some_var: array[10,20] of integer',
-      expectedTokens: [
+      expectedResult: [
         'VAR',
         'IDENTIFIER(some_var)',
         'COLON',
@@ -107,17 +96,20 @@ describe('tokenize test', () => {
         'CLOSE_SQUARE',
         'OF',
         'INTEGER'
-      ],
-      expectedErrors: []
+      ]
     }
   ]
 
   for (const testcase of testcases) {
     it(testcase.name, () => {
-      const { value: tokens, errors } = tokenize(testcase.sourceCode)
-      const actualTokens = tokens?.map(tok => tok.repr())
-      expect(actualTokens).toStrictEqual(testcase.expectedTokens)
-      expect(errors).toStrictEqual(testcase.expectedErrors)
+      try {
+        const tokens = tokenize(testcase.sourceCode)
+        const actualTokens = tokens?.map(tok => tok.repr())
+        expect(actualTokens).toStrictEqual(testcase.expectedResult)
+      } catch (e) {
+        const err = e as CompileError
+        expect(err.errors).toStrictEqual(testcase.expectedResult)
+      }
     })
   }
 })

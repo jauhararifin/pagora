@@ -1,148 +1,107 @@
-import { Expr, Type, TypeKind } from './semantic'
+import { CallExpr, Expr, IndexExpr, Type, TypeKind } from './semantic'
 import { Position, Token, TokenKind } from './tokens'
-import { ExprNode } from './ast'
 
-// TODO: currently, I feel the way the error is oraganized is very messy. The namings are not good, doesn't have error
-// message, and some of the error are quite duplicated. Need to refactor this.
-
-export type Error = UnexpectedCharacter
-| UnexpectedToken
-| UnexpectedEOF
-| UnexpectedTokenForExpr
-| UnexpectedTokenForStatment
-| MultipleDeclaration
-| TypeMismatch
-| NotAConstant
-| CannotAssign
-| Undefined
-| InvalidBinaryOperator
-| InvalidUnaryOperator
-| FunctionIsVoid
-| MissingMain
-| DuplicatedMain
-| WrongNumberOfArgument
-| WrongNumberOfIndex
-
-export enum ErrorKind {
-  // for lexer phase
-  UNEXPECTED_CHARACTER = 'UNEXPECTED_CHARACTER',
-
-  // for parsing phase
-  UNEXPECTED_TOKEN = 'UNEXPECTED_TOKEN',
-  UNEXPECTED_EOF = 'UNEXPECTED_EOF',
-  UNEXPECTED_TOKEN_FOR_EXPR = 'UNEXPECTED_TOKEN_FOR_EXPR',
-  UNEXPECTED_TOKEN_FOR_STATMENT = 'UNEXPECTED_TOKEN_FOR_STATMENT',
-
-  // for analyzing phase
-  MULTIPLE_DECLARATION = 'MULTIPLE_DECLARATION',
-  TYPE_MISMATCH = 'TYPE_MISMATCH',
-  FUNCTION_IS_VOID = 'FUNCTION_IS_VOID',
-  NOT_A_CONSTANT = 'NOT_A_CONSTANT',
-  CANNOT_ASSIGN = 'CANNOT_ASSIGN',
-  UNDEFINED = 'UNDEFINED',
-  INVALID_BINARY_OP = 'INVALID_BINARY_OP',
-  INVALID_UNARY_OP = 'INVALID_UNARY_OP',
-  MISSING_MAIN = 'MISSING_MAIN',
-  DUPLICATED_MAIN = 'DUPLICATED_MAIN',
-  WRONG_NUMBER_OF_ARGUMENT = 'WRONG_NUMBER_OF_ARGUMENT',
-  WRONG_NUMBER_OF_INDEX = 'WRONG_NUMBER_OF_INDEX'
+export class CompileError extends Error {
+  errors: CompileErrorItem[]
+  constructor (errors: CompileErrorItem[]) {
+    super(errors.map(err => err.message).join('\n'))
+    this.errors = errors
+  }
 }
 
-export interface UnexpectedCharacter {
-  kind: ErrorKind.UNEXPECTED_CHARACTER
-  char: string
+export class CompileErrorItem extends Error {
   position: Position
+  message: string
+
+  constructor (message: string, position: Position) {
+    super(`Error ar ${position.line}:${position.col}: ${message}`)
+    this.message = message
+    this.position = position
+  }
 }
 
-export interface UnexpectedToken {
-  kind: ErrorKind.UNEXPECTED_TOKEN
-  expected: TokenKind[]
-  found: Token
+export class UnexpectedCharacter extends CompileErrorItem {
+  constructor (char: string, position: Position) {
+    super(`Unexpected character '${char}'`, position)
+  }
 }
 
-export interface UnexpectedEOF {
-  kind: ErrorKind.UNEXPECTED_EOF
-  expected: TokenKind[]
+export class UnexpectedToken extends CompileErrorItem {
+  constructor (expected: TokenKind[] | string, found: Token) {
+    const expectedMessage = typeof (expected) === 'string'
+      ? expected
+      : expected.map(k => k.toString()).join(', ')
+    const message = `Expected ${expectedMessage}. But found a ${found.kind.toString()}`
+    super(message, found.position)
+  }
 }
 
-export interface UnexpectedTokenForExpr {
-  kind: ErrorKind.UNEXPECTED_TOKEN_FOR_EXPR
-  found: Token
+export class MultipleDeclaration extends CompileErrorItem {
+  constructor (declaredAt: Token, redeclaredAt: Token) {
+    super(`${declaredAt.value} is already declared at ${declaredAt.position.toString()}`, redeclaredAt.position)
+  }
 }
 
-export interface UnexpectedTokenForStatment {
-  kind: ErrorKind.UNEXPECTED_TOKEN_FOR_STATMENT
-  found: Token
+export class TypeMismatch extends CompileErrorItem {
+  constructor (source: Expr, expectedType: Type | TypeKind) {
+    // TODO: use proper error message
+    super('Invalid type', source.position)
+  }
 }
 
-export interface MultipleDeclaration {
-  kind: ErrorKind.MULTIPLE_DECLARATION
-  declaredAt: Token
-  redeclaredAt: Token
+export class NotAConstant extends CompileErrorItem {
+  constructor (source: Expr) {
+    super('Not a compile-time constant expression', source.position)
+  }
 }
 
-export interface TypeMismatch {
-  kind: ErrorKind.TYPE_MISMATCH
-  source: Expr
-  targetType: Type | TypeKind
+export class CannotAssign extends CompileErrorItem {
+  constructor (source: Expr, target: Type) {
+    // TODO: use proper error message
+    super('Cannot assign source to target_type', source.position)
+  }
 }
 
-export interface FunctionIsVoid {
-  kind: ErrorKind.FUNCTION_IS_VOID
-  return: Token
+export class UndefinedSymbol extends CompileErrorItem {
+  constructor (token: Token) {
+    super(`Undefined symbol ${token.value}`, token.position)
+  }
 }
 
-export interface NotAConstant {
-  kind: ErrorKind.NOT_A_CONSTANT
-  value: Expr
+export class InvalidBinaryOperator extends CompileErrorItem {
+  constructor (a: Expr, op: Token, b: Expr) {
+    // TODO: use proper error message
+    super(`Cannot perform ${op.kind.toString()} operation with a and b`, a.position)
+  }
 }
 
-export interface CannotAssign {
-  kind: ErrorKind.CANNOT_ASSIGN
-  expr: ExprNode
-  receiver: Type
+export class InvalidUnaryOperator extends CompileErrorItem {
+  constructor (value: Expr, op: Token) {
+    // TODO: use proper error message
+    super(`Cannot perform ${op.kind.toString()} operation with value_type`, value.position)
+  }
 }
 
-export interface Undefined {
-  kind: ErrorKind.UNDEFINED
-  name: Token
+export class MissingMain extends CompileErrorItem {
+  constructor (position: Position) {
+    super('Missing main program', position)
+  }
 }
 
-export interface InvalidBinaryOperator {
-  kind: ErrorKind.INVALID_BINARY_OP
-  a: Expr
-  op: Token
-  b: Expr
+export class DuplicatedMain extends CompileErrorItem {
+  constructor (declared: Token, redeclared: Token) {
+    super(`Main program is already declared at ${declared.position.toString()}`, redeclared.position)
+  }
 }
 
-export interface InvalidUnaryOperator {
-  kind: ErrorKind.INVALID_UNARY_OP
-  op: Token
-  value: Expr
+export class WrongNumberOfArgument extends CompileErrorItem {
+  constructor (expr: CallExpr, expected: number) {
+    super(`Wrong number of arguments. Expected ${expected}, got ${expr.arguments.length}`, expr.position)
+  }
 }
 
-export interface MissingMain {
-  kind: ErrorKind.MISSING_MAIN
-}
-
-export interface DuplicatedMain {
-  // TODO: add position of the first main
-  kind: ErrorKind.DUPLICATED_MAIN
-}
-
-export interface WrongNumberOfArgument {
-  kind: ErrorKind.WRONG_NUMBER_OF_ARGUMENT
-  expected: number
-  got: number
-}
-
-export interface WrongNumberOfIndex {
-  kind: ErrorKind.WRONG_NUMBER_OF_INDEX
-  expected: number
-  got: number
-}
-
-export interface Result<T> {
-  value?: T
-  errors: Error[]
+export class WrongNumberOfIndex extends CompileErrorItem {
+  constructor (expr: IndexExpr, expected: number) {
+    super(`Wrong number of index. Expected ${expected}, got ${expr.indices.length}`, expr.position)
+  }
 }

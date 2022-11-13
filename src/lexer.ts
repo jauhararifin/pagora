@@ -1,7 +1,7 @@
-import { Error, ErrorKind, Result } from './errors'
+import { CompileError, CompileErrorItem, UnexpectedCharacter } from './errors'
 import { Position, Token, TokenKind } from './tokens'
 
-export function tokenize (sourceCode: string): Result<Token[]> {
+export function tokenize (sourceCode: string): Token[] {
   return new Lexer(sourceCode).scan()
 }
 
@@ -23,7 +23,7 @@ class Lexer {
   private readonly sourceCode: CharPos[]
   private index: number
   private readonly tokens: Token[]
-  private readonly errors: Error[]
+  private readonly errors: CompileErrorItem[]
 
   constructor (sourceCode: string) {
     this.sourceCode = []
@@ -46,7 +46,7 @@ class Lexer {
   }
 
   // TODO: skip the whole process if the number errors are too many
-  scan (): Result<Token[]> {
+  scan (): Token[] {
     while (true) {
       this.advance()
       const c = this.peek()
@@ -70,12 +70,16 @@ class Lexer {
           this.emitToken(new Token(TokenKind.DIV, '/', c.pos))
         }
       } else {
-        this.emitError({ kind: ErrorKind.UNEXPECTED_CHARACTER, position: c.pos, char: c.c })
+        this.emitError(new UnexpectedCharacter(c.c, c.pos))
         this.next()
       }
     }
 
-    return { value: this.tokens, errors: this.errors }
+    if (this.errors.length > 0) {
+      throw new CompileError(this.errors)
+    } else {
+      return this.tokens
+    }
   }
 
   private scanWord (): void {
@@ -143,14 +147,14 @@ class Lexer {
       if (c.c === '\n') {
         // TODO: improve the error message by differentiating "unexpected character" error for newline and
         // general error.
-        this.emitError({ kind: ErrorKind.UNEXPECTED_CHARACTER, char: c.c, position: c.pos })
+        this.emitError(new UnexpectedCharacter(c.c, c.pos))
       }
 
       if (afterBackslash) {
         if (c.c in backslashes) {
           value += backslashes[c.c]
         } else {
-          this.emitError({ kind: ErrorKind.UNEXPECTED_CHARACTER, char: c.c, position: c.pos })
+          this.emitError(new UnexpectedCharacter(c.c, c.pos))
         }
         afterBackslash = false
       } else if (c.c === '\\') {
@@ -222,7 +226,7 @@ class Lexer {
       }
     }
 
-    this.emitError({ kind: ErrorKind.UNEXPECTED_CHARACTER, char: first.c, position: first.pos })
+    this.emitError(new UnexpectedCharacter(first.c, first.pos))
   }
 
   private scanComment (position: Position): void {
@@ -263,7 +267,7 @@ class Lexer {
     this.tokens.push(token)
   }
 
-  private emitError (error: Error): void {
+  private emitError (error: CompileErrorItem): void {
     this.errors.push(error)
   }
 

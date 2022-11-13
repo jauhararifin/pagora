@@ -1,3 +1,5 @@
+import { Position } from './tokens'
+
 export interface Program {
   globals: Variable[]
   functions: Function[]
@@ -24,20 +26,20 @@ export enum TypeKind {
   REAL = 'REAL',
   BOOLEAN = 'BOOLEAN',
   STRING = 'STRING',
-  CHAR = 'CHAR',
+  BYTE = 'BYTE',
   ARRAY = 'ARRAY',
   FUNCTION = 'FUNCTION',
 }
 
 export interface PrimitiveType {
-  kind: TypeKind.INTEGER | TypeKind.REAL | TypeKind.BOOLEAN | TypeKind.STRING | TypeKind.CHAR | TypeKind.VOID
+  kind: TypeKind.INTEGER | TypeKind.REAL | TypeKind.BOOLEAN | TypeKind.STRING | TypeKind.BYTE | TypeKind.VOID
 }
 
 export const Integer: Type = { kind: TypeKind.INTEGER }
 export const Real: Type = { kind: TypeKind.REAL }
 export const Boolean: Type = { kind: TypeKind.BOOLEAN }
 export const String: Type = { kind: TypeKind.STRING }
-export const Char: Type = { kind: TypeKind.CHAR }
+export const Byte: Type = { kind: TypeKind.BYTE }
 export const Void: Type = { kind: TypeKind.VOID }
 
 export interface ArrayType {
@@ -131,6 +133,7 @@ export interface ExprBase {
   constValue: any
   isAssignable: boolean
   type: Type
+  position: Position
 }
 
 export enum ExprKind {
