@@ -26,6 +26,21 @@ describe('tokenize test', () => {
       ]
     },
     {
+      name: 'various primitive type',
+      sourceCode: `
+        var some_var: real;
+        var some_var: boolean;
+        var some_var: byte;
+        var some_var: integer;
+      `,
+      expectedResult: [
+        ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'REAL', undefined, undefined],
+        ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'BOOLEAN', undefined, undefined],
+        ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'BYTE', undefined, undefined],
+        ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'INTEGER', undefined, undefined]
+      ]
+    },
+    {
       name: 'variable with array type',
       sourceCode: 'var some_var: array[10,20] of integer;',
       expectedResult: [

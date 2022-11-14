@@ -62,58 +62,84 @@ import {
   VarStatementNode,
   WhileStatementNode
 } from './ast'
-import { Error as CompileError, ErrorKind, Result } from './errors'
-import { Token, TokenKind } from './tokens'
+import {
+  CompileError,
+  CompileErrorItem,
+  DuplicatedMain,
+  InvalidBinaryOperator,
+  InvalidUnaryOperator,
+  MissingMain,
+  MissingReturnValue,
+  MultipleDeclaration,
+  NotAConstant,
+  NotAssignable,
+  TypeMismatch,
+  UndefinedSymbol,
+  WrongNumberOfArgument,
+  WrongNumberOfIndex
+} from './errors'
+import {
+  Token,
+  TokenKind
+} from './tokens'
 
-export function analyze (ast: RootNode): Result<Program> {
+export function analyze (ast: RootNode): Program {
   return new Analyzer().analyze(ast)
 }
 
 class Analyzer {
   functions: Function[] = []
   globals: Variable[] = []
-  errors: CompileError[] = []
+  errors: CompileErrorItem[] = []
 
   symbolTable: Array<{ [key: string]: [Token, Type] }> = []
   currentReturnType: Type = { kind: TypeKind.VOID }
 
   // TODO: skip the whole process if the number errors are too many
-  analyze (ast: RootNode): Result<Program> {
+  analyze (ast: RootNode): Program {
     // TODO: improve the language to support struct, tuple and type definition
     // This requires an additional step to load all the type names beforehand.
     // Although, at this phase, we don't need it yet.
     this.symbolTable = [{}]
 
     let main: BlockStatement | undefined
+    let mainToken: Token | undefined
+
     for (const declaration of ast.declarations) {
-      if (declaration.kind === DeclKind.FUNCTION) {
-        this.analyzeFunction(declaration)
-      } else if (declaration.kind === DeclKind.VARIABLE) {
-        const variable = this.analyzeVariable(declaration.variable, false)
-        if (variable !== undefined) {
-          this.globals.push(variable)
+      try {
+        if (declaration.kind === DeclKind.FUNCTION) {
+          this.analyzeFunction(declaration)
+        } else if (declaration.kind === DeclKind.VARIABLE) {
+          const variable = this.analyzeVariable(declaration.variable, false)
+          if (variable !== undefined) {
+            this.globals.push(variable)
+          }
+        } else if (declaration.kind === DeclKind.MAIN) {
+          this.addScope()
+          const stmt = this.analyzeBlockStatement(declaration.body)
+          this.removeScope()
+          if (main !== undefined) {
+            this.emitError(new DuplicatedMain(mainToken!, declaration.body.begin))
+          } else {
+            main = stmt
+            mainToken = declaration.body.begin
+          }
         }
-      } else if (declaration.kind === DeclKind.MAIN) {
-        this.addScope()
-        const stmt = this.analyzeBlockStatement(declaration.body)
-        this.removeScope()
-        if (main !== undefined) {
-          this.emitError({ kind: ErrorKind.DUPLICATED_MAIN })
-        } else {
-          main = stmt
-        }
+      } catch (e) {
+        this.emitError(e as CompileErrorItem)
       }
     }
 
     if (main === undefined) {
-      this.emitError({ kind: ErrorKind.MISSING_MAIN })
-      return { errors: this.errors }
+      this.emitError(new MissingMain())
+      throw new CompileError(this.errors)
     }
 
-    return {
-      value: { functions: this.functions, globals: this.globals, main },
-      errors: this.errors
+    if (this.errors.length > 0) {
+      throw new CompileError(this.errors)
     }
+
+    return { functions: this.functions, globals: this.globals, main }
   }
 
   private analyzeFunction (functionDecl: FunctionDeclNode): void {
@@ -124,7 +150,7 @@ class Analyzer {
     const symbol = this.getSymbol(name)
     if (symbol !== undefined) {
       const [declaredAt] = symbol
-      this.emitError({ kind: ErrorKind.MULTIPLE_DECLARATION, declaredAt, redeclaredAt: functionDecl.name })
+      this.emitError(new MultipleDeclaration(declaredAt, functionDecl.name))
 
       // TODO: consider keep analyze the function body for better warning message
       return
@@ -153,7 +179,7 @@ class Analyzer {
     this.addSymbol(name, functionDecl.name, type)
   }
 
-  private analyzeStatement (statement: StatementNode): Statement | undefined {
+  private analyzeStatement (statement: StatementNode): Statement {
     switch (statement.kind) {
       case StatementNodeKind.BLOCK:
         return this.analyzeBlockStatement(statement)
@@ -173,18 +199,23 @@ class Analyzer {
   }
 
   private analyzeBlockStatement (blockStatement: BlockStatementNode): BlockStatement {
+    const statements: Statement[] = []
+    for (const stmt of blockStatement.statements) {
+      try {
+        statements.push(this.analyzeStatement(stmt))
+      } catch (e) {
+        this.emitError(e as CompileErrorItem)
+      }
+    }
+
     return {
       kind: StatementKind.BLOCK,
-      body: blockStatement
-        .statements
-        .map((s) => this.analyzeStatement(s))
-        .filter((s): s is Statement => s !== undefined)
+      body: statements
     }
   }
 
-  private analyzeVarStatement (stmt: VarStatementNode): VarStatement | undefined {
+  private analyzeVarStatement (stmt: VarStatementNode): VarStatement {
     const variable = this.analyzeVariable(stmt.variable, true)
-    if (variable == null) return undefined
 
     return {
       kind: StatementKind.VAR,
@@ -192,15 +223,14 @@ class Analyzer {
     }
   }
 
-  private analyzeVariable (variable: VarNode, allowNonConstant: boolean): Variable | undefined {
+  private analyzeVariable (variable: VarNode, allowNonConstant: boolean): Variable {
     this.assertTokenKind(variable.name, TokenKind.IDENTIFIER)
 
     const name = variable.name.value
     const symbol = this.getSymbol(name)
     if (symbol !== undefined) {
       const [declaredAt] = symbol
-      this.emitError({ kind: ErrorKind.MULTIPLE_DECLARATION, declaredAt, redeclaredAt: variable.name })
-      return
+      throw new MultipleDeclaration(declaredAt, variable.name)
     }
 
     if (variable.type === undefined && variable.value === undefined) {
@@ -216,13 +246,11 @@ class Analyzer {
 
     if (value != null) {
       if (!this.valueIsA(value.type, type)) {
-        this.emitError({ kind: ErrorKind.TYPE_MISMATCH, source: value, targetType: type })
-        return
+        throw new TypeMismatch(value, type)
       }
 
       if (!allowNonConstant && !value.isConstexpr) {
-        this.emitError({ kind: ErrorKind.NOT_A_CONSTANT, value })
-        return
+        throw new NotAConstant(value)
       }
     }
 
@@ -230,21 +258,17 @@ class Analyzer {
     return { name, type, value }
   }
 
-  private analyzeAssignStatement (stmt: AssignStatementNode): AssignStatement | undefined {
+  private analyzeAssignStatement (stmt: AssignStatementNode): AssignStatement {
     const receiver = this.analyzeExpr(stmt.receiver)
-    if (receiver === undefined) return
 
     if (!receiver.isAssignable) {
-      this.emitError({ kind: ErrorKind.CANNOT_ASSIGN, expr: stmt.receiver, receiver: receiver.type })
-      return
+      throw new NotAssignable(receiver)
     }
 
     const value = this.analyzeExpr(stmt.value)
-    if (value === undefined) return
 
     if (!this.valueIsA(value.type, receiver.type)) {
-      this.emitError({ kind: ErrorKind.TYPE_MISMATCH, targetType: receiver.type, source: value })
-      return
+      throw new TypeMismatch(value, receiver.type)
     }
 
     return {
@@ -254,24 +278,18 @@ class Analyzer {
     }
   }
 
-  private analyzeExprStatement (stmt: ExprStatementNode): ExprStatement | undefined {
+  private analyzeExprStatement (stmt: ExprStatementNode): ExprStatement {
     const value = this.analyzeExpr(stmt.expr)
-    if (value === undefined) return
-
     return { kind: StatementKind.EXPR, value }
   }
 
-  private analyzeIfStatement (stmt: IfStatementNode): IfStatement | undefined {
+  private analyzeIfStatement (stmt: IfStatementNode): IfStatement {
     const condition = this.analyzeExpr(stmt.condition)
-    if (condition === undefined) return
-
     if (!this.valueIsA(condition.type, Boolean)) {
-      this.emitError({ kind: ErrorKind.TYPE_MISMATCH, targetType: Boolean, source: condition })
-      return
+      throw new TypeMismatch(condition, Boolean)
     }
 
     const body = this.analyzeStatement(stmt.body)
-    if (body === undefined) return
 
     const elseStmt = (stmt.else != null) ? this.analyzeStatement(stmt.else) : undefined
 
@@ -283,17 +301,14 @@ class Analyzer {
     }
   }
 
-  private analyzeWhileStatement (stmt: WhileStatementNode): WhileStatement | undefined {
+  private analyzeWhileStatement (stmt: WhileStatementNode): WhileStatement {
     const condition = this.analyzeExpr(stmt.condition)
-    if (condition === undefined) return
 
     if (!this.valueIsA(condition.type, Boolean)) {
-      this.emitError({ kind: ErrorKind.TYPE_MISMATCH, targetType: Boolean, source: condition })
-      return
+      throw new TypeMismatch(condition, Boolean)
     }
 
     const body = this.analyzeStatement(stmt.body)
-    if (body === undefined) return
 
     return {
       kind: StatementKind.WHILE,
@@ -302,25 +317,22 @@ class Analyzer {
     }
   }
 
-  private analyzeReturnStatement (stmt: ReturnStatementNode): ReturnStatement | undefined {
+  private analyzeReturnStatement (stmt: ReturnStatementNode): ReturnStatement {
     if (stmt.value != null) {
       const value = this.analyzeExpr(stmt.value)
-      if (value === undefined) return
       if (!this.valueIsA(value.type, this.currentReturnType)) {
-        this.emitError({ kind: ErrorKind.TYPE_MISMATCH, source: value, targetType: this.currentReturnType })
-        return
+        throw new TypeMismatch(value, this.currentReturnType)
       }
       return { kind: StatementKind.RETURN, value }
     } else {
       if (this.currentReturnType.kind !== TypeKind.VOID) {
-        this.emitError({ kind: ErrorKind.FUNCTION_IS_VOID, return: stmt.return })
-        return
+        throw new MissingReturnValue(stmt.return)
       }
       return { kind: StatementKind.RETURN }
     }
   }
 
-  private analyzeType (node: TypeExprNode): Type | undefined {
+  private analyzeType (node: TypeExprNode): Type {
     switch (node.kind) {
       case TypeExprNodeKind.PRIMITIVE:
         switch (node.type.kind) {
@@ -340,47 +352,40 @@ class Analyzer {
     }
   }
 
-  private analyzeArrayType (node: ArrayTypeNode): ArrayType | undefined {
+  private analyzeArrayType (node: ArrayTypeNode): ArrayType {
     const dimension = node.dimension.values.map(n => this.analyzeExpr(n))
 
     const dimensionNum = []
-    for (let i = 0; i < dimension.length; i++) {
-      const dim = dimension[i]
-      if (dim === undefined) return
+    for (const dim of dimension) {
       if (!dim.isConstexpr) {
-        this.emitError({ kind: ErrorKind.NOT_A_CONSTANT, value: dim })
-        return
+        throw new NotAConstant(dim)
       }
       if (!this.valueIsA(dim.type, Integer)) {
-        this.emitError({ kind: ErrorKind.TYPE_MISMATCH, source: dim, targetType: Integer })
-        return
+        throw new TypeMismatch(dim, Integer)
       }
 
       dimensionNum.push(dim.constValue as bigint)
     }
 
     const elementType = this.analyzeType(node.type)
-    if (elementType === undefined) return
 
     return { kind: TypeKind.ARRAY, dimension: dimensionNum, type: elementType }
   }
 
-  private analyzeFunctionType (node: FunctionDeclNode): FunctionType | undefined {
+  private analyzeFunctionType (node: FunctionDeclNode): FunctionType {
     const args: Type[] = []
     for (const param of node.params.params) {
       const type = this.analyzeType(param.type)
-      if (type === undefined) return
       args.push(type)
     }
 
     const voidType: Type = { kind: TypeKind.VOID }
     const returnType = (node.returnType !== undefined) ? this.analyzeType(node.returnType) : voidType
-    if (returnType === undefined) return
 
     return { kind: TypeKind.FUNCTION, arguments: args, return: returnType }
   }
 
-  private analyzeExpr (node: ExprNode): Expr | undefined {
+  private analyzeExpr (node: ExprNode): Expr {
     switch (node.kind) {
       case ExprNodeKind.IDENT:
         return this.analyzeIdentExpr(node)
@@ -403,14 +408,13 @@ class Analyzer {
     }
   }
 
-  private analyzeIdentExpr (expr: IdentExprNode): IdentExpr | undefined {
+  private analyzeIdentExpr (expr: IdentExprNode): IdentExpr {
     this.assertTokenKind(expr.name, TokenKind.IDENTIFIER)
 
     const name = expr.name.value
     const symbol = this.getSymbol(name)
     if (symbol === undefined) {
-      this.emitError({ kind: ErrorKind.UNDEFINED, name: expr.name })
-      return
+      throw new UndefinedSymbol(expr.name)
     }
 
     const [, refType] = symbol
@@ -421,11 +425,12 @@ class Analyzer {
       isConstexpr: false,
       constValue: undefined,
       isAssignable: true,
+      position: expr.name.position,
       ident: name
     }
   }
 
-  private analyzeIntegerLitExpr (expr: IntegerLitExprNode): IntegerLitExpr | undefined {
+  private analyzeIntegerLitExpr (expr: IntegerLitExprNode): IntegerLitExpr {
     this.assertTokenKind(expr.value, TokenKind.INTEGER_LITERAL)
 
     const value = BigInt(expr.value.value)
@@ -438,11 +443,12 @@ class Analyzer {
       isConstexpr: true,
       constValue: value,
       isAssignable: false,
+      position: expr.value.position,
       value
     }
   }
 
-  private analyzeBooleanLitExpr (expr: BooleanLitExprNode): BooleanLitExpr | undefined {
+  private analyzeBooleanLitExpr (expr: BooleanLitExprNode): BooleanLitExpr {
     let value: boolean | undefined
     if (expr.value.kind === TokenKind.TRUE) {
       value = true
@@ -462,16 +468,14 @@ class Analyzer {
       isConstexpr: true,
       constValue: value,
       isAssignable: false,
+      position: expr.value.position,
       value
     }
   }
 
-  private analyzeBinaryExpr (expr: BinaryExprNode): BinaryExpr | undefined {
+  private analyzeBinaryExpr (expr: BinaryExprNode): BinaryExpr {
     const a = this.analyzeExpr(expr.a)
-    if (a === undefined) return
-
     const b = this.analyzeExpr(expr.b)
-    if (b === undefined) return
 
     const operatorMap: {
       [K in TokenKind]?: {
@@ -562,14 +566,15 @@ class Analyzer {
     }
 
     const spec = operatorMap[expr.op.kind]
-    if (spec === undefined) return
+    if (spec === undefined) {
+      throw new Error('failed analyze binary operator')
+    }
 
     const { acceptedTypes, op } = spec
 
     const result = acceptedTypes.find(([aType, bType, rType]) => a.type === aType && b.type === bType)
     if (result === undefined) {
-      this.emitError({ kind: ErrorKind.INVALID_BINARY_OP, a, b, op: expr.op })
-      return
+      throw new InvalidBinaryOperator(a, op, b)
     }
     const [,,resultType] = result
 
@@ -579,15 +584,15 @@ class Analyzer {
       constValue: undefined,
       isAssignable: false,
       type: resultType,
+      position: a.position,
       a,
       b,
       op
     }
   }
 
-  private analyzeUnaryExpr (expr: UnaryExprNode): UnaryExpr | undefined {
+  private analyzeUnaryExpr (expr: UnaryExprNode): UnaryExpr {
     const value = this.analyzeExpr(expr.value)
-    if (value === undefined) return
 
     const operatorMap: {
       [K in TokenKind]?: {
@@ -618,14 +623,15 @@ class Analyzer {
     }
 
     const spec = operatorMap[expr.op.kind]
-    if (spec === undefined) return
+    if (spec === undefined) {
+      throw new Error('cannot analyze unary operator')
+    }
 
     const { acceptedTypes, op } = spec
 
     const result = acceptedTypes.find(([vType, rType]) => value.type === vType)
     if (result === undefined) {
-      this.emitError({ kind: ErrorKind.INVALID_UNARY_OP, value, op: expr.op })
-      return
+      throw new InvalidUnaryOperator(value, expr.op)
     }
     const [,resultType] = result
 
@@ -635,47 +641,29 @@ class Analyzer {
       constValue: undefined,
       isAssignable: false,
       type: resultType,
+      position: expr.op.position,
       value,
       op
     }
   }
 
-  private analyzeCallExpr (expr: CallExprNode): CallExpr | undefined {
+  private analyzeCallExpr (expr: CallExprNode): CallExpr {
     const callee = this.analyzeExpr(expr.callee)
-    if (callee === undefined) return
-
     if (callee.type.kind !== TypeKind.FUNCTION) {
-      this.emitError({
-        kind: ErrorKind.TYPE_MISMATCH,
-        source: callee,
-        targetType: TypeKind.FUNCTION
-      })
-      return
+      throw new TypeMismatch(callee, TypeKind.FUNCTION)
     }
 
     if (callee.type.arguments.length !== expr.arguments.values.length) {
-      this.emitError({
-        kind: ErrorKind.WRONG_NUMBER_OF_ARGUMENT,
-        expected: callee.type.arguments.length,
-        got: expr.arguments.values.length
-      })
-      return
+      throw new WrongNumberOfArgument(expr, callee.type.arguments.length)
     }
 
     const args: Expr[] = []
     for (let i = 0; i < callee.type.arguments.length; i++) {
       const arg = this.analyzeExpr(expr.arguments.values[i])
-      if (arg === undefined) return
-
       const paramType = callee.type.arguments[i]
 
       if (!this.valueIsCastable(arg.type, paramType)) {
-        this.emitError({
-          kind: ErrorKind.TYPE_MISMATCH,
-          source: arg,
-          targetType: paramType
-        })
-        return
+        throw new TypeMismatch(arg, paramType)
       }
 
       args.push(arg)
@@ -687,45 +675,27 @@ class Analyzer {
       constValue: undefined,
       isAssignable: false,
       type: callee.type.return,
+      position: callee.position,
       function: callee,
       arguments: args
     }
   }
 
-  private analyzeArrayIndexExpr (expr: ArrayIndexExprNode): IndexExpr | undefined {
+  private analyzeArrayIndexExpr (expr: ArrayIndexExprNode): IndexExpr {
     const array = this.analyzeExpr(expr.array)
-    if (array === undefined) return
-
     if (array.type.kind !== TypeKind.ARRAY) {
-      this.emitError({
-        kind: ErrorKind.TYPE_MISMATCH,
-        source: array,
-        targetType: TypeKind.ARRAY
-      })
-      return
+      throw new TypeMismatch(array, TypeKind.ARRAY)
     }
 
     if (array.type.dimension.length !== expr.index.values.length) {
-      this.emitError({
-        kind: ErrorKind.WRONG_NUMBER_OF_INDEX,
-        expected: array.type.dimension.length,
-        got: expr.index.values.length
-      })
-      return
+      throw new WrongNumberOfIndex(expr, array.type.dimension.length)
     }
 
     const indices: Expr[] = []
     for (let i = 0; i < array.type.dimension.length; i++) {
       const index = this.analyzeExpr(expr.index.values[i])
-      if (index === undefined) return
-
       if (index.type.kind !== TypeKind.INTEGER) {
-        this.emitError({
-          kind: ErrorKind.TYPE_MISMATCH,
-          source: index,
-          targetType: TypeKind.INTEGER
-        })
-        return
+        throw new TypeMismatch(index, TypeKind.INTEGER)
       }
 
       indices.push(index)
@@ -737,25 +707,17 @@ class Analyzer {
       constValue: undefined,
       isAssignable: true,
       type: array.type.type,
+      position: array.position,
       array,
       indices
     }
   }
 
-  private analyzeCastExpr (expr: CastExprNode): CastExpr | undefined {
+  private analyzeCastExpr (expr: CastExprNode): CastExpr {
     const value = this.analyzeExpr(expr.source)
-    if (value === undefined) return
-
     const target = this.analyzeType(expr.target)
-    if (target === undefined) return
-
     if (!this.valueIsCastable(value.type, target)) {
-      this.emitError({
-        kind: ErrorKind.TYPE_MISMATCH,
-        source: value,
-        targetType: target
-      })
-      return
+      throw new TypeMismatch(value, target)
     }
 
     return {
@@ -763,6 +725,7 @@ class Analyzer {
       isConstexpr: false,
       constValue: undefined,
       isAssignable: false,
+      position: value.position,
       source: value,
       type: target
     }
@@ -810,7 +773,7 @@ class Analyzer {
     this.symbolTable.pop()
   }
 
-  private emitError (error: CompileError): void {
+  private emitError (error: CompileErrorItem): void {
     this.errors.push(error)
   }
 

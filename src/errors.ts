@@ -1,4 +1,5 @@
-import { CallExpr, Expr, IndexExpr, Type, TypeKind } from './semantic'
+import { ArrayIndexExprNode, CallExprNode } from './ast'
+import { BinaryOp, Expr, Type, TypeKind } from './semantic'
 import { Position, Token, TokenKind } from './tokens'
 
 export class CompileError extends Error {
@@ -10,12 +11,17 @@ export class CompileError extends Error {
 }
 
 export class CompileErrorItem extends Error {
-  position: Position
-  message: string
+  position?: Position
+  msg: string
 
-  constructor (message: string, position: Position) {
-    super(`Error ar ${position.line}:${position.col}: ${message}`)
-    this.message = message
+  constructor (message: string, position?: Position) {
+    if (position != null) {
+      super(`Error at ${position.line}:${position.col}: ${message}`)
+    } else {
+      super(message)
+    }
+
+    this.msg = message
     this.position = position
   }
 }
@@ -49,6 +55,13 @@ export class TypeMismatch extends CompileErrorItem {
   }
 }
 
+export class MissingReturnValue extends CompileErrorItem {
+  constructor (returnToken: Token) {
+    // TODO: use proper error message
+    super('Missing return value', returnToken.position)
+  }
+}
+
 export class NotAConstant extends CompileErrorItem {
   constructor (source: Expr) {
     super('Not a compile-time constant expression', source.position)
@@ -62,6 +75,13 @@ export class CannotAssign extends CompileErrorItem {
   }
 }
 
+export class NotAssignable extends CompileErrorItem {
+  constructor (receiver: Expr) {
+    // TODO: use proper error message
+    super('receievr is not assignable', receiver.position)
+  }
+}
+
 export class UndefinedSymbol extends CompileErrorItem {
   constructor (token: Token) {
     super(`Undefined symbol ${token.value}`, token.position)
@@ -69,9 +89,9 @@ export class UndefinedSymbol extends CompileErrorItem {
 }
 
 export class InvalidBinaryOperator extends CompileErrorItem {
-  constructor (a: Expr, op: Token, b: Expr) {
+  constructor (a: Expr, op: BinaryOp, b: Expr) {
     // TODO: use proper error message
-    super(`Cannot perform ${op.kind.toString()} operation with a and b`, a.position)
+    super(`Cannot perform ${op.toString()} operation with a and b`, a.position)
   }
 }
 
@@ -83,8 +103,8 @@ export class InvalidUnaryOperator extends CompileErrorItem {
 }
 
 export class MissingMain extends CompileErrorItem {
-  constructor (position: Position) {
-    super('Missing main program', position)
+  constructor () {
+    super('Missing main in the program')
   }
 }
 
@@ -95,13 +115,16 @@ export class DuplicatedMain extends CompileErrorItem {
 }
 
 export class WrongNumberOfArgument extends CompileErrorItem {
-  constructor (expr: CallExpr, expected: number) {
-    super(`Wrong number of arguments. Expected ${expected}, got ${expr.arguments.length}`, expr.position)
+  constructor (expr: CallExprNode, expected: number) {
+    super(
+      `Wrong number of arguments. Expected ${expected}, got ${expr.arguments.values.length}`,
+      expr.openBrac.position
+    )
   }
 }
 
 export class WrongNumberOfIndex extends CompileErrorItem {
-  constructor (expr: IndexExpr, expected: number) {
-    super(`Wrong number of index. Expected ${expected}, got ${expr.indices.length}`, expr.position)
+  constructor (expr: ArrayIndexExprNode, expected: number) {
+    super(`Wrong number of index. Expected ${expected}, got ${expr.index.values.length}`, expr.openSquare.position)
   }
 }

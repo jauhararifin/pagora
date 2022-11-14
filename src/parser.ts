@@ -39,22 +39,19 @@ class Parser {
   }
 
   parse (): RootNode {
+    const root = this.parseRoot()
+
     if (this.errors.length > 0) {
       throw new CompileError(this.errors)
     }
 
-    return this.parseRoot()
+    return root
   }
 
   private parseRoot (): RootNode {
     const declarations: DeclNode[] = []
     while (this.peek().kind !== TokenKind.EOF) {
       const token = this.expectEither([TokenKind.VAR, TokenKind.FUNCTION, TokenKind.BEGIN], false)
-      if (token == null) {
-        this.next()
-        continue
-      }
-
       try {
         switch (token.kind) {
           case TokenKind.VAR:
@@ -66,6 +63,8 @@ class Parser {
           case TokenKind.BEGIN:
             declarations.push(this.parseMainDecl())
             break
+          default:
+            throw new Error('unreachabe')
         }
       } catch (e) {
         this.errors.push(e as CompileErrorItem)
@@ -175,7 +174,7 @@ class Parser {
   private parseBlockStatement (): BlockStatementNode {
     const begin = this.expectEither([TokenKind.BEGIN])
     const statements: StatementNode[] = []
-    while (true) {
+    while (this.hasNext()) {
       try {
         const stmt = this.parseStatement()
         if (stmt === undefined) break
@@ -498,5 +497,9 @@ class Parser {
       return new Token(TokenKind.EOF, '', this.tokens[this.tokens.length - 1].position)
     }
     return this.tokens[this.index]
+  }
+
+  private hasNext (): boolean {
+    return this.peek().kind !== TokenKind.EOF
   }
 }

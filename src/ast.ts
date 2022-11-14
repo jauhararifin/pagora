@@ -221,6 +221,7 @@ export interface ArrayIndexExprNode {
   closeSquare: Token
 }
 
+// TODO: currently it's not supported yet.
 export interface TupleIndexExprNode {
   kind: ExprNodeKind.TUPLE_INDEX
   tuple: ExprNode
@@ -228,6 +229,7 @@ export interface TupleIndexExprNode {
   index: ExprNode
 }
 
+// TODO: currently it's not supported yet.
 export interface StructIndexExprNode {
   kind: ExprNodeKind.STRUCT_INDEX
   struct: ExprNode

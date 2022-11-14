@@ -1,8 +1,9 @@
-import { Error, ErrorKind } from './errors'
+import { CompileError } from './errors'
 import { analyze } from './analyzer'
 import { encodeProgram } from './semantic_util'
 import { parse } from './parser'
 import { tokenize } from './lexer'
+import { Program } from './semantic'
 
 const program1Source = `
 function aplusb(a: integer, b: integer) -> integer
@@ -30,24 +31,24 @@ const program1 = [
 
 const program2Source = `
 begin
-  var n := 10
+  var n := 10;
 
-  var i := 0
+  var i := 0;
   while i < n do
   begin
-    var j := 0
+    var j := 0;
     while j < n-i-1 do
     begin
-      j := j + 1
+      j := j + 1;
     end
 
-    j := 0
+    j := 0;
     while j < i*2+1 do
     begin
-      j := j + 1
+      j := j + 1;
     end
 
-    i := i + 1
+    i := i + 1;
   end
 end
 `
@@ -71,9 +72,9 @@ const program2 = [
 ]
 
 const program3Source = `
-var some_array: array [10,10] of integer
+var some_array: array [10,10] of integer;
 begin
-  some_array[10,10] := 2
+  some_array[10,10] := 2;
 end
 `
 
@@ -85,75 +86,60 @@ const program3 = [
 ]
 
 const arrayDimMismatchSource = `
-var some_array: array [10,10,10] of integer
+var some_array: array [10,10,10] of integer;
 begin
-  some_array[0,0] := 2
+  some_array[0,0] := 2;
 end
 `
 
-const arrayDimMismatchError: Error[] = [{
-  kind: ErrorKind.WRONG_NUMBER_OF_INDEX,
-  expected: 3,
-  got: 2
-}]
+const arrayDimMismatchError: string[] = [
+  'Error at 4:13: Wrong number of index. Expected 3, got 2'
+]
 
 interface Testcase {
   name: string
   sourceCode: string
-  expectedProgram?: any
-  expectedErrors: Error[]
+  expectedResult?: any
 }
 
 describe('analyzer test', () => {
   const testcases: Testcase[] = [{
     name: 'program 1',
     sourceCode: program1Source,
-    expectedProgram: program1,
-    expectedErrors: []
+    expectedResult: program1
+
   }, {
     name: 'program 2',
     sourceCode: program2Source,
-    expectedProgram: program2,
-    expectedErrors: []
+    expectedResult: program2
+
   }, {
     name: 'program 3',
     sourceCode: program3Source,
-    expectedProgram: program3,
-    expectedErrors: []
+    expectedResult: program3
+
   }, {
     name: 'array dimension mismatch',
     sourceCode: arrayDimMismatchSource,
-    expectedErrors: arrayDimMismatchError
+    expectedResult: arrayDimMismatchError
   }]
 
   for (const testcase of testcases) {
     it(testcase.name, () => {
-      const { value: tokens, errors: scanErrors } = tokenize(testcase.sourceCode)
-      if (scanErrors.length > 0) {
-        expect(scanErrors).toStrictEqual(testcase.expectedErrors)
-        return
-      }
-
-      if (tokens == null) fail()
-
-      const { value: ast, errors: parseErrors } = parse(tokens)
-      if (parseErrors.length > 0) {
-        expect(parseErrors).toStrictEqual(testcase.expectedErrors)
-        return
-      }
-
-      if (ast == null) fail()
-
-      const { value: program, errors } = analyze(ast)
-
-      expect(errors).toStrictEqual(testcase.expectedErrors)
-
-      if (testcase.expectedProgram !== undefined) {
-        if (program === undefined) {
-          fail()
+      let program: Program
+      try {
+        const tokens = tokenize(testcase.sourceCode)
+        const ast = parse(tokens)
+        program = analyze(ast)
+      } catch (e) {
+        const err = e as CompileError
+        for (let i = 0; i < err.errors.length; i++) {
+          expect(err.errors[i].message).toStrictEqual(testcase.expectedResult[i])
         }
-        expect(encodeProgram(program)).toStrictEqual(testcase.expectedProgram)
+        return
       }
+
+      expect(encodeProgram(program)).toStrictEqual(testcase.expectedResult)
     })
   }
 })

@@ -12,6 +12,7 @@
     },
     "ignorePatterns": ["dist/*.js"],
     "rules": {
+        "@typescript-eslint/no-non-null-assertion": "off",
         "max-len": ["warn", { "code": 120 }]
     }
 }

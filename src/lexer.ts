@@ -104,6 +104,7 @@ class Lexer {
       integer: TokenKind.INTEGER,
       boolean: TokenKind.BOOLEAN,
       byte: TokenKind.BYTE,
+      real: TokenKind.REAL,
       and: TokenKind.AND,
       not: TokenKind.NOT,
       or: TokenKind.OR,

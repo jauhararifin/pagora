@@ -92,7 +92,7 @@ function encodeValType (t: ValType): number[] {
 // Reference: https://webassembly.github.io/spec/core/binary/types.html#result-types
 function encodeResultType (type: ResultType): number[] {
   return [
-    ...encodeU32(type.length),
+    ...encodeU32(type[0].length),
     ...type[0].flatMap(encodeValType)
   ]
 }
