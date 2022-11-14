@@ -79,13 +79,14 @@ export interface ArrayTypeNode {
   type: TypeExprNode
 }
 
-export type StatementNode = VarStatementNode |
-AssignStatementNode |
-ReturnStatementNode |
-IfStatementNode |
-WhileStatementNode |
-BlockStatementNode |
-ExprStatementNode
+export type StatementNode =
+  | VarStatementNode
+  | AssignStatementNode
+  | ReturnStatementNode
+  | IfStatementNode
+  | WhileStatementNode
+  | BlockStatementNode
+  | ExprStatementNode
 
 export enum StatementNodeKind {
   VAR = 'VAR',
@@ -145,15 +146,15 @@ export interface ExprStatementNode {
 }
 
 export type ExprNode =
-IdentExprNode |
-IntegerLitExprNode |
-BooleanLitExprNode |
-BinaryExprNode |
-UnaryExprNode |
-CallExprNode |
-ArrayIndexExprNode |
-CastExprNode |
-GroupedExprNode
+  | IdentExprNode
+  | IntegerLitExprNode
+  | BooleanLitExprNode
+  | BinaryExprNode
+  | UnaryExprNode
+  | CallExprNode
+  | ArrayIndexExprNode
+  | CastExprNode
+  | GroupedExprNode
 
 export enum ExprNodeKind {
   IDENT = 'IDENT',

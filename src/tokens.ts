@@ -3,16 +3,17 @@ export class Token {
   value: string
   position: Position
 
-  constructor (kind: TokenKind, value: string, pos: Position) {
+  constructor(kind: TokenKind, value: string, pos: Position) {
     this.kind = kind
     this.value = value
     this.position = pos
   }
 
-  repr (): string {
-    return this.kind.toString() + (!KEYWORD.has(this.kind)
-      ? `(${this.value.toString()})`
-      : '')
+  repr(): string {
+    return (
+      this.kind.toString() +
+      (!KEYWORD.has(this.kind) ? `(${this.value.toString()})` : '')
+    )
   }
 }
 
@@ -20,12 +21,12 @@ export class Position {
   line: number
   col: number
 
-  constructor (line: number, col: number) {
+  constructor(line: number, col: number) {
     this.line = line
     this.col = col
   }
 
-  toString (): string {
+  toString(): string {
     return `${this.line}:${this.col}`
   }
 }
@@ -108,7 +109,7 @@ export const PrimitiveTypes = [
   TokenKind.INTEGER,
   TokenKind.BYTE,
   TokenKind.REAL,
-  TokenKind.BOOLEAN
+  TokenKind.BOOLEAN,
 ]
 
 const KEYWORD = new Set([
@@ -165,5 +166,5 @@ const KEYWORD = new Set([
   TokenKind.INTEGER,
   TokenKind.BYTE,
   TokenKind.REAL,
-  TokenKind.BOOLEAN
+  TokenKind.BOOLEAN,
 ])

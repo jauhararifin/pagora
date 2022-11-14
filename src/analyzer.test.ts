@@ -19,14 +19,31 @@ end
 `
 
 const program1 = [
-  ['func', 'aplusb', [['a', 'INTEGER'], ['b', 'INTEGER']], 'INTEGER', [
-    ['return', ['PLUS', ['ident', 'a'], ['ident', 'b']]]
-  ]],
-  ['main', [
-    ['var', 'a', 'INTEGER', '10'],
-    ['var', 'b', 'INTEGER', '20'],
-    ['call', ['ident', 'aplusb'], [['ident', 'a'], ['ident', 'b']]]
-  ]]
+  [
+    'func',
+    'aplusb',
+    [
+      ['a', 'INTEGER'],
+      ['b', 'INTEGER'],
+    ],
+    'INTEGER',
+    [['return', ['PLUS', ['ident', 'a'], ['ident', 'b']]]],
+  ],
+  [
+    'main',
+    [
+      ['var', 'a', 'INTEGER', '10'],
+      ['var', 'b', 'INTEGER', '20'],
+      [
+        'call',
+        ['ident', 'aplusb'],
+        [
+          ['ident', 'a'],
+          ['ident', 'b'],
+        ],
+      ],
+    ],
+  ],
 ]
 
 const program2Source = `
@@ -54,21 +71,40 @@ end
 `
 
 const program2 = [
-  ['main', [
-    ['var', 'n', 'INTEGER', '10'],
-    ['var', 'i', 'INTEGER', '0'],
-    ['while', ['LESS_THAN', ['ident', 'i'], ['ident', 'n']], [
-      ['var', 'j', 'INTEGER', '0'],
-      ['while', ['LESS_THAN', ['ident', 'j'], ['MINUS', ['ident', 'n'], ['MINUS', ['ident', 'i'], '1']]], [
-        ['assign', ['ident', 'j'], ['PLUS', ['ident', 'j'], '1']]
-      ]],
-      ['assign', ['ident', 'j'], '0'],
-      ['while', ['LESS_THAN', ['ident', 'j'], ['PLUS', ['MUL', ['ident', 'i'], '2'], '1']], [
-        ['assign', ['ident', 'j'], ['PLUS', ['ident', 'j'], '1']]
-      ]],
-      ['assign', ['ident', 'i'], ['PLUS', ['ident', 'i'], '1']]
-    ]]
-  ]]
+  [
+    'main',
+    [
+      ['var', 'n', 'INTEGER', '10'],
+      ['var', 'i', 'INTEGER', '0'],
+      [
+        'while',
+        ['LESS_THAN', ['ident', 'i'], ['ident', 'n']],
+        [
+          ['var', 'j', 'INTEGER', '0'],
+          [
+            'while',
+            [
+              'LESS_THAN',
+              ['ident', 'j'],
+              ['MINUS', ['ident', 'n'], ['MINUS', ['ident', 'i'], '1']],
+            ],
+            [['assign', ['ident', 'j'], ['PLUS', ['ident', 'j'], '1']]],
+          ],
+          ['assign', ['ident', 'j'], '0'],
+          [
+            'while',
+            [
+              'LESS_THAN',
+              ['ident', 'j'],
+              ['PLUS', ['MUL', ['ident', 'i'], '2'], '1'],
+            ],
+            [['assign', ['ident', 'j'], ['PLUS', ['ident', 'j'], '1']]],
+          ],
+          ['assign', ['ident', 'i'], ['PLUS', ['ident', 'i'], '1']],
+        ],
+      ],
+    ],
+  ],
 ]
 
 const program3Source = `
@@ -80,9 +116,7 @@ end
 
 const program3 = [
   ['var', 'some_array', ['array', ['10', '10'], 'INTEGER'], undefined],
-  ['main', [
-    ['assign', ['index', ['ident', 'some_array'], ['10', '10']], '2']
-  ]]
+  ['main', [['assign', ['index', ['ident', 'some_array'], ['10', '10']], '2']]],
 ]
 
 const arrayDimMismatchSource = `
@@ -93,7 +127,7 @@ end
 `
 
 const arrayDimMismatchError: string[] = [
-  'Error at 4:13: Wrong number of index. Expected 3, got 2'
+  'Error at 4:13: Wrong number of index. Expected 3, got 2',
 ]
 
 interface Testcase {
@@ -103,26 +137,28 @@ interface Testcase {
 }
 
 describe('analyzer test', () => {
-  const testcases: Testcase[] = [{
-    name: 'program 1',
-    sourceCode: program1Source,
-    expectedResult: program1
-
-  }, {
-    name: 'program 2',
-    sourceCode: program2Source,
-    expectedResult: program2
-
-  }, {
-    name: 'program 3',
-    sourceCode: program3Source,
-    expectedResult: program3
-
-  }, {
-    name: 'array dimension mismatch',
-    sourceCode: arrayDimMismatchSource,
-    expectedResult: arrayDimMismatchError
-  }]
+  const testcases: Testcase[] = [
+    {
+      name: 'program 1',
+      sourceCode: program1Source,
+      expectedResult: program1,
+    },
+    {
+      name: 'program 2',
+      sourceCode: program2Source,
+      expectedResult: program2,
+    },
+    {
+      name: 'program 3',
+      sourceCode: program3Source,
+      expectedResult: program3,
+    },
+    {
+      name: 'array dimension mismatch',
+      sourceCode: arrayDimMismatchSource,
+      expectedResult: arrayDimMismatchError,
+    },
+  ]
 
   for (const testcase of testcases) {
     it(testcase.name, () => {
@@ -134,7 +170,9 @@ describe('analyzer test', () => {
       } catch (e) {
         const err = e as CompileError
         for (let i = 0; i < err.errors.length; i++) {
-          expect(err.errors[i].message).toStrictEqual(testcase.expectedResult[i])
+          expect(err.errors[i].message).toStrictEqual(
+            testcase.expectedResult[i]
+          )
         }
         return
       }

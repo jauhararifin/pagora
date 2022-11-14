@@ -32,7 +32,13 @@ export enum TypeKind {
 }
 
 export interface PrimitiveType {
-  kind: TypeKind.INTEGER | TypeKind.REAL | TypeKind.BOOLEAN | TypeKind.STRING | TypeKind.BYTE | TypeKind.VOID
+  kind:
+    | TypeKind.INTEGER
+    | TypeKind.REAL
+    | TypeKind.BOOLEAN
+    | TypeKind.STRING
+    | TypeKind.BYTE
+    | TypeKind.VOID
 }
 
 export const Integer: Type = { kind: TypeKind.INTEGER }
@@ -54,13 +60,14 @@ export interface FunctionType {
   return: Type
 }
 
-export type Statement = BlockStatement
-| VarStatement
-| IfStatement
-| WhileStatement
-| AssignStatement
-| ExprStatement
-| ReturnStatement
+export type Statement =
+  | BlockStatement
+  | VarStatement
+  | IfStatement
+  | WhileStatement
+  | AssignStatement
+  | ExprStatement
+  | ReturnStatement
 
 export enum StatementKind {
   BLOCK = 'BLOCK',
@@ -117,15 +124,16 @@ export interface ReturnStatement {
   value?: Expr
 }
 
-export type Expr = BinaryExpr
-| UnaryExpr
-| IndexExpr
-| CastExpr
-| CallExpr
-| IntegerLitExpr
-| CharLitExpr
-| BooleanLitExpr
-| IdentExpr
+export type Expr =
+  | BinaryExpr
+  | UnaryExpr
+  | IndexExpr
+  | CastExpr
+  | CallExpr
+  | IntegerLitExpr
+  | CharLitExpr
+  | BooleanLitExpr
+  | IdentExpr
 
 export interface ExprBase {
   kind: ExprKind
@@ -185,7 +193,7 @@ export enum UnaryOp {
   PLUS = 'PLUS',
   MINUS = 'MINUS',
   NOT = 'NOT',
-  BIT_NOT = 'BIT_NOT'
+  BIT_NOT = 'BIT_NOT',
 }
 
 export interface IndexExpr extends ExprBase {

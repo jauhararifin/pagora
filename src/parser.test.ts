@@ -21,9 +21,9 @@ describe('tokenize test', () => {
           'COLON',
           'INTEGER',
           undefined,
-          undefined
-        ]
-      ]
+          undefined,
+        ],
+      ],
     },
     {
       name: 'various primitive type',
@@ -35,10 +35,24 @@ describe('tokenize test', () => {
       `,
       expectedResult: [
         ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'REAL', undefined, undefined],
-        ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'BOOLEAN', undefined, undefined],
+        [
+          'VAR',
+          'IDENTIFIER(some_var)',
+          'COLON',
+          'BOOLEAN',
+          undefined,
+          undefined,
+        ],
         ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'BYTE', undefined, undefined],
-        ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'INTEGER', undefined, undefined]
-      ]
+        [
+          'VAR',
+          'IDENTIFIER(some_var)',
+          'COLON',
+          'INTEGER',
+          undefined,
+          undefined,
+        ],
+      ],
     },
     {
       name: 'variable with array type',
@@ -48,37 +62,57 @@ describe('tokenize test', () => {
           'VAR',
           'IDENTIFIER(some_var)',
           'COLON',
-          ['ARRAY', 'OPEN_SQUARE', ['INTEGER_LITERAL(10)', 'INTEGER_LITERAL(20)'], 'CLOSE_SQUARE', 'OF', 'INTEGER'],
+          [
+            'ARRAY',
+            'OPEN_SQUARE',
+            ['INTEGER_LITERAL(10)', 'INTEGER_LITERAL(20)'],
+            'CLOSE_SQUARE',
+            'OF',
+            'INTEGER',
+          ],
           undefined,
-          undefined
-        ]
-      ]
+          undefined,
+        ],
+      ],
     },
     {
       name: 'plus and multiply precedence',
       sourceCode: 'begin 1 + 2 * 3 + 4 / 5; end',
       expectedResult: [
-        ['BEGIN', [
-          ['INTEGER_LITERAL(1)', 'PLUS', [
-            ['INTEGER_LITERAL(2)', 'MULTIPLY', 'INTEGER_LITERAL(3)'],
-            'PLUS',
-            ['INTEGER_LITERAL(4)', 'DIV', 'INTEGER_LITERAL(5)']
-          ]]
-        ], 'END']
-      ]
+        [
+          'BEGIN',
+          [
+            [
+              'INTEGER_LITERAL(1)',
+              'PLUS',
+              [
+                ['INTEGER_LITERAL(2)', 'MULTIPLY', 'INTEGER_LITERAL(3)'],
+                'PLUS',
+                ['INTEGER_LITERAL(4)', 'DIV', 'INTEGER_LITERAL(5)'],
+              ],
+            ],
+          ],
+          'END',
+        ],
+      ],
     },
     {
       name: 'plus and multiply precedence 2',
       sourceCode: 'begin i*2+1; end',
       expectedResult: [
-        ['BEGIN', [
+        [
+          'BEGIN',
           [
-            ['IDENTIFIER(i)', 'MULTIPLY', 'INTEGER_LITERAL(2)'],
-            'PLUS',
-            'INTEGER_LITERAL(1)']
-        ], 'END']
-      ]
-    }
+            [
+              ['IDENTIFIER(i)', 'MULTIPLY', 'INTEGER_LITERAL(2)'],
+              'PLUS',
+              'INTEGER_LITERAL(1)',
+            ],
+          ],
+          'END',
+        ],
+      ],
+    },
   ]
 
   for (const testcase of testcases) {

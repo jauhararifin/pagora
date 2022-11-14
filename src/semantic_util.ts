@@ -22,51 +22,59 @@ import {
   UnaryExpr,
   VarStatement,
   Variable,
-  WhileStatement
+  WhileStatement,
 } from './semantic'
 
 // encodeProgram encodes analyzed program so that it can be represented in more human readable format
 // this is useful for testing purpose.
-export function encodeProgram (program: Program): any {
+export function encodeProgram(program: Program): any {
   const functions = program.functions.map(encodeFunction)
   const globals = program.globals.map(encodeVariable)
   const body = encodeBlockStmt(program.main)
   return [...functions, ...globals, ['main', body]]
 }
 
-function encodeFunction (func: Function): any {
+function encodeFunction(func: Function): any {
   return [
     'func',
     func.name,
-    func.arguments.map(arg => [arg.name, encodeType(arg.type)]),
+    func.arguments.map((arg) => [arg.name, encodeType(arg.type)]),
     encodeType(func.type.return),
-    encodeBlockStmt(func.body)
+    encodeBlockStmt(func.body),
   ]
 }
 
-function encodeType (type: Type): any {
+function encodeType(type: Type): any {
   const primitiveKind = [
     TypeKind.INTEGER,
     TypeKind.REAL,
     TypeKind.BOOLEAN,
     TypeKind.STRING,
     TypeKind.BYTE,
-    TypeKind.VOID
+    TypeKind.VOID,
   ]
   if (primitiveKind.includes(type.kind)) {
     return type.kind.toString()
   }
 
   if (type.kind === TypeKind.ARRAY) {
-    return ['array', type.dimension.map(d => d.toString()), encodeType(type.type)]
+    return [
+      'array',
+      type.dimension.map((d) => d.toString()),
+      encodeType(type.type),
+    ]
   }
 
   if (type.kind === TypeKind.FUNCTION) {
-    return ['func', type.arguments.map(arg => encodeType(arg)), encodeType(type.return)]
+    return [
+      'func',
+      type.arguments.map((arg) => encodeType(arg)),
+      encodeType(type.return),
+    ]
   }
 }
 
-function encodeStmt (stmt: Statement): any {
+function encodeStmt(stmt: Statement): any {
   switch (stmt.kind) {
     case StatementKind.BLOCK:
       return encodeBlockStmt(stmt)
@@ -85,56 +93,52 @@ function encodeStmt (stmt: Statement): any {
   }
 }
 
-function encodeBlockStmt (stmt: BlockStatement): any {
-  return stmt.body.map(stmt => encodeStmt(stmt))
+function encodeBlockStmt(stmt: BlockStatement): any {
+  return stmt.body.map((stmt) => encodeStmt(stmt))
 }
 
-function encodeVarStmt (stmt: VarStatement): any {
+function encodeVarStmt(stmt: VarStatement): any {
   return encodeVariable(stmt.variable)
 }
 
-function encodeVariable (variable: Variable): any {
+function encodeVariable(variable: Variable): any {
   return [
     'var',
     variable.name,
     encodeType(variable.type),
-    variable.value !== undefined ? encodeExpr(variable.value) : undefined
+    variable.value !== undefined ? encodeExpr(variable.value) : undefined,
   ]
 }
 
-function encodeAssignStmt (stmt: AssignStatement): any {
+function encodeAssignStmt(stmt: AssignStatement): any {
   return ['assign', encodeExpr(stmt.target), encodeExpr(stmt.value)]
 }
 
-function encodeExprStmt (stmt: ExprStatement): any {
+function encodeExprStmt(stmt: ExprStatement): any {
   return encodeExpr(stmt.value)
 }
 
-function encodeIfStmt (stmt: IfStatement): any {
+function encodeIfStmt(stmt: IfStatement): any {
   return [
     'if',
     encodeExpr(stmt.condition),
     encodeStmt(stmt.body),
-    stmt.else !== undefined ? encodeStmt(stmt.else) : undefined
+    stmt.else !== undefined ? encodeStmt(stmt.else) : undefined,
   ]
 }
 
-function encodeWhileStmt (stmt: WhileStatement): any {
-  return [
-    'while',
-    encodeExpr(stmt.condition),
-    encodeStmt(stmt.body)
-  ]
+function encodeWhileStmt(stmt: WhileStatement): any {
+  return ['while', encodeExpr(stmt.condition), encodeStmt(stmt.body)]
 }
 
-function encodeReturnStmt (stmt: ReturnStatement): any {
+function encodeReturnStmt(stmt: ReturnStatement): any {
   return [
     'return',
-    stmt.value !== undefined ? encodeExpr(stmt.value) : undefined
+    stmt.value !== undefined ? encodeExpr(stmt.value) : undefined,
   ]
 }
 
-function encodeExpr (expr: Expr): any {
+function encodeExpr(expr: Expr): any {
   switch (expr.kind) {
     case ExprKind.IDENT:
       return encodeIdentExpr(expr)
@@ -155,34 +159,34 @@ function encodeExpr (expr: Expr): any {
   }
 }
 
-function encodeIdentExpr (expr: IdentExpr): any {
+function encodeIdentExpr(expr: IdentExpr): any {
   return ['ident', expr.ident]
 }
 
-function encodeIntegerLitExpr (expr: IntegerLitExpr): any {
+function encodeIntegerLitExpr(expr: IntegerLitExpr): any {
   return expr.value.toString()
 }
 
-function encodeBooleanLitExpr (expr: BooleanLitExpr): any {
+function encodeBooleanLitExpr(expr: BooleanLitExpr): any {
   return expr.value
 }
 
-function encodeBinaryExpr (expr: BinaryExpr): any {
+function encodeBinaryExpr(expr: BinaryExpr): any {
   return [expr.op, encodeExpr(expr.a), encodeExpr(expr.b)]
 }
 
-function encodeUnaryExpr (expr: UnaryExpr): any {
+function encodeUnaryExpr(expr: UnaryExpr): any {
   return [expr.op, encodeExpr(expr.value)]
 }
 
-function encodeCallExpr (expr: CallExpr): any {
+function encodeCallExpr(expr: CallExpr): any {
   return ['call', encodeExpr(expr.function), expr.arguments.map(encodeExpr)]
 }
 
-function encodeArrayIndexExpr (expr: IndexExpr): any {
+function encodeArrayIndexExpr(expr: IndexExpr): any {
   return ['index', encodeExpr(expr.array), expr.indices.map(encodeExpr)]
 }
 
-function encodeCastExpr (expr: CastExpr): any {
+function encodeCastExpr(expr: CastExpr): any {
   return ['cast', encodeExpr(expr.source), encodeType(expr.type)]
 }
