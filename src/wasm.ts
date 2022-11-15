@@ -7,6 +7,7 @@ export type Byte = number
 
 // Reference: https://webassembly.github.io/spec/core/syntax/values.html#integers
 export type I64 = bigint
+export type I32 = number
 export type U32 = number
 
 // Reference: https://webassembly.github.io/spec/core/syntax/values.html#names
@@ -58,39 +59,69 @@ export type Instr =
 // Reference: https://webassembly.github.io/spec/core/syntax/instructions.html#numeric-instructions
 export type NumericInstr =
   | ['i64.const', I64]
+  | ['i32.const', I32]
   // unary
   | ['i64.clz']
+  | ['i32.clz']
   | ['i64.ctz']
+  | ['i32.ctz']
   | ['i64.popcnt']
+  | ['i32.popcnt']
   // binary
   | ['i64.add']
+  | ['i32.add']
   | ['i64.sub']
+  | ['i32.sub']
   | ['i64.mul']
+  | ['i32.mul']
   | ['i64.div_u']
+  | ['i32.div_u']
   | ['i64.div_s']
+  | ['i32.div_s']
   | ['i64.rem_u']
+  | ['i32.rem_u']
   | ['i64.rem_s']
+  | ['i32.rem_s']
   | ['i64.and']
+  | ['i32.and']
   | ['i64.or']
+  | ['i32.or']
   | ['i64.xor']
+  | ['i32.xor']
   | ['i64.shl']
+  | ['i32.shl']
   | ['i64.shl_u']
+  | ['i32.shl_u']
   | ['i64.shl_s']
+  | ['i32.shl_s']
   | ['i64.rotl']
+  | ['i32.rotl']
   | ['i64.rotr']
+  | ['i32.rotr']
   // test
   | ['i64.eqz']
+  | ['i32.eqz']
   // comparison
   | ['i64.eq']
+  | ['i32.eq']
   | ['i64.ne']
+  | ['i32.ne']
   | ['i64.lt_u']
+  | ['i32.lt_u']
   | ['i64.lt_s']
+  | ['i32.lt_s']
   | ['i64.gt_u']
+  | ['i32.gt_u']
   | ['i64.gt_s']
+  | ['i32.gt_s']
   | ['i64.le_u']
+  | ['i32.le_u']
   | ['i64.le_s']
+  | ['i32.le_s']
   | ['i64.ge_u']
+  | ['i32.ge_u']
   | ['i64.ge_s']
+  | ['i32.ge_s']
 
 // Reference: https://webassembly.github.io/spec/core/syntax/instructions.html#reference-instructions
 export type ReferenceInstr =

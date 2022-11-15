@@ -84,6 +84,9 @@ export function analyze(ast: RootNode): Program {
   return new Analyzer().analyze(ast)
 }
 
+// TODO: add checking in the function body. Make sure that a function with return type always return.
+// TODO: add native function.
+// TODO: support any type
 class Analyzer {
   functions: Function[] = []
   globals: Variable[] = []

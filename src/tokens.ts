@@ -38,7 +38,6 @@ export enum TokenKind {
 
   VAR = 'VAR',
   TYPE = 'TYPE',
-  STRUCT = 'STRUCT',
   AS = 'AS',
   IDENTIFIER = 'IDENTIFIER',
   FUNCTION = 'FUNCTION',
@@ -49,9 +48,6 @@ export enum TokenKind {
 
   BEGIN = 'BEGIN',
   END = 'END',
-
-  ARRAY = 'ARRAY',
-  OF = 'OF',
 
   OPEN_SQUARE = 'OPEN_SQUARE',
   CLOSE_SQUARE = 'CLOSE_SQUARE',
@@ -103,6 +99,9 @@ export enum TokenKind {
   BYTE = 'BYTE',
   REAL = 'REAL',
   BOOLEAN = 'BOOLEAN',
+  ARRAY = 'ARRAY',
+  OF = 'OF',
+  STRUCT = 'STRUCT',
 }
 
 export const PrimitiveTypes = [

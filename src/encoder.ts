@@ -12,7 +12,7 @@ import {
   RefType,
   ResultType,
   ValType,
-} from './wasm_ir'
+} from './wasm'
 
 // Reference: https://webassembly.github.io/spec/core/binary/conventions.html#vectors
 function encodeVec<T>(content: T[], encoder: (v: T) => number[]): number[] {

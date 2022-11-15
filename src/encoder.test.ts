@@ -1,4 +1,4 @@
-import { Module } from './wasm_ir'
+import { Module } from './wasm'
 import { encodeModule } from './encoder'
 
 const simpleProgram: Module = {
