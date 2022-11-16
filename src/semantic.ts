@@ -133,6 +133,8 @@ export type Expr =
   | IntegerLitExpr
   | CharLitExpr
   | BooleanLitExpr
+  | StringLitExpr
+  | ArrayLitExpr
   | IdentExpr
 
 export interface ExprBase {
@@ -152,7 +154,9 @@ export enum ExprKind {
   CALL = 'CALL',
   INTEGER_LIT = 'INTEGER_LIT',
   CHAR_LIT = 'CHAR_LIT',
+  STRING_LIT = 'STRING_LIT',
   BOOLEAN_LIT = 'BOOLEAN_LIT',
+  ARRAY_LIT = 'ARRAY_LIT',
   IDENT = 'IDENT',
 }
 
@@ -227,6 +231,16 @@ export interface CharLitExpr extends ExprBase {
 export interface BooleanLitExpr extends ExprBase {
   kind: ExprKind.BOOLEAN_LIT
   value: boolean
+}
+
+export interface StringLitExpr extends ExprBase {
+  kind: ExprKind.STRING_LIT
+  value: string
+}
+
+export interface ArrayLitExpr extends ExprBase {
+  kind: ExprKind.ARRAY_LIT
+  values: Expr[]
 }
 
 export interface IdentExpr extends ExprBase {

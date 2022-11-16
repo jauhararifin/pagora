@@ -158,22 +158,39 @@ class Parser {
     }
 
     const token = this.peek()
+    let result: StatementNode | undefined
     switch (token.kind) {
       case TokenKind.BEGIN:
-        return this.parseBlockStatement()
+        result = this.parseBlockStatement()
+        break
       case TokenKind.IF:
-        return this.parseIfStatement()
+        result = this.parseIfStatement()
+        break
       case TokenKind.WHILE:
-        return this.parseWhileStatement()
+        result = this.parseWhileStatement()
+        break
       case TokenKind.VAR:
-        return this.parseVarStatement()
+        result = this.parseVarStatement()
+        break
       case TokenKind.RETURN:
-        return this.parseReturnStatement()
+        result = this.parseReturnStatement()
+        break
+      case TokenKind.CONTINUE:
+        result = this.parseContinueStatement()
+        break
+      case TokenKind.BREAK:
+        result = this.parseBreakStatement()
+        break
       case TokenKind.END:
-        return undefined
+        result = undefined
+        break
       default:
-        return this.parseAssignStatement()
+        result = this.parseAssignStatement()
+        break
     }
+
+    this.consumeIfMatch([TokenKind.SEMICOLON])
+    return result
   }
 
   private parseBlockStatement(): BlockStatementNode {
@@ -222,7 +239,8 @@ class Parser {
       condition,
       then: thenToken,
       body,
-      else: elseBody,
+      else: elseToken,
+      elseBody,
     }
   }
 
@@ -245,10 +263,32 @@ class Parser {
   }
 
   private parseReturnStatement(): StatementNode {
+    const ret = this.expectEither([TokenKind.RETURN])
+    if (this.peek().kind === TokenKind.SEMICOLON) {
+      return {
+        kind: StatementNodeKind.RETURN,
+        return: ret,
+      }
+    }
+
     return {
       kind: StatementNodeKind.RETURN,
-      return: this.expectEither([TokenKind.RETURN]),
+      return: ret,
       value: this.parseExpr(),
+    }
+  }
+
+  private parseContinueStatement(): StatementNode {
+    return {
+      kind: StatementNodeKind.CONTINUE,
+      continue: this.expectEither([TokenKind.CONTINUE]),
+    }
+  }
+
+  private parseBreakStatement(): StatementNode {
+    return {
+      kind: StatementNodeKind.BREAK,
+      break: this.expectEither([TokenKind.BREAK]),
     }
   }
 
@@ -499,6 +539,9 @@ class Parser {
     } else if (token.kind === TokenKind.IDENTIFIER) {
       const name = this.next()
       return { kind: ExprNodeKind.IDENT, name }
+    } else if (token.kind === TokenKind.STRING_LITERAL) {
+      const value = this.next()
+      return { kind: ExprNodeKind.STRING_LIT, value }
     } else {
       const token = this.next()
       throw new UnexpectedToken('Expression', token)

@@ -83,6 +83,8 @@ export type StatementNode =
   | VarStatementNode
   | AssignStatementNode
   | ReturnStatementNode
+  | ContinueStatementNode
+  | BreakStatementNode
   | IfStatementNode
   | WhileStatementNode
   | BlockStatementNode
@@ -94,6 +96,8 @@ export enum StatementNodeKind {
   RETURN = 'RETURN',
   IF = 'IF',
   WHILE = 'WHILE',
+  CONTINUE = 'CONTINUE',
+  BREAK = 'BREAK',
   BLOCK = 'BLOCK',
   EXPR = 'EXPR',
 }
@@ -116,13 +120,24 @@ export interface ReturnStatementNode {
   value?: ExprNode
 }
 
+export interface ContinueStatementNode {
+  kind: StatementNodeKind.CONTINUE
+  continue: Token
+}
+
+export interface BreakStatementNode {
+  kind: StatementNodeKind.BREAK
+  break: Token
+}
+
 export interface IfStatementNode {
   kind: StatementNodeKind.IF
   if: Token
   condition: ExprNode
   then: Token
   body: StatementNode
-  else?: StatementNode
+  else?: Token
+  elseBody?: StatementNode
 }
 
 export interface WhileStatementNode {
@@ -149,6 +164,8 @@ export type ExprNode =
   | IdentExprNode
   | IntegerLitExprNode
   | BooleanLitExprNode
+  | ArrayLitExprNode
+  | StringLitExprNode
   | BinaryExprNode
   | UnaryExprNode
   | CallExprNode
@@ -163,6 +180,7 @@ export enum ExprNodeKind {
   BOOLEAN_LIT = 'BOOLEAN_LIT',
   ARRAY_LIT = 'ARRAY_LIT',
   TUPLE_LIT = 'TUPLE_LIT',
+  STRING_LIT = 'STRING_LIT',
   BINARY = 'BINARY',
   UNARY = 'UNARY',
   CALL = 'CALL',
@@ -186,6 +204,18 @@ export interface IntegerLitExprNode {
 export interface BooleanLitExprNode {
   kind: ExprNodeKind.BOOLEAN_LIT
   value: Token
+}
+
+export interface StringLitExprNode {
+  kind: ExprNodeKind.STRING_LIT
+  value: Token
+}
+
+export interface ArrayLitExprNode {
+  kind: ExprNodeKind.ARRAY_LIT
+  openSquare: Token
+  value: CommaSeparatedExpr
+  closeSquare: Token
 }
 
 export interface BinaryExprNode {

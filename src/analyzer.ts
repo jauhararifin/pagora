@@ -33,9 +33,12 @@ import {
   Void,
   WhileStatement,
   Byte,
+  ArrayLitExpr,
+  StringLitExpr,
 } from './semantic'
 import {
   ArrayIndexExprNode,
+  ArrayLitExprNode,
   ArrayTypeNode,
   AssignStatementNode,
   BinaryExprNode,
@@ -55,6 +58,7 @@ import {
   RootNode,
   StatementNode,
   StatementNodeKind,
+  StringLitExprNode,
   TypeExprNode,
   TypeExprNodeKind,
   UnaryExprNode,
@@ -199,6 +203,9 @@ class Analyzer {
         return this.analyzeWhileStatement(statement)
       case StatementNodeKind.RETURN:
         return this.analyzeReturnStatement(statement)
+      case StatementNodeKind.CONTINUE:
+      case StatementNodeKind.BREAK:
+        throw new Error('not implemented yet')
     }
   }
 
@@ -307,7 +314,7 @@ class Analyzer {
     const body = this.analyzeStatement(stmt.body)
 
     const elseStmt =
-      stmt.else != null ? this.analyzeStatement(stmt.else) : undefined
+      stmt.elseBody != null ? this.analyzeStatement(stmt.elseBody) : undefined
 
     return {
       kind: StatementKind.IF,
@@ -416,6 +423,10 @@ class Analyzer {
         return this.analyzeIntegerLitExpr(node)
       case ExprNodeKind.BOOLEAN_LIT:
         return this.analyzeBooleanLitExpr(node)
+      case ExprNodeKind.ARRAY_LIT:
+        return this.analyzeArrayLitExpr(node)
+      case ExprNodeKind.STRING_LIT:
+        return this.analyzeStringLitExpr(node)
       case ExprNodeKind.BINARY:
         return this.analyzeBinaryExpr(node)
       case ExprNodeKind.UNARY:
@@ -494,6 +505,54 @@ class Analyzer {
       position: expr.value.position,
       value,
     }
+  }
+
+  private analyzeArrayLitExpr(expr: ArrayLitExprNode): ArrayLitExpr {
+    const values: Expr[] = []
+    let isConstexpr = true
+    const constValue: Expr[] = []
+
+    for (let i = 0; i < expr.value.values.length; i++) {
+      const valNode = expr.value.values[i]
+      const value = this.analyzeExpr(valNode)
+
+      isConstexpr = isConstexpr && value.isConstexpr
+      constValue.push(value.constValue)
+      values.push(value)
+    }
+
+    for (let i = 1; i < values.length; i++) {
+      if (!this.valueIsA(values[i].type, values[0].type)) {
+        throw new TypeMismatch(values[i], values[0].type)
+      }
+    }
+
+    let elementType = values[0].type
+    let dimension = [BigInt(values.length)]
+    if (values[0].type.kind === TypeKind.ARRAY) {
+      elementType = values[0].type.type
+      dimension = [dimension[0], ...values[0].type.dimension]
+    }
+
+    const typ: Type = {
+      kind: TypeKind.ARRAY,
+      dimension,
+      type: elementType,
+    }
+
+    return {
+      kind: ExprKind.ARRAY_LIT,
+      isConstexpr,
+      constValue: isConstexpr ? constValue : undefined,
+      isAssignable: false,
+      position: expr.openSquare.position,
+      type: typ,
+      values,
+    }
+  }
+
+  private analyzeStringLitExpr(expr: StringLitExprNode): StringLitExpr {
+    throw new Error('not yet implemented')
   }
 
   private analyzeBinaryExpr(expr: BinaryExprNode): BinaryExpr {
