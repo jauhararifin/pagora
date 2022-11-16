@@ -57,14 +57,14 @@ class Lexer {
       if (
         c.c === '_' ||
         (c.c >= 'a' && c.c <= 'z') ||
-        (c.c >= 'A' && c.c <= 'A')
+        (c.c >= 'A' && c.c <= 'Z')
       ) {
         this.scanWord()
       } else if (c.c === '"' || c.c === '`') {
         this.scanString()
       } else if (c.c >= '0' && c.c <= '9') {
         this.scanNumberLiteral()
-      } else if ("'!%&|^~(){}[]*+-:<>,=;".includes(c.c)) {
+      } else if ("'!%&|^~(){}[]*+-:<>,=;%".includes(c.c)) {
         this.scanSymbol()
       } else if (c.c === '/') {
         this.next()
@@ -224,6 +224,7 @@ class Lexer {
       [['('], TokenKind.OPEN_BRAC],
       [[')'], TokenKind.CLOSE_BRAC],
       [[','], TokenKind.COMMA],
+      [['%'], TokenKind.MOD],
     ]
 
     const key = [first.c, second.c]
