@@ -133,6 +133,9 @@ class Analyzer {
         }
       } catch (e) {
         this.emitError(e as CompileErrorItem)
+        if (this.tooManyErrors()) {
+          break
+        }
       }
     }
 
@@ -218,6 +221,9 @@ class Analyzer {
         statements.push(this.analyzeStatement(stmt))
       } catch (e) {
         this.emitError(e as CompileErrorItem)
+        if (this.tooManyErrors()) {
+          break
+        }
       }
     }
 
@@ -850,10 +856,17 @@ class Analyzer {
 
     if (value.kind === TypeKind.ARRAY) {
       const targetType = target as ArrayType
-      return (
-        value.dimension === targetType.dimension &&
-        this.valueIsA(value.type, targetType.type)
-      )
+
+      if (value.dimension.length !== targetType.dimension.length) {
+        return false
+      }
+
+      for (let i = 0; i < value.dimension.length; i++)
+        if (value.dimension[i] !== targetType.dimension[i]) {
+          return false
+        }
+
+      return this.valueIsA(value.type, targetType.type)
     }
 
     if (value.kind === TypeKind.FUNCTION) {
@@ -896,6 +909,10 @@ class Analyzer {
 
   private emitError(error: CompileErrorItem): void {
     this.errors.push(error)
+  }
+
+  private tooManyErrors(): boolean {
+    return this.errors.length > 15
   }
 
   private assertTokenKind(

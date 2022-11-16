@@ -57,7 +57,7 @@ export class MultipleDeclaration extends CompileErrorItem {
 export class TypeMismatch extends CompileErrorItem {
   constructor(source: Expr, expectedType: Type | TypeKind) {
     // TODO: use proper error message
-    super('Invalid type', source.position)
+    super(`Type mismatch`, source.position)
   }
 }
 
