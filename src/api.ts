@@ -27,10 +27,32 @@ export const apis: { [funcname: string]: FunctionType } = {
     arguments: [{ kind: TypeKind.STRING }],
     return: { kind: TypeKind.VOID },
   },
-  register_event: {
+  register_on_update: {
     kind: TypeKind.FUNCTION,
-    arguments: [{ kind: TypeKind.STRING }],
+    arguments: [
+      {
+        kind: TypeKind.FUNCTION,
+        arguments: [],
+        return: { kind: TypeKind.VOID },
+      },
+    ],
     return: { kind: TypeKind.VOID },
+  },
+  register_on_keydown: {
+    kind: TypeKind.FUNCTION,
+    arguments: [
+      {
+        kind: TypeKind.FUNCTION,
+        arguments: [{ kind: TypeKind.INTEGER }],
+        return: { kind: TypeKind.VOID },
+      },
+    ],
+    return: { kind: TypeKind.VOID },
+  },
+  system_time_millis: {
+    kind: TypeKind.FUNCTION,
+    arguments: [],
+    return: { kind: TypeKind.INTEGER },
   },
   // TODO: add function to registerEvent like `onMouseClick(functionName)`
   // TODO: add function to registerEvent like `onResize(functionName)`

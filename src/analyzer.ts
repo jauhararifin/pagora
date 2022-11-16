@@ -67,6 +67,7 @@ import {
   WhileStatementNode,
 } from './ast'
 import {
+  BuiltinRedeclared,
   CompileError,
   CompileErrorItem,
   DuplicatedMain,
@@ -114,6 +115,26 @@ class Analyzer {
 
     let main: BlockStatement | undefined
     let mainToken: Token | undefined
+
+    for (const declaration of ast.declarations) {
+      if (declaration.kind === DeclKind.FUNCTION) {
+        const name = declaration.name.value
+
+        const symbol = this.getSymbol(name)
+        if (symbol !== undefined) {
+          const [declaredAt] = symbol
+          if (declaredAt instanceof Position)
+            this.emitError(
+              new MultipleDeclaration(declaredAt, declaration.name)
+            )
+          else this.emitError(new BuiltinRedeclared(declaration.name))
+          continue
+        }
+
+        const t = this.analyzeFunctionType(declaration)
+        this.addSymbol(declaration.name.value, declaration.function.position, t)
+      }
+    }
 
     for (const declaration of ast.declarations) {
       try {
@@ -165,15 +186,17 @@ class Analyzer {
     const symbol = this.getSymbol(name)
     if (symbol !== undefined) {
       const [declaredAt] = symbol
-      if (declaredAt instanceof Position)
-        this.emitError(new MultipleDeclaration(declaredAt, functionDecl.name))
-
-      // TODO: consider keep analyze the function body for better warning message
-      return
+      if (declaredAt === 'builtin') {
+        // by right the error is already thrown in the `analyze` function.
+        return
+      }
+    }
+    if (symbol === undefined) {
+      // by right every symbol should already exists
+      throw new Error('unreachable')
     }
 
-    const type = this.analyzeFunctionType(functionDecl)
-    if (type === undefined) return
+    const type = symbol[1] as FunctionType
 
     this.currentReturnType = type.return != null ? type.return : Void
 
@@ -198,7 +221,6 @@ class Analyzer {
     this.removeScope()
 
     this.functions.push({ name, type, arguments: args, body })
-    this.addSymbol(name, functionDecl.name.position, type)
   }
 
   private analyzeStatement(statement: StatementNode): Statement {
@@ -611,6 +633,10 @@ class Analyzer {
         ],
         op: BinaryOp.DIV,
       },
+      [TokenKind.MOD]: {
+        acceptedTypes: [[Integer, Integer, Integer]],
+        op: BinaryOp.MOD,
+      },
       [TokenKind.GREATER_THAN]: {
         acceptedTypes: [
           [Integer, Integer, Boolean],
@@ -697,7 +723,8 @@ class Analyzer {
     const { acceptedTypes, op } = spec
 
     const result = acceptedTypes.find(
-      ([aType, bType, rType]) => a.type === aType && b.type === bType
+      ([aType, bType, rType]) =>
+        this.valueIsA(a.type, aType) && this.valueIsA(b.type, bType)
     )
     if (result === undefined) {
       throw new InvalidBinaryOperator(a, op, b)

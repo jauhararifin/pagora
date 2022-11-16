@@ -52,6 +52,16 @@ export class MultipleDeclaration extends CompileErrorItem {
   }
 }
 
+export class BuiltinRedeclared extends CompileErrorItem {
+  constructor(declaredAt: Token) {
+    super(
+      `${
+        declaredAt.value
+      } is a builtin function, cannot be redeclared at ${declaredAt.position.toString()}`
+    )
+  }
+}
+
 export class TypeMismatch extends CompileErrorItem {
   constructor(source: Expr, expectedType: Type | TypeKind) {
     // TODO: use proper error message

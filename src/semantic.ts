@@ -172,6 +172,7 @@ export enum BinaryOp {
   MINUS = 'MINUS',
   DIV = 'DIV',
   MUL = 'MUL',
+  MOD = 'MOD',
   AND = 'AND',
   OR = 'OR',
   BIT_AND = 'BIT_AND',
