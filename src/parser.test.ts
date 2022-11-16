@@ -113,6 +113,17 @@ describe('tokenize test', () => {
         ],
       ],
     },
+    {
+      name: 'empty function call',
+      sourceCode: 'begin something(); end',
+      expectedResult: [
+        [
+          'BEGIN',
+          [['IDENTIFIER(something)', 'OPEN_BRAC', [], 'CLOSE_BRAC']],
+          'END',
+        ],
+      ],
+    },
   ]
 
   for (const testcase of testcases) {

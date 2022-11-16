@@ -33,7 +33,7 @@ class Parser {
   errors: CompileErrorItem[]
 
   constructor(tokens: Token[]) {
-    this.tokens = tokens
+    this.tokens = tokens.filter((tok) => tok.kind !== TokenKind.COMMENT)
     this.index = 0
     this.errors = []
   }
@@ -71,6 +71,7 @@ class Parser {
         }
       } catch (e) {
         this.errors.push(e as CompileErrorItem)
+        if (this.tooManyErrors()) break
       }
     }
 
@@ -97,6 +98,7 @@ class Parser {
       returnType = this.parseTypeExpr()
     }
 
+    this.expectEither([TokenKind.SEMICOLON])
     const body = this.parseBlockStatement()
 
     return {
@@ -184,6 +186,7 @@ class Parser {
         statements.push(stmt)
       } catch (e) {
         this.errors.push(e as CompileErrorItem)
+        if (this.tooManyErrors()) break
       }
     }
 
@@ -345,9 +348,6 @@ class Parser {
     const commas: Token[] = []
     while (true) {
       const expr = this.parseExpr()
-      if (expr === undefined) {
-        break
-      }
       exprs.push(expr)
 
       const commaTok = this.consumeIfMatch([TokenKind.COMMA])
@@ -452,6 +452,17 @@ class Parser {
     const openBrac = this.consumeIfMatch([TokenKind.OPEN_BRAC])
     if (openBrac == null) return callee
 
+    if (this.peek().kind === TokenKind.CLOSE_BRAC) {
+      const closeBrac = this.expectEither([TokenKind.CLOSE_BRAC])
+      return {
+        kind: ExprNodeKind.CALL,
+        callee,
+        openBrac,
+        arguments: { values: [], commas: [] },
+        closeBrac,
+      }
+    }
+
     const args = this.parseCommaSeparatedExpr()
     const closeBrac = this.expectEither([TokenKind.CLOSE_BRAC])
 
@@ -471,6 +482,11 @@ class Parser {
       const value = this.parseExpr()
       const closeBrac = this.expectEither([TokenKind.CLOSE_BRAC])
       return { kind: ExprNodeKind.GROUPED, openBrac, value, closeBrac }
+    } else if (token.kind === TokenKind.OPEN_SQUARE) {
+      const openSquare = this.next()
+      const value = this.parseCommaSeparatedExpr()
+      const closeSquare = this.expectEither([TokenKind.CLOSE_SQUARE])
+      return { kind: ExprNodeKind.ARRAY_LIT, openSquare, value, closeSquare }
     } else if (token.kind === TokenKind.INTEGER_LITERAL) {
       const value = this.next()
       return { kind: ExprNodeKind.INTEGER_LIT, value }
@@ -509,6 +525,8 @@ class Parser {
     if (expectedKinds.includes(token.kind)) {
       return token
     }
+    const got = token
+
     // TODO: improve error reporting logic. Research about this more.
     // I think this can be more celever by checking the current the parsing context.
     const stopKind = [TokenKind.SEMICOLON, TokenKind.EOF]
@@ -516,7 +534,7 @@ class Parser {
       token = this.next()
     }
 
-    throw new UnexpectedToken(expectedKinds, token)
+    throw new UnexpectedToken(expectedKinds, got)
   }
 
   private next(): Token {
@@ -550,5 +568,9 @@ class Parser {
 
   private hasNext(): boolean {
     return this.peek().kind !== TokenKind.EOF
+  }
+
+  private tooManyErrors(): boolean {
+    return this.errors.length > 15
   }
 }
