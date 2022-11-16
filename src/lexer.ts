@@ -183,8 +183,18 @@ class Lexer {
     // - hexadecimal, binary, octa
     // - floating point
     // - exponent expression
+    const isDigit = (c: string): boolean => (c >= '0' && c <= '9') || c === '_'
     const c = this.peek()
-    const value = this.consumeWhile((c) => (c >= '0' && c <= '9') || c === '_')
+    const value = this.consumeWhile(isDigit)
+
+    const dot = this.peek()
+    if (dot.c === '.') {
+      const decimals = this.consumeWhile(isDigit)
+      const realValue = value + '.' + decimals
+      this.emitToken(new Token(TokenKind.REAL_LITERAL, realValue, c.pos))
+      return
+    }
+
     this.emitToken(new Token(TokenKind.INTEGER_LITERAL, value, c.pos))
   }
 
