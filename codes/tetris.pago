@@ -53,8 +53,8 @@ var last_tetromino_index := 0;
 
 function init_game();
 begin
-    in_game = true;
-    is_over = false;
+    in_game := true;
+    is_over := false;
 
     var i := 0;
     while i < height do

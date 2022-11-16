@@ -68,6 +68,8 @@ export type Statement =
   | AssignStatement
   | ExprStatement
   | ReturnStatement
+  | BreakStatment
+  | ContinueStatement
 
 export enum StatementKind {
   BLOCK = 'BLOCK',
@@ -77,6 +79,8 @@ export enum StatementKind {
   ASSIGN = 'ASSIGN',
   EXPR = 'EXPR',
   RETURN = 'RETURN',
+  BREAK = 'BREAK',
+  CONTINUE = 'CONTINUE',
 }
 
 export interface BlockStatement {
@@ -122,6 +126,14 @@ export interface ExprStatement {
 export interface ReturnStatement {
   kind: StatementKind.RETURN
   value?: Expr
+}
+
+export interface BreakStatment {
+  kind: StatementKind.BREAK
+}
+
+export interface ContinueStatement {
+  kind: StatementKind.CONTINUE
 }
 
 export type Expr =

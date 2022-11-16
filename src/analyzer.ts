@@ -35,6 +35,8 @@ import {
   Byte,
   ArrayLitExpr,
   StringLitExpr,
+  ContinueStatement,
+  BreakStatment,
 } from './semantic'
 import {
   ArrayIndexExprNode,
@@ -44,8 +46,10 @@ import {
   BinaryExprNode,
   BlockStatementNode,
   BooleanLitExprNode,
+  BreakStatementNode,
   CallExprNode,
   CastExprNode,
+  ContinueStatementNode,
   DeclKind,
   ExprNode,
   ExprNodeKind,
@@ -54,6 +58,7 @@ import {
   IdentExprNode,
   IfStatementNode,
   IntegerLitExprNode,
+  MainDeclNode,
   ReturnStatementNode,
   RootNode,
   StatementNode,
@@ -62,6 +67,7 @@ import {
   TypeExprNode,
   TypeExprNodeKind,
   UnaryExprNode,
+  VariableDeclNode,
   VarNode,
   VarStatementNode,
   WhileStatementNode,
@@ -78,6 +84,7 @@ import {
   MultipleDeclaration,
   NotAConstant,
   NotAssignable,
+  NotInALoop,
   TypeMismatch,
   UndefinedSymbol,
   WrongNumberOfArgument,
@@ -99,10 +106,13 @@ class Analyzer {
   errors: CompileErrorItem[] = []
 
   symbolTable: Array<{ [key: string]: [Position | 'builtin', Type] }> = []
+  loopDepth: number = 0
   currentReturnType: Type = { kind: TypeKind.VOID }
 
   // TODO: skip the whole process if the number errors are too many
   analyze(ast: RootNode): Program {
+    this.loopDepth = 0
+
     // TODO: improve the language to support struct, tuple and type definition
     // This requires an additional step to load all the type names beforehand.
     // Although, at this phase, we don't need it yet.
@@ -113,56 +123,55 @@ class Analyzer {
       this.addBuiltinSymbol(name, sym)
     }
 
-    let main: BlockStatement | undefined
-    let mainToken: Token | undefined
+    const functionDecls: FunctionDeclNode[] = ast.declarations.flatMap((decl) =>
+      decl.kind === DeclKind.FUNCTION ? decl : []
+    )
+    const varDecls: VariableDeclNode[] = ast.declarations.flatMap((decl) =>
+      decl.kind === DeclKind.VARIABLE ? decl : []
+    )
+    const mainDecls: MainDeclNode[] = ast.declarations.flatMap((decl) =>
+      decl.kind === DeclKind.MAIN ? decl : []
+    )
 
-    for (const declaration of ast.declarations) {
-      if (declaration.kind === DeclKind.FUNCTION) {
-        const name = declaration.name.value
+    this.analyzeFuncSignatures(functionDecls)
 
-        const symbol = this.getSymbol(name)
-        if (symbol !== undefined) {
-          const [declaredAt] = symbol
-          if (declaredAt instanceof Position)
-            this.emitError(
-              new MultipleDeclaration(declaredAt, declaration.name)
-            )
-          else this.emitError(new BuiltinRedeclared(declaration.name))
-          continue
-        }
-
-        const t = this.analyzeFunctionType(declaration)
-        this.addSymbol(declaration.name.value, declaration.function.position, t)
-      }
-    }
-
-    for (const declaration of ast.declarations) {
+    for (const decl of varDecls) {
       try {
-        if (declaration.kind === DeclKind.FUNCTION) {
-          this.analyzeFunction(declaration)
-        } else if (declaration.kind === DeclKind.VARIABLE) {
-          const variable = this.analyzeVariable(declaration.variable, false)
-          if (variable !== undefined) {
-            this.globals.push(variable)
-          }
-        } else if (declaration.kind === DeclKind.MAIN) {
-          this.addScope()
-          const stmt = this.analyzeBlockStatement(declaration.body)
-          this.removeScope()
-          if (main !== undefined) {
-            this.emitError(
-              new DuplicatedMain(mainToken!, declaration.body.begin)
-            )
-          } else {
-            main = stmt
-            mainToken = declaration.body.begin
-          }
+        const variable = this.analyzeVariable(decl.variable, false)
+        if (variable !== undefined) {
+          this.globals.push(variable)
         }
       } catch (e) {
         this.emitError(e as CompileErrorItem)
-        if (this.tooManyErrors()) {
-          break
+        if (this.tooManyErrors()) break
+      }
+    }
+
+    for (const decl of functionDecls) {
+      try {
+        this.analyzeFunction(decl)
+      } catch (e) {
+        this.emitError(e as CompileErrorItem)
+        if (this.tooManyErrors()) break
+      }
+    }
+
+    let main: BlockStatement | undefined
+    let mainToken: Token | undefined
+    for (const decl of mainDecls) {
+      try {
+        this.addScope()
+        const stmt = this.analyzeBlockStatement(decl.body)
+        this.removeScope()
+        if (main !== undefined) {
+          this.emitError(new DuplicatedMain(mainToken!, decl.body.begin))
+        } else {
+          main = stmt
+          mainToken = decl.body.begin
         }
+      } catch (e) {
+        this.emitError(e as CompileErrorItem)
+        if (this.tooManyErrors()) break
       }
     }
 
@@ -176,6 +185,24 @@ class Analyzer {
     }
 
     return { functions: this.functions, globals: this.globals, main }
+  }
+
+  private analyzeFuncSignatures(declarations: FunctionDeclNode[]): void {
+    for (const declaration of declarations) {
+      const name = declaration.name.value
+
+      const symbol = this.getSymbol(name)
+      if (symbol !== undefined) {
+        const [declaredAt] = symbol
+        if (declaredAt instanceof Position)
+          this.emitError(new MultipleDeclaration(declaredAt, declaration.name))
+        else this.emitError(new BuiltinRedeclared(declaration.name))
+        continue
+      }
+
+      const t = this.analyzeFunctionType(declaration)
+      this.addSymbol(declaration.name.value, declaration.function.position, t)
+    }
   }
 
   private analyzeFunction(functionDecl: FunctionDeclNode): void {
@@ -240,8 +267,9 @@ class Analyzer {
       case StatementNodeKind.RETURN:
         return this.analyzeReturnStatement(statement)
       case StatementNodeKind.CONTINUE:
+        return this.analyzeContinueStatement(statement)
       case StatementNodeKind.BREAK:
-        throw new Error('not implemented yet')
+        return this.analyzeBreakStatement(statement)
     }
   }
 
@@ -371,7 +399,9 @@ class Analyzer {
       throw new TypeMismatch(condition, Boolean)
     }
 
+    this.loopDepth++
     const body = this.analyzeStatement(stmt.body)
+    this.loopDepth--
 
     return {
       kind: StatementKind.WHILE,
@@ -393,6 +423,22 @@ class Analyzer {
       }
       return { kind: StatementKind.RETURN }
     }
+  }
+
+  private analyzeContinueStatement(
+    stmt: ContinueStatementNode
+  ): ContinueStatement {
+    if (this.loopDepth === 0) {
+      throw new NotInALoop(stmt.continue)
+    }
+    return { kind: StatementKind.CONTINUE }
+  }
+
+  private analyzeBreakStatement(stmt: BreakStatementNode): BreakStatment {
+    if (this.loopDepth === 0) {
+      throw new NotInALoop(stmt.break)
+    }
+    return { kind: StatementKind.BREAK }
   }
 
   private analyzeType(node: TypeExprNode): Type {
@@ -592,7 +638,16 @@ class Analyzer {
   }
 
   private analyzeStringLitExpr(expr: StringLitExprNode): StringLitExpr {
-    throw new Error('not yet implemented')
+    const trimQuote = expr.value.value.slice(1, -1)
+    return {
+      kind: ExprKind.STRING_LIT,
+      isConstexpr: true,
+      constValue: trimQuote,
+      isAssignable: false,
+      type: { kind: TypeKind.STRING },
+      position: expr.value.position,
+      value: trimQuote,
+    }
   }
 
   private analyzeBinaryExpr(expr: BinaryExprNode): BinaryExpr {

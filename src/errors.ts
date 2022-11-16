@@ -119,6 +119,12 @@ export class InvalidUnaryOperator extends CompileErrorItem {
   }
 }
 
+export class NotInALoop extends CompileErrorItem {
+  constructor(control: Token) {
+    super('Not in a loop', control.position)
+  }
+}
+
 export class MissingMain extends CompileErrorItem {
   constructor() {
     super('Missing main in the program')
