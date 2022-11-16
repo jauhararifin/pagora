@@ -101,6 +101,10 @@ function encodeStatementNode(node: StatementNode): any[] {
       return encodeAssignStatement(node)
     case StatementNodeKind.RETURN:
       return encodeReturnStatement(node)
+    case StatementNodeKind.CONTINUE:
+      return ['continue']
+    case StatementNodeKind.BREAK:
+      return ['break']
     case StatementNodeKind.IF:
       return encodeIfStatement(node)
     case StatementNodeKind.WHILE:

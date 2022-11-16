@@ -1,7 +1,7 @@
 import { FunctionType, TypeKind } from './semantic'
 
 export const apis: { [funcname: string]: FunctionType } = {
-  drawPixel: {
+  draw_pixel: {
     kind: TypeKind.FUNCTION,
     arguments: [
       { kind: TypeKind.INTEGER }, // x
@@ -12,17 +12,22 @@ export const apis: { [funcname: string]: FunctionType } = {
     ],
     return: { kind: TypeKind.VOID },
   },
-  getWidth: {
+  get_width: {
     kind: TypeKind.FUNCTION,
     arguments: [],
     return: { kind: TypeKind.INTEGER }, // width
   },
-  getHeight: {
+  get_height: {
     kind: TypeKind.FUNCTION,
     arguments: [],
     return: { kind: TypeKind.INTEGER }, // height
   },
   output: {
+    kind: TypeKind.FUNCTION,
+    arguments: [{ kind: TypeKind.STRING }],
+    return: { kind: TypeKind.VOID },
+  },
+  register_event: {
     kind: TypeKind.FUNCTION,
     arguments: [{ kind: TypeKind.STRING }],
     return: { kind: TypeKind.VOID },

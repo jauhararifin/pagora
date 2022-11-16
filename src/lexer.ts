@@ -124,6 +124,8 @@ class Lexer {
       continue: TokenKind.CONTINUE,
       break: TokenKind.BREAK,
       return: TokenKind.RETURN,
+      true: TokenKind.TRUE,
+      false: TokenKind.FALSE,
     }
 
     const kind = word in map ? map[word] : TokenKind.IDENTIFIER

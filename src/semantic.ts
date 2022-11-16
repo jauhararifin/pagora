@@ -10,7 +10,7 @@ export interface Function {
   name: string
   type: FunctionType
   arguments: Argument[]
-  body: BlockStatement
+  body?: BlockStatement
 }
 
 export interface Argument {

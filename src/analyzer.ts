@@ -82,7 +82,8 @@ import {
   WrongNumberOfArgument,
   WrongNumberOfIndex,
 } from './errors'
-import { Token, TokenKind } from './tokens'
+import { Position, Token, TokenKind } from './tokens'
+import { apis } from './api'
 
 export function analyze(ast: RootNode): Program {
   return new Analyzer().analyze(ast)
@@ -96,7 +97,7 @@ class Analyzer {
   globals: Variable[] = []
   errors: CompileErrorItem[] = []
 
-  symbolTable: Array<{ [key: string]: [Token, Type] }> = []
+  symbolTable: Array<{ [key: string]: [Position | 'builtin', Type] }> = []
   currentReturnType: Type = { kind: TypeKind.VOID }
 
   // TODO: skip the whole process if the number errors are too many
@@ -105,6 +106,11 @@ class Analyzer {
     // This requires an additional step to load all the type names beforehand.
     // Although, at this phase, we don't need it yet.
     this.symbolTable = [{}]
+
+    for (const name in apis) {
+      const sym = apis[name]
+      this.addBuiltinSymbol(name, sym)
+    }
 
     let main: BlockStatement | undefined
     let mainToken: Token | undefined
@@ -159,7 +165,8 @@ class Analyzer {
     const symbol = this.getSymbol(name)
     if (symbol !== undefined) {
       const [declaredAt] = symbol
-      this.emitError(new MultipleDeclaration(declaredAt, functionDecl.name))
+      if (declaredAt instanceof Position)
+        this.emitError(new MultipleDeclaration(declaredAt, functionDecl.name))
 
       // TODO: consider keep analyze the function body for better warning message
       return
@@ -181,13 +188,17 @@ class Analyzer {
     this.addScope()
     for (let i = 0; i < args.length; i++) {
       const arg = args[i]
-      this.addSymbol(arg.name, functionDecl.params.params[i].name, arg.type)
+      this.addSymbol(
+        arg.name,
+        functionDecl.params.params[i].name.position,
+        arg.type
+      )
     }
     const body = this.analyzeBlockStatement(functionDecl.body)
     this.removeScope()
 
     this.functions.push({ name, type, arguments: args, body })
-    this.addSymbol(name, functionDecl.name, type)
+    this.addSymbol(name, functionDecl.name.position, type)
   }
 
   private analyzeStatement(statement: StatementNode): Statement {
@@ -252,7 +263,8 @@ class Analyzer {
     const symbol = this.getSymbol(name)
     if (symbol !== undefined) {
       const [declaredAt] = symbol
-      throw new MultipleDeclaration(declaredAt, variable.name)
+      if (declaredAt instanceof Position)
+        throw new MultipleDeclaration(declaredAt, variable.name)
     }
 
     if (variable.type === undefined && variable.value === undefined) {
@@ -282,7 +294,7 @@ class Analyzer {
       }
     }
 
-    this.addSymbol(name, variable.name, type)
+    this.addSymbol(name, variable.name.position, type)
     return { name, type, value }
   }
 
@@ -872,7 +884,7 @@ class Analyzer {
     if (value.kind === TypeKind.FUNCTION) {
       const targetType = target as FunctionType
       return (
-        value.return === targetType.return &&
+        this.valueIsA(value.return, targetType.return) &&
         value.arguments.every((t, i) =>
           this.valueIsA(t, targetType.arguments[i])
         )
@@ -887,7 +899,7 @@ class Analyzer {
     return this.valueIsA(value, target)
   }
 
-  private getSymbol(name: string): [Token, Type] | undefined {
+  private getSymbol(name: string): [Position | 'builtin', Type] | undefined {
     for (let i = this.symbolTable.length - 1; i >= 0; i--) {
       if (name in this.symbolTable[i]) {
         return this.symbolTable[i][name]
@@ -895,8 +907,12 @@ class Analyzer {
     }
   }
 
-  private addSymbol(name: string, token: Token, type: Type): void {
-    this.symbolTable[this.symbolTable.length - 1][name] = [token, type]
+  private addSymbol(name: string, pos: Position, type: Type): void {
+    this.symbolTable[this.symbolTable.length - 1][name] = [pos, type]
+  }
+
+  private addBuiltinSymbol(name: string, type: Type): void {
+    this.symbolTable[this.symbolTable.length - 1][name] = ['builtin', type]
   }
 
   private addScope(): void {

@@ -124,6 +124,11 @@ describe('tokenize test', () => {
         ],
       ],
     },
+    {
+      name: 'return boolean',
+      sourceCode: 'begin return false; end',
+      expectedResult: [['BEGIN', [['RETURN', 'FALSE']], 'END']],
+    },
   ]
 
   for (const testcase of testcases) {

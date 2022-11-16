@@ -44,11 +44,9 @@ export class UnexpectedToken extends CompileErrorItem {
 }
 
 export class MultipleDeclaration extends CompileErrorItem {
-  constructor(declaredAt: Token, redeclaredAt: Token) {
+  constructor(declaredAt: Position, redeclaredAt: Token) {
     super(
-      `${
-        declaredAt.value
-      } is already declared at ${declaredAt.position.toString()}`,
+      `${redeclaredAt.value} is already declared at ${declaredAt.toString()}`,
       redeclaredAt.position
     )
   }
