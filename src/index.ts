@@ -15,8 +15,6 @@ window.onload = function () {
   })
 
   const context = canvas.getContext('2d')!
-  context.fillStyle = '#000'
-  for (let i = 0; i < 20; i++) context.fillRect(10 + i, 10, 1, 1)
 
   const exampleSelection = document.getElementById(
     'example-selection'

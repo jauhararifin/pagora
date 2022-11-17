@@ -85,12 +85,17 @@ class Machine {
       'keydown',
       this.keydownHandler.bind(this)
     )
+    this.canvasContext.clearRect(
+      0,
+      0,
+      this.canvasContext.canvas.width,
+      this.canvasContext.canvas.height
+    )
 
     this.executeStatement(this.program.main)
   }
 
   keydownHandler(ev: KeyboardEvent): void {
-    console.log('keydown', ev.code)
     if (this.onKeyDownHandler === undefined) return
     this.onKeyDownHandler.value([{ kind: ValueKind.STRING, value: ev.code }])
   }
@@ -111,7 +116,6 @@ class Machine {
   }
 
   executeNativeFunc(name: string, args: Value[]): Value {
-    console.log('execute native function', name, args)
     switch (name) {
       case 'output':
         if (args[0].kind !== ValueKind.STRING)
@@ -158,7 +162,6 @@ class Machine {
   }
 
   executeStatement(stmt: Statement): ControlKind {
-    console.log('execute', stmt)
     switch (stmt.kind) {
       case StatementKind.BLOCK:
         return this.executeBlockStmt(stmt)
@@ -172,7 +175,7 @@ class Machine {
       case StatementKind.ASSIGN: {
         const value = this.evalExpr(stmt.value)
         const target = this.evalExpr(stmt.target)
-        target.value = value
+        target.value = value.value
         return ControlKind.NORMAL
       }
       case StatementKind.EXPR:
@@ -260,7 +263,6 @@ class Machine {
   }
 
   evalExpr(expr: Expr): Value {
-    console.log('eval expr', expr)
     switch (expr.kind) {
       case ExprKind.BINARY:
         return this.evalBinary(expr)
@@ -291,12 +293,10 @@ class Machine {
       case ExprKind.CALL: {
         const args = expr.arguments.map((v) => this.evalExpr(v))
         const func = this.evalExpr(expr.function)
-        console.log('call expr, func=', func)
         if (func.kind !== ValueKind.FUNC) {
           throw new Error('invalid state. calling non functtion')
         }
 
-        console.log('beginning call', func, args)
         return func.value(args)
       }
       case ExprKind.INTEGER_LIT:
@@ -306,7 +306,6 @@ class Machine {
       case ExprKind.STRING_LIT:
         return { kind: ValueKind.STRING, value: expr.value }
       case ExprKind.ARRAY_LIT:
-        console.log('eval array', expr)
         return {
           kind: ValueKind.ARRAY,
           value: expr.values.flatMap((v) => this.evalExpr(v)),
@@ -472,12 +471,14 @@ class Machine {
   }
 
   setSymbol(name: string, value: Value): void {
+    console.log('set', name, value)
     this.symbols[this.symbols.length - 1][name] = value
   }
 
   getSymbol(name: string): Value {
     for (let i = this.symbols.length - 1; i >= 0; i--) {
       if (name in this.symbols[i]) {
+        console.log('get', name, this.symbols[i][name])
         return this.symbols[i][name]
       }
     }

@@ -176,6 +176,7 @@ class Lexer {
       } else if (c.c === '\\') {
         afterBackslash = true
       } else if (c.c === openingQuote) {
+        value += c.c
         break
       } else {
         value += c.c
