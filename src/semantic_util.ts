@@ -40,7 +40,7 @@ function encodeFunction(func: Function): any {
     func.name,
     func.arguments.map((arg) => [arg.name, encodeType(arg.type)]),
     encodeType(func.type.return),
-    encodeBlockStmt(func.body),
+    func.body != null ? encodeBlockStmt(func.body) : undefined,
   ]
 }
 

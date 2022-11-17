@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="style.css" />
     <title>Pagora</title>
     <style>
       html, body {
@@ -24,8 +23,8 @@
         margin: 0;
         position: absolute;
       }
-      #run-btn {
-        padding: 10px 100px;
+      .title {
+        margin: 10px;
       }
       .full {
         width: 100%;
@@ -53,7 +52,12 @@
   </head>
   <body>
     <div class="full flex column">
-      <h1 class="flex-wrap text-center small-pad">Pagora</h1>
+      <h3 class="flex-wrap text-center small-pad title">Pagora</h3>
+      <div class="flex-wrap small-pad">
+        <select id="example-selection"></select>
+        <button id="interpret-btn" class="run-btn">Run (Tree Interpreter)</button>
+        <button class="run-btn">Run (WebAssembly)</button>
+      </div>
       <div class="flex-full flex">
         <div class="flex-full small-pad">
           <textarea id="editor" class="full"></textarea>
@@ -63,9 +67,6 @@
             <canvas id="canvas"></canvas>
           </div>
         </div>
-      </div>
-      <div class="flex-wrap small-pad">
-        <button id="run-btn">Run</button>
       </div>
     </div>
     <script src="./bundle.js"></script>

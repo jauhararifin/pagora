@@ -13,6 +13,10 @@ module.exports = {
         loader: 'ts-loader',
         exclude: /node_modules/,
       },
+      {
+        test: /\.pago$/i,
+        loader: 'raw-loader',
+      },
     ],
   },
   resolve: {
