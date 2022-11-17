@@ -6,9 +6,7 @@ export const apis: { [funcname: string]: FunctionType } = {
     arguments: [
       { kind: TypeKind.INTEGER }, // x
       { kind: TypeKind.INTEGER }, // y
-      { kind: TypeKind.INTEGER }, // r
-      { kind: TypeKind.INTEGER }, // g
-      { kind: TypeKind.INTEGER }, // b
+      { kind: TypeKind.STRING }, // color like #000
     ],
     return: { kind: TypeKind.VOID },
   },
@@ -43,7 +41,7 @@ export const apis: { [funcname: string]: FunctionType } = {
     arguments: [
       {
         kind: TypeKind.FUNCTION,
-        arguments: [{ kind: TypeKind.INTEGER }],
+        arguments: [{ kind: TypeKind.STRING }],
         return: { kind: TypeKind.VOID },
       },
     ],

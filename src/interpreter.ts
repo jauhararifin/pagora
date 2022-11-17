@@ -22,7 +22,7 @@ export function interpret(
   canvasContext: CanvasRenderingContext2D,
   statusText: HTMLTextAreaElement
 ): void {
-  const machine = new Machine(program)
+  const machine = new Machine(program, canvasContext, statusText)
   machine.startMain()
 }
 
@@ -31,17 +31,33 @@ class Machine {
   program: Program
   returnVal: Value
 
-  constructor(program: Program) {
+  canvasContext: CanvasRenderingContext2D
+  statusText: HTMLTextAreaElement
+  startTime: number
+
+  onKeyDownHandler: FuncValue | undefined
+  onUpdateHandler: FuncValue | undefined
+
+  constructor(
+    program: Program,
+    canvasContext: CanvasRenderingContext2D,
+    statusText: HTMLTextAreaElement
+  ) {
     this.program = program
     this.symbols = []
     this.returnVal = { kind: ValueKind.VOID, value: undefined }
+    this.canvasContext = canvasContext
+    this.statusText = statusText
+    this.startTime = Date.now()
+    this.onKeyDownHandler = undefined
+    this.onUpdateHandler = undefined
 
     this.addScope()
 
     for (const global of program.globals) {
       const value =
         global.value != null
-          ? this.evalExpr(global.value.constValue)
+          ? this.evalExpr(global.value)
           : this.zeroValue(global.type)
       this.setSymbol(global.name, value)
     }
@@ -58,13 +74,30 @@ class Machine {
   }
 
   startMain(): void {
+    this.onKeyDownHandler = undefined
+    this.onUpdateHandler = undefined
+
+    this.canvasContext.canvas.addEventListener(
+      'keydown',
+      this.keydownHandler.bind(this)
+    )
+    this.canvasContext.canvas.removeEventListener(
+      'keydown',
+      this.keydownHandler.bind(this)
+    )
+
     this.executeStatement(this.program.main)
   }
 
+  keydownHandler(ev: KeyboardEvent): void {
+    console.log('keydown', ev.code)
+    if (this.onKeyDownHandler === undefined) return
+    this.onKeyDownHandler.value([{ kind: ValueKind.STRING, value: ev.code }])
+  }
+
   executeFunc(funcDecl: Function, args: Value[]): Value {
-    console.log('execute func', funcDecl, args)
     if (funcDecl.body === undefined) {
-      throw new Error('executing native function is not supported yet')
+      return this.executeNativeFunc(funcDecl.name, args)
     }
 
     this.addScope()
@@ -75,6 +108,53 @@ class Machine {
     const val = this.returnVal
     this.returnVal = { kind: ValueKind.VOID, value: undefined }
     return val
+  }
+
+  executeNativeFunc(name: string, args: Value[]): Value {
+    console.log('execute native function', name, args)
+    switch (name) {
+      case 'output':
+        if (args[0].kind !== ValueKind.STRING)
+          throw new Error('invalid arguments')
+        this.statusText.value += args[0].value
+        return { kind: ValueKind.VOID, value: undefined }
+      case 'draw_pixel': {
+        const [xVal, yVal, colorVal] = args
+        const x = Number(xVal.value as bigint)
+        const y = Number(yVal.value as bigint)
+        const color = colorVal.value as string
+        this.canvasContext.fillStyle = color
+        this.canvasContext.fillRect(x, y, 1, 1)
+        return { kind: ValueKind.VOID, value: undefined }
+      }
+      case 'get_width':
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt(this.canvasContext.canvas.width),
+        }
+      case 'get_height':
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt(this.canvasContext.canvas.height),
+        }
+      case 'register_on_update':
+        if (args[0].kind !== ValueKind.FUNC)
+          throw new Error('invalid state. registering non function')
+        this.onUpdateHandler = args[0]
+        return { kind: ValueKind.VOID, value: undefined }
+      case 'register_on_keydown':
+        if (args[0].kind !== ValueKind.FUNC)
+          throw new Error('invalid state. registering non function')
+        this.onKeyDownHandler = args[0]
+        return { kind: ValueKind.VOID, value: undefined }
+      case 'system_time_milis':
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt(Date.now() - this.startTime),
+        }
+      default:
+        throw new Error(`native function '${name}' is not implemented yet`)
+    }
   }
 
   executeStatement(stmt: Statement): ControlKind {
@@ -183,25 +263,25 @@ class Machine {
     console.log('eval expr', expr)
     switch (expr.kind) {
       case ExprKind.BINARY:
-        throw new Error('not implemented yet')
+        return this.evalBinary(expr)
       case ExprKind.UNARY:
         return this.evalUnary(expr)
       case ExprKind.INDEX: {
         const arr = this.evalExpr(expr.array)
-        const indices = expr.indices.map(this.evalExpr)
+        const indices = expr.indices.map((v) => this.evalExpr(v))
 
-        if (expr.type.kind !== TypeKind.ARRAY) {
+        if (expr.array.type.kind !== TypeKind.ARRAY) {
           throw new Error('invalid state. indexing non array')
         }
 
         let index = 0
         let size = 1
-        for (let i = expr.type.dimension.length - 1; i >= 0; i--) {
+        for (let i = expr.array.type.dimension.length - 1; i >= 0; i--) {
           if (indices[i].kind !== ValueKind.INTEGER) {
             throw new Error('invalid state. indexing witout integer')
           }
-          index += indices[i].value * size
-          size *= Number(expr.type.dimension[i])
+          index += Number(indices[i].value) * size
+          size *= Number(expr.array.type.dimension[i])
         }
 
         return arr.value[index]
@@ -209,7 +289,7 @@ class Machine {
       case ExprKind.CAST:
         throw new Error('not implemented yet')
       case ExprKind.CALL: {
-        const args = expr.arguments.map(this.evalExpr)
+        const args = expr.arguments.map((v) => this.evalExpr(v))
         const func = this.evalExpr(expr.function)
         console.log('call expr, func=', func)
         if (func.kind !== ValueKind.FUNC) {
@@ -226,14 +306,15 @@ class Machine {
       case ExprKind.STRING_LIT:
         return { kind: ValueKind.STRING, value: expr.value }
       case ExprKind.ARRAY_LIT:
+        console.log('eval array', expr)
         return {
           kind: ValueKind.ARRAY,
-          value: expr.values.flatMap(this.evalExpr),
+          value: expr.values.flatMap((v) => this.evalExpr(v)),
         }
       case ExprKind.IDENT:
         return this.getSymbol(expr.ident)
       default:
-        throw new Error('not implemented yet')
+        throw new Error(`eval ${expr.kind} is not implemented yet`)
     }
   }
 
@@ -288,6 +369,8 @@ class Machine {
           return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
         else if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL)
           return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
+        else if (a.kind === ValueKind.STRING && b.kind === ValueKind.STRING)
+          return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
         else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
       case BinaryOp.NOT_EQUAL:
         if (a.kind === ValueKind.BOOLEAN && b.kind === ValueKind.BOOLEAN)
@@ -295,6 +378,8 @@ class Machine {
         else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER)
           return { kind: ValueKind.BOOLEAN, value: a.value !== b.value }
         else if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL)
+          return { kind: ValueKind.BOOLEAN, value: a.value !== b.value }
+        else if (a.kind === ValueKind.STRING && b.kind === ValueKind.STRING)
           return { kind: ValueKind.BOOLEAN, value: a.value !== b.value }
         else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
       case BinaryOp.GREATER_THAN:

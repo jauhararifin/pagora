@@ -37,6 +37,7 @@ import {
   StringLitExpr,
   ContinueStatement,
   BreakStatment,
+  String,
 } from './semantic'
 import {
   ArrayIndexExprNode,
@@ -465,6 +466,8 @@ class Analyzer {
             return Byte
           case TokenKind.REAL:
             return Real
+          case TokenKind.STRING:
+            return String
           default:
             throw new Error(`unrecognized type ${node.kind}`)
         }
@@ -736,6 +739,7 @@ class Analyzer {
         acceptedTypes: [
           [Integer, Integer, Boolean],
           [Real, Real, Boolean],
+          [String, String, Boolean],
           [Boolean, Boolean, Boolean],
         ],
         op: BinaryOp.EQUAL,
@@ -744,6 +748,7 @@ class Analyzer {
         acceptedTypes: [
           [Integer, Integer, Boolean],
           [Real, Real, Boolean],
+          [String, String, Boolean],
           [Boolean, Boolean, Boolean],
         ],
         op: BinaryOp.NOT_EQUAL,

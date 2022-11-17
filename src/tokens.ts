@@ -96,6 +96,7 @@ export enum TokenKind {
   RETURN = 'RETURN',
 
   INTEGER = 'INTEGER',
+  STRING = 'STRING',
   BYTE = 'BYTE',
   REAL = 'REAL',
   BOOLEAN = 'BOOLEAN',
@@ -109,6 +110,7 @@ export const PrimitiveTypes = [
   TokenKind.BYTE,
   TokenKind.REAL,
   TokenKind.BOOLEAN,
+  TokenKind.STRING,
 ]
 
 const KEYWORD = new Set([

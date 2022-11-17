@@ -138,7 +138,6 @@ describe('tokenize test', () => {
         const root = parse(tokens)
         expect(encodeAst(root)).toStrictEqual(testcase.expectedResult)
       } catch (e) {
-        console.log(e)
         const err = e as CompileError
         expect(err.errors).toStrictEqual(testcase.expectedResult)
       }

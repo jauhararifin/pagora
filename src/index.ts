@@ -29,13 +29,10 @@ window.onload = function () {
 
   interpretBtn.addEventListener('click', function () {
     const sourceCode = editor.value ?? ''
-    console.log('source code', sourceCode)
 
     try {
       const program = compile(sourceCode)
       statusText.value = ''
-
-      console.log(program)
       interpret(program, context, statusText)
     } catch (e) {
       if (e instanceof CompileError) {

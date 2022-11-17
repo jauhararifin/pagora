@@ -388,15 +388,15 @@ begin
     setup_next_tetromino();
 end
 
-function on_keydown(key: integer);
+function on_keydown(key: string);
 begin
-    if key = 1 then
+    if key = "ArrowRight" then
         on_go_right();
-    else if key = 2 then
+    else if key = "ArrowLeft" then
         on_go_left();
-    else if key = 3 then
+    else if key = "ArrowUp" then
         on_rotate();
-    else if key = 4 then
+    else if key = "ArrowDown" then
         on_smash();
 end
 

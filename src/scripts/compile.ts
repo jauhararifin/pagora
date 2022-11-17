@@ -9,7 +9,6 @@ readFile(file, (err, data) => {
   }
 
   const sourceCode = data.toString()
-  console.log(sourceCode)
   const program = compile(sourceCode)
   console.log(program)
 })

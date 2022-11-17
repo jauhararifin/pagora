@@ -113,6 +113,7 @@ class Lexer {
       boolean: TokenKind.BOOLEAN,
       byte: TokenKind.BYTE,
       real: TokenKind.REAL,
+      string: TokenKind.STRING,
       and: TokenKind.AND,
       not: TokenKind.NOT,
       or: TokenKind.OR,
