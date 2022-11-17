@@ -160,6 +160,10 @@ class Lexer {
         // general error.
         this.emitError(new UnexpectedCharacter(c.c, c.pos))
       }
+      if (c.c === '') {
+        this.emitError(new UnexpectedCharacter('EOF', c.pos))
+        return
+      }
 
       if (afterBackslash) {
         if (c.c in backslashes) {
@@ -273,7 +277,11 @@ class Lexer {
 
   private peek(): CharPos {
     if (this.index >= this.sourceCode.length) {
-      return new CharPos('', { line: 0, col: 0 })
+      const pos =
+        this.sourceCode.length > 0
+          ? this.sourceCode[this.sourceCode.length - 1].pos
+          : { line: 0, col: 0 }
+      return new CharPos('', pos)
     }
 
     return this.sourceCode[this.index]

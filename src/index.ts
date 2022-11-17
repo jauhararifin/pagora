@@ -1,4 +1,5 @@
 import { compile } from './compiler'
+import { CompileError } from './errors'
 import tetrisSourceCode from './examples/tetris.pago'
 
 window.onload = function () {
@@ -23,16 +24,25 @@ window.onload = function () {
   const interpretBtn = document.getElementById(
     'interpret-btn'
   )! as HTMLButtonElement
+  const statusText = document.getElementById('status')! as HTMLTextAreaElement
 
   interpretBtn.addEventListener('click', function () {
     const sourceCode = editor.value ?? ''
     console.log('source code', sourceCode)
 
-    const program = compile(sourceCode)
-    console.log(program)
+    try {
+      const program = compile(sourceCode)
+      console.log(program)
+      statusText.value = ''
+    } catch (e) {
+      if (e instanceof CompileError) {
+        statusText.value = e.message
+      }
+    }
   })
 
   const examples: { [key: string]: string } = {
+    Hello: `begin\n    output("Hello, World!");\nend`,
     Tetris: tetrisSourceCode,
   }
 
@@ -43,10 +53,15 @@ window.onload = function () {
     exampleSelection.appendChild(opt)
   }
 
-  exampleSelection.addEventListener('change', function () {
-    const name = exampleSelection.value
+  function setEditor(name: string): void {
     if (name in examples) {
       editor.value = examples[name]
     }
+  }
+  setEditor('Hello')
+
+  exampleSelection.addEventListener('change', function () {
+    const name = exampleSelection.value
+    setEditor(name)
   })
 }

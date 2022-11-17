@@ -1,6 +1,5 @@
-import { CompileError, CompileErrorItem, UnexpectedCharacter } from './errors'
+import { CompileError, CompileErrorItem } from './errors'
 import { tokenize } from './lexer'
-import { Position } from './tokens'
 
 interface Testcase {
   name: string
@@ -86,7 +85,7 @@ describe('tokenize test', () => {
     {
       name: 'scan invalid symbol',
       sourceCode: '@',
-      expectedResult: [new UnexpectedCharacter('@', new Position(1, 1))],
+      expectedResult: [`Error at 1:1: Unexpected character '@'`],
     },
     {
       name: 'number literal',
@@ -120,6 +119,11 @@ describe('tokenize test', () => {
         'INTEGER',
       ],
     },
+    {
+      name: 'incomplete program',
+      sourceCode: 'begin output("hello end',
+      expectedResult: [`Error at 1:23: Unexpected character 'EOF'`],
+    },
   ]
 
   for (const testcase of testcases) {
@@ -130,7 +134,9 @@ describe('tokenize test', () => {
         expect(actualTokens).toStrictEqual(testcase.expectedResult)
       } catch (e) {
         const err = e as CompileError
-        expect(err.errors).toStrictEqual(testcase.expectedResult)
+        expect(err.errors.flatMap((v) => v.message)).toStrictEqual(
+          testcase.expectedResult
+        )
       }
     })
   }

@@ -28,4 +28,11 @@ module.exports = {
       filename: './dist/index.html',
     }),
   ],
+  devServer: {
+    static: {
+      directory: './dist/',
+    },
+    compress: true,
+    port: 9000,
+  },
 }

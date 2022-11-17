@@ -24,7 +24,8 @@
         position: absolute;
       }
       .title {
-        margin: 10px;
+        margin: 0px;
+        padding: 0px;
       }
       .full {
         width: 100%;
@@ -48,24 +49,32 @@
       .small-pad {
         padding: 10px;
       }
+      .selector {
+        height: 25px;
+      }
+      .btn {
+        height: 25px;
+      }
     </style>
   </head>
   <body>
     <div class="full flex column">
       <h3 class="flex-wrap text-center small-pad title">Pagora</h3>
       <div class="flex-wrap small-pad">
-        <select id="example-selection"></select>
-        <button id="interpret-btn" class="run-btn">Run (Tree Interpreter)</button>
-        <button class="run-btn">Run (WebAssembly)</button>
+        <select id="example-selection" class="selector"></select>
+        <button id="interpret-btn" class="btn">Run (Tree Interpreter)</button>
+        <button class="btn">Run (WebAssembly)</button>
       </div>
       <div class="flex-full flex">
         <div class="flex-full small-pad">
           <textarea id="editor" class="full"></textarea>
         </div>
-        <div class="flex-full small-pad">
-          <div id="canvas-wrapper">
+        <div class="flex-full flex column small-pad">
+          <div id="canvas-wrapper" class="flex-full">
             <canvas id="canvas"></canvas>
           </div>
+          <textarea id="status" disabled style="border: 1px solid black; margin-top: 10px; padding: 10px; height: 100px; overflow-y: scroll;">
+          </textarea>
         </div>
       </div>
     </div>

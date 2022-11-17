@@ -5,7 +5,8 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
-    "prettier": "prettier --write ."
+    "prettier": "prettier --write .",
+    "dev": "webpack-dev-server --hot --open --mode=development"
   },
   "devDependencies": {
     "@types/jest": "^29.2.0",
@@ -25,6 +26,7 @@
     "ts-node": "^10.9.1",
     "typescript": "^4.8.4",
     "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0"
+    "webpack-cli": "^4.10.0",
+    "webpack-dev-server": "^4.11.1"
   }
 }

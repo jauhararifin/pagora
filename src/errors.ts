@@ -28,7 +28,7 @@ export class CompileErrorItem extends Error {
 
 export class UnexpectedCharacter extends CompileErrorItem {
   constructor(char: string, position: Position) {
-    super(`Unexpected character '${char}'`, position)
+    super(`Unexpected character ${JSON.stringify(char)}`, position)
   }
 }
 
