@@ -121,6 +121,18 @@ class Analyzer {
     for (const name in apis) {
       const sym = apis[name]
       this.addBuiltinSymbol(name, sym)
+      this.functions.push({
+        name,
+        type: {
+          kind: TypeKind.FUNCTION,
+          arguments: sym.arguments,
+          return: sym.return,
+        },
+        arguments: sym.arguments.map((v, i) => ({
+          name: 'arg' + i.toString(),
+          type: v,
+        })),
+      })
     }
 
     const functionDecls: FunctionDeclNode[] = ast.declarations.flatMap((decl) =>

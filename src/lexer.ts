@@ -149,7 +149,7 @@ class Lexer {
     }
 
     let afterBackslash = false
-    let value = ''
+    let value = c.c
 
     this.next()
     while (true) {

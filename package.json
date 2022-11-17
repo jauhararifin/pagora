@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "webpack --mode=production",
+    "build": "webpack --mode=development",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "lint": "eslint .",

@@ -167,6 +167,7 @@ export enum ExprKind {
   INTEGER_LIT = 'INTEGER_LIT',
   CHAR_LIT = 'CHAR_LIT',
   STRING_LIT = 'STRING_LIT',
+  REAL_LIT = 'REAL_LIT',
   BOOLEAN_LIT = 'BOOLEAN_LIT',
   ARRAY_LIT = 'ARRAY_LIT',
   IDENT = 'IDENT',
@@ -249,6 +250,11 @@ export interface BooleanLitExpr extends ExprBase {
 export interface StringLitExpr extends ExprBase {
   kind: ExprKind.STRING_LIT
   value: string
+}
+
+export interface RealLitExpr extends ExprBase {
+  kind: ExprKind.REAL_LIT
+  value: number
 }
 
 export interface ArrayLitExpr extends ExprBase {

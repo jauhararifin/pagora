@@ -1,6 +1,7 @@
 import { compile } from './compiler'
 import { CompileError } from './errors'
 import tetrisSourceCode from './examples/tetris.pago'
+import { interpret } from './interpreter'
 
 window.onload = function () {
   const canvas = document.querySelector('canvas')!
@@ -32,11 +33,15 @@ window.onload = function () {
 
     try {
       const program = compile(sourceCode)
-      console.log(program)
       statusText.value = ''
+
+      console.log(program)
+      interpret(program, context, statusText)
     } catch (e) {
       if (e instanceof CompileError) {
         statusText.value = e.message
+      } else {
+        console.log('got exception', e)
       }
     }
   })
