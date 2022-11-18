@@ -1,5 +1,5 @@
 import { Func, FunctionType, Global, Instr, Module } from './wasm'
-import { Program, Type, TypeKind } from './semantic'
+import { Program, Type, TypeKind } from '@pagora/lang'
 
 export function generateWasmModule(program: Program): Module {
   return new CodeGenerator().generate(program)

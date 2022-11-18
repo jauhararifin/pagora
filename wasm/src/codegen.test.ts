@@ -1,6 +1,4 @@
-import { analyze } from './analyzer'
-import { parse } from './parser'
-import { tokenize } from './lexer'
+import { compile } from '@pagora/lang'
 import { generateWasmModule } from './codegen'
 
 const program1Source = `
@@ -48,9 +46,7 @@ describe('analyzer test', () => {
 
   for (const testcase of testcases) {
     it(testcase.name, () => {
-      const tokens = tokenize(testcase.sourceCode)
-      const ast = parse(tokens)
-      const program = analyze(ast)
+      const program = compile(testcase.sourceCode)
       const module = generateWasmModule(program)
       expect(module).toStrictEqual(testcase.expectedResult)
     })

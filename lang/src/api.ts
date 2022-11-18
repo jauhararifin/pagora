@@ -1,6 +1,8 @@
 import { FunctionType, TypeKind } from './semantic'
 
-export const apis: { [funcname: string]: FunctionType } = {
+export type BuiltinAPIs = { [funcname: string]: FunctionType }
+
+export const apis: BuiltinAPIs = {
   draw_pixel: {
     kind: TypeKind.FUNCTION,
     arguments: [

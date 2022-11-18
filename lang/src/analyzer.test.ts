@@ -6,7 +6,7 @@ import { tokenize } from './lexer'
 import { Program } from './semantic'
 
 const program1Source = `
-function aplusb(a: integer, b: integer) -> integer
+function aplusb(a: integer, b: integer) -> integer;
 begin
     return a + b;
 end
@@ -166,7 +166,7 @@ describe('analyzer test', () => {
       try {
         const tokens = tokenize(testcase.sourceCode)
         const ast = parse(tokens)
-        program = analyze(ast)
+        program = analyze(ast, {})
       } catch (e) {
         const err = e as CompileError
         for (let i = 0; i < err.errors.length; i++) {

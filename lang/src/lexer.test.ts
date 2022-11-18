@@ -85,7 +85,7 @@ describe('tokenize test', () => {
     {
       name: 'scan invalid symbol',
       sourceCode: '@',
-      expectedResult: [`Error at 1:1: Unexpected character '@'`],
+      expectedResult: [`Error at 1:1: Unexpected character "@"`],
     },
     {
       name: 'number literal',
@@ -122,7 +122,7 @@ describe('tokenize test', () => {
     {
       name: 'incomplete program',
       sourceCode: 'begin output("hello end',
-      expectedResult: [`Error at 1:23: Unexpected character 'EOF'`],
+      expectedResult: [`Error at 1:23: Unexpected character "EOF"`],
     },
   ]
 

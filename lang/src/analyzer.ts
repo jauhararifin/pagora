@@ -92,10 +92,10 @@ import {
   WrongNumberOfIndex,
 } from './errors'
 import { Position, Token, TokenKind } from './tokens'
-import { apis } from './api'
+import { apis, BuiltinAPIs } from './api'
 
-export function analyze(ast: RootNode): Program {
-  return new Analyzer().analyze(ast)
+export function analyze(ast: RootNode, builtins: BuiltinAPIs = apis): Program {
+  return new Analyzer().analyze(ast, builtins)
 }
 
 // TODO: add checking in the function body. Make sure that a function with return type always return.
@@ -111,7 +111,7 @@ class Analyzer {
   currentReturnType: Type = { kind: TypeKind.VOID }
 
   // TODO: skip the whole process if the number errors are too many
-  analyze(ast: RootNode): Program {
+  analyze(ast: RootNode, builtins: BuiltinAPIs): Program {
     this.loopDepth = 0
 
     // TODO: improve the language to support struct, tuple and type definition
@@ -119,8 +119,8 @@ class Analyzer {
     // Although, at this phase, we don't need it yet.
     this.symbolTable = [{}]
 
-    for (const name in apis) {
-      const sym = apis[name]
+    for (const name in builtins) {
+      const sym = builtins[name]
       this.addBuiltinSymbol(name, sym)
       this.functions.push({
         name,

@@ -1,0 +1,1 @@
+export { interpret } from './interpreter'
