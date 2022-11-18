@@ -15,40 +15,38 @@ import {
   UnaryOp,
   VarStatement,
   WhileStatement,
-} from './semantic'
+} from '@pagora/lang'
+import { Displayer, NopDisplayer } from './display'
+import { NopStatusWriter, StatusWriter } from './status'
+import { BooleanValue, FuncValue, Value, ValueKind } from './value'
 
-export function interpret(
-  program: Program,
-  canvasContext: CanvasRenderingContext2D,
-  statusText: HTMLTextAreaElement
-): void {
-  const machine = new Machine(program, canvasContext, statusText)
-  machine.startMain()
-}
+export class Machine {
+  displayer: Displayer = new NopDisplayer()
+  statusWriter: StatusWriter = new NopStatusWriter()
 
-class Machine {
-  symbols: Array<{ [name: string]: Value }>
-  program: Program
-  returnVal: Value
-
-  canvasContext: CanvasRenderingContext2D
-  statusText: HTMLTextAreaElement
-  startTime: number
+  symbols: Array<{ [name: string]: Value }> = []
+  returnVal: Value | undefined
+  startTime: number | undefined
+  timer: NodeJS.Timer | undefined
 
   onKeyDownHandler: FuncValue | undefined
   onUpdateHandler: FuncValue | undefined
 
-  constructor(
-    program: Program,
-    canvasContext: CanvasRenderingContext2D,
-    statusText: HTMLTextAreaElement
-  ) {
-    this.program = program
+  attachDisplayer(displayer: Displayer): void {
+    this.displayer = displayer
+    this.displayer.onKeyDown((key) => {
+      this.keydownHandler(key)
+    })
+  }
+
+  attachStatusWriter(statusWriter: StatusWriter): void {
+    this.statusWriter = statusWriter
+  }
+
+  start(program: Program): void {
+    this.startTime = Date.now()
     this.symbols = []
     this.returnVal = { kind: ValueKind.VOID, value: undefined }
-    this.canvasContext = canvasContext
-    this.statusText = statusText
-    this.startTime = Date.now()
     this.onKeyDownHandler = undefined
     this.onUpdateHandler = undefined
 
@@ -71,33 +69,40 @@ class Machine {
       }
       this.setSymbol(func.name, value)
     }
-  }
 
-  startMain(): void {
     this.onKeyDownHandler = undefined
     this.onUpdateHandler = undefined
 
-    this.canvasContext.canvas.addEventListener(
-      'keydown',
-      this.keydownHandler.bind(this)
-    )
-    this.canvasContext.canvas.removeEventListener(
-      'keydown',
-      this.keydownHandler.bind(this)
-    )
-    this.canvasContext.clearRect(
-      0,
-      0,
-      this.canvasContext.canvas.width,
-      this.canvasContext.canvas.height
-    )
+    this.statusWriter.clear()
+    this.displayer.clearAndReset()
+    this.displayer.onKeyDown((key) => {
+      this.keydownHandler(key)
+    })
 
-    this.executeStatement(this.program.main)
+    this.executeStatement(program.main)
+
+    const fps = 24
+    if (this.timer === undefined) {
+      this.timer = setInterval(() => {
+        if (this.onUpdateHandler != null) {
+          this.onUpdateHandler.value([])
+        }
+      }, 1000 / fps)
+    }
   }
 
-  keydownHandler(ev: KeyboardEvent): void {
+  stop(): void {
+    this.displayer.stop()
+
+    if (this.timer !== undefined) {
+      clearInterval(this.timer)
+      this.timer = undefined
+    }
+  }
+
+  keydownHandler(key: string): void {
     if (this.onKeyDownHandler === undefined) return
-    this.onKeyDownHandler.value([{ kind: ValueKind.STRING, value: ev.code }])
+    this.onKeyDownHandler.value([{ kind: ValueKind.STRING, value: key }])
   }
 
   executeFunc(funcDecl: Function, args: Value[]): Value {
@@ -110,7 +115,7 @@ class Machine {
       this.setSymbol(funcDecl.arguments[i].name, args[i])
     }
     this.executeBlockStmt(funcDecl.body)
-    const val = this.returnVal
+    const val = this.returnVal!
     this.returnVal = { kind: ValueKind.VOID, value: undefined }
     return val
   }
@@ -120,26 +125,25 @@ class Machine {
       case 'output':
         if (args[0].kind !== ValueKind.STRING)
           throw new Error('invalid arguments')
-        this.statusText.value += args[0].value
+        this.statusWriter.append(args[0].value)
         return { kind: ValueKind.VOID, value: undefined }
       case 'draw_pixel': {
         const [xVal, yVal, colorVal] = args
         const x = Number(xVal.value as bigint)
         const y = Number(yVal.value as bigint)
         const color = colorVal.value as string
-        this.canvasContext.fillStyle = color
-        this.canvasContext.fillRect(x, y, 1, 1)
+        this.displayer.putPixel(x, y, color)
         return { kind: ValueKind.VOID, value: undefined }
       }
       case 'get_width':
         return {
           kind: ValueKind.INTEGER,
-          value: BigInt(this.canvasContext.canvas.width),
+          value: BigInt(this.displayer.getWidth()),
         }
       case 'get_height':
         return {
           kind: ValueKind.INTEGER,
-          value: BigInt(this.canvasContext.canvas.height),
+          value: BigInt(this.displayer.getHeigh()),
         }
       case 'register_on_update':
         if (args[0].kind !== ValueKind.FUNC)
@@ -154,7 +158,7 @@ class Machine {
       case 'system_time_milis':
         return {
           kind: ValueKind.INTEGER,
-          value: BigInt(Date.now() - this.startTime),
+          value: BigInt(Date.now() - this.startTime!),
         }
       default:
         throw new Error(`native function '${name}' is not implemented yet`)
@@ -488,60 +492,6 @@ class Machine {
   popScope(): void {
     this.symbols.pop()
   }
-}
-
-type Value =
-  | BooleanValue
-  | IntegerValue
-  | RealValue
-  | StringValue
-  | ArrayValue
-  | FuncValue
-  | VoidValue
-
-enum ValueKind {
-  BOOLEAN = 'BOOLEAN',
-  INTEGER = 'INTEGER',
-  REAL = 'REAL',
-  STRING = 'STRING',
-  ARRAY = 'ARRAY',
-  FUNC = 'FUNC',
-  VOID = 'VOID',
-}
-
-interface BooleanValue {
-  kind: ValueKind.BOOLEAN
-  value: boolean
-}
-
-interface IntegerValue {
-  kind: ValueKind.INTEGER
-  value: bigint
-}
-
-interface RealValue {
-  kind: ValueKind.REAL
-  value: number
-}
-
-interface StringValue {
-  kind: ValueKind.STRING
-  value: string
-}
-
-interface ArrayValue {
-  kind: ValueKind.ARRAY
-  value: Value[]
-}
-
-interface FuncValue {
-  kind: ValueKind.FUNC
-  value: (args: Value[]) => Value
-}
-
-interface VoidValue {
-  kind: ValueKind.VOID
-  value: any
 }
 
 enum ControlKind {
