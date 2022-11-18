@@ -401,7 +401,8 @@ class Parser {
   }
 
   private parseExpr(): ExprNode {
-    return this.parseBinaryExpr(TokenKind.OR)
+    const result = this.parseBinaryExpr(TokenKind.OR)
+    return result
   }
 
   private parseBinaryExpr(op: TokenKind): ExprNode {
@@ -432,16 +433,24 @@ class Parser {
         ? this.parseArrayIndexExp()
         : this.parseBinaryExpr(operatorPrecedences[i + 1])
 
-    const opToken = this.consumeIfMatch([op])
-    if (opToken === undefined) return aExpr
+    let result: ExprNode = aExpr
+    while (true) {
+      const opToken = this.consumeIfMatch([op])
+      if (opToken === undefined) {
+        return result
+      }
 
-    const bExpr: ExprNode = this.parseBinaryExpr(op)
+      const bExpr: ExprNode =
+        i === operatorPrecedences.length - 1
+          ? this.parseArrayIndexExp()
+          : this.parseBinaryExpr(operatorPrecedences[i + 1])
 
-    return {
-      kind: ExprNodeKind.BINARY,
-      a: aExpr,
-      op: opToken,
-      b: bExpr,
+      result = {
+        kind: ExprNodeKind.BINARY,
+        a: result,
+        op: opToken,
+        b: bExpr,
+      }
     }
   }
 

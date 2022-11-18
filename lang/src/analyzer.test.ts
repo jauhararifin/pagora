@@ -86,7 +86,7 @@ const program2 = [
             [
               'LESS_THAN',
               ['ident', 'j'],
-              ['MINUS', ['ident', 'n'], ['MINUS', ['ident', 'i'], '1']],
+              ['MINUS', ['MINUS', ['ident', 'n'], ['ident', 'i']], '1'],
             ],
             [['assign', ['ident', 'j'], ['PLUS', ['ident', 'j'], '1']]],
           ],

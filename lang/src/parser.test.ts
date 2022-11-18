@@ -2,6 +2,7 @@ import { parse } from './parser'
 import { tokenize } from './lexer'
 import { encodeAst } from './ast_util'
 import { CompileError, CompileErrorItem } from './errors'
+import { RootNode } from './ast'
 
 interface Testcase {
   name: string
@@ -83,13 +84,13 @@ describe('tokenize test', () => {
           'BEGIN',
           [
             [
-              'INTEGER_LITERAL(1)',
-              'PLUS',
               [
-                ['INTEGER_LITERAL(2)', 'MULTIPLY', 'INTEGER_LITERAL(3)'],
+                'INTEGER_LITERAL(1)',
                 'PLUS',
-                ['INTEGER_LITERAL(4)', 'DIV', 'INTEGER_LITERAL(5)'],
+                ['INTEGER_LITERAL(2)', 'MULTIPLY', 'INTEGER_LITERAL(3)'],
               ],
+              'PLUS',
+              ['INTEGER_LITERAL(4)', 'DIV', 'INTEGER_LITERAL(5)'],
             ],
           ],
           'END',
@@ -129,18 +130,52 @@ describe('tokenize test', () => {
       sourceCode: 'begin return false; end',
       expectedResult: [['BEGIN', [['RETURN', 'FALSE']], 'END']],
     },
+    {
+      name: 'while cond expr',
+      sourceCode: 'begin while j < n-i-1 do output(" "); end',
+      expectedResult: [
+        [
+          'BEGIN',
+          [
+            [
+              'WHILE',
+              [
+                'IDENTIFIER(j)',
+                'LESS_THAN',
+                [
+                  ['IDENTIFIER(n)', 'MINUS', 'IDENTIFIER(i)'],
+                  'MINUS',
+                  'INTEGER_LITERAL(1)',
+                ],
+              ],
+              'DO',
+              ['IDENTIFIER(output)', 'OPEN_BRAC', [undefined], 'CLOSE_BRAC'],
+            ],
+          ],
+          'END',
+        ],
+      ],
+    },
   ]
 
   for (const testcase of testcases) {
     it(testcase.name, () => {
+      let root: RootNode
       try {
         const tokens = tokenize(testcase.sourceCode)
-        const root = parse(tokens)
-        expect(encodeAst(root)).toStrictEqual(testcase.expectedResult)
+        root = parse(tokens)
       } catch (e) {
+        expect(e).toBeInstanceOf(CompileError)
         const err = e as CompileError
-        expect(err.errors).toStrictEqual(testcase.expectedResult)
+        for (let i = 0; i < err.errors.length; i++) {
+          expect(err.errors[i].message).toStrictEqual(
+            testcase.expectedResult[i]
+          )
+        }
+        return
       }
+
+      expect(encodeAst(root)).toStrictEqual(testcase.expectedResult)
     })
   }
 })
