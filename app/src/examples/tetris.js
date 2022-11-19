@@ -400,6 +400,12 @@ begin
     materialize_tetromino();
     pop_completed_rows();
     setup_next_tetromino();
+    if is_overlap_ground() then
+    begin
+        output("Game Over");
+        in_game := false;
+        is_over := true;
+    end;
 end
 
 function on_keydown(key: string);
@@ -431,12 +437,17 @@ var render_frame: array [24,10] of integer;
 
 function on_draw();
 begin
-    var block_size := 15;
+    var block_size := 20;
 
     var min_width := block_size * width;
     var min_height := block_size * height;
+
     var screen_width := get_width();
     var screen_height := get_height();
+
+    var x_offset := (screen_width - block_size * width) / 2;
+    var y_offset := (screen_height - block_size * height) / 2;
+
     if screen_width < min_width or screen_height < min_height then
     begin
       output("Cannot draw, screen too small\\n");  
@@ -489,7 +500,14 @@ begin
             else if render_frame[y,x] = TILE_ALIVE then
                 color := "#f000f0";
 
-            draw_rect(x*block_size, y*block_size, block_size, block_size, color);
+            draw_rect(
+                x_offset+x*block_size, 
+                y_offset+y*block_size, 
+                block_size, 
+                block_size, 
+                "#f0f0f0",
+                color
+            );
 
             x := x + 1;
         end

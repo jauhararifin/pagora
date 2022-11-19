@@ -4,7 +4,8 @@ export interface Displayer {
     y: number,
     width: number,
     height: number,
-    color: string
+    strokeColor: string,
+    bgColor: string
   ) => void
   getWidth: () => number
   getHeigh: () => number
@@ -20,7 +21,8 @@ export class NopDisplayer implements Displayer {
     y: number,
     width: number,
     height: number,
-    color: string
+    strokeColor: string,
+    bgColor: string
   ): void {}
 
   getWidth(): number {
@@ -66,10 +68,13 @@ export class CanvasDisplayer implements Displayer {
     y: number,
     width: number,
     height: number,
-    color: string
+    strokeColor: string,
+    bgColor: string
   ): void {
-    this.context.fillStyle = color
+    this.context.fillStyle = bgColor
     this.context.fillRect(x, y, width, height)
+    this.context.strokeStyle = strokeColor
+    this.context.strokeRect(x, y, width, height)
   }
 
   getWidth(): number {

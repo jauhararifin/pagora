@@ -131,13 +131,14 @@ export class Machine {
         this.statusWriter.append(args[0].value)
         return { kind: ValueKind.VOID, value: undefined }
       case 'draw_rect': {
-        const [xVal, yVal, wVal, hVal, colorVal] = args
+        const [xVal, yVal, wVal, hVal, strokeVal, bgVal] = args
         const x = Number(xVal.value as bigint)
         const y = Number(yVal.value as bigint)
         const w = Number(wVal.value as bigint)
         const h = Number(hVal.value as bigint)
-        const color = colorVal.value as string
-        this.displayer.drawRect(x, y, w, h, color)
+        const strokeColor = strokeVal.value as string
+        const bgColor = bgVal.value as string
+        this.displayer.drawRect(x, y, w, h, strokeColor, bgColor)
         return { kind: ValueKind.VOID, value: undefined }
       }
       case 'get_width':

@@ -12,7 +12,8 @@ export const apis: BuiltinAPIs = {
       { kind: TypeKind.INTEGER }, // y
       { kind: TypeKind.INTEGER }, // width
       { kind: TypeKind.INTEGER }, // height
-      { kind: TypeKind.STRING }, // color like #000
+      { kind: TypeKind.STRING }, // stroke color like #000
+      { kind: TypeKind.STRING }, // bg color like #000
     ],
     return: { kind: TypeKind.VOID },
   },
