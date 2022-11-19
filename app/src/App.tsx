@@ -94,7 +94,7 @@ function Page() {
         </div>
         <div className="flex-1 flex flex-col divide-y-2">
           <div className="flex-1 overflow-clip" ref={canvasWrapperRef}>
-            <canvas className="border-0 focus:border-0" ref={canvasRef} tabIndex={1}/>
+            <canvas className="absolute border-0 focus:border-0" ref={canvasRef} tabIndex={1}/>
           </div>
           <textarea ref={statusRef} rows={7} disabled className="font-mono overflow-y-scroll px-3 py-1"></textarea>
         </div>
