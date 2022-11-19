@@ -54,6 +54,33 @@ export const apis: BuiltinAPIs = {
     ],
     return: { kind: TypeKind.VOID },
   },
+  register_on_mouse_click: {
+    kind: TypeKind.FUNCTION,
+    arguments: [
+      {
+        kind: TypeKind.FUNCTION,
+        arguments: [{ kind: TypeKind.INTEGER }, { kind: TypeKind.INTEGER }],
+        return: { kind: TypeKind.VOID },
+      },
+    ],
+    return: { kind: TypeKind.VOID },
+  },
+  register_on_mouse_move: {
+    kind: TypeKind.FUNCTION,
+    arguments: [
+      {
+        kind: TypeKind.FUNCTION,
+        arguments: [{ kind: TypeKind.INTEGER }, { kind: TypeKind.INTEGER }],
+        return: { kind: TypeKind.VOID },
+      },
+    ],
+    return: { kind: TypeKind.VOID },
+  },
+  unix_time_millis: {
+    kind: TypeKind.FUNCTION,
+    arguments: [],
+    return: { kind: TypeKind.INTEGER },
+  },
   system_time_millis: {
     kind: TypeKind.FUNCTION,
     arguments: [],

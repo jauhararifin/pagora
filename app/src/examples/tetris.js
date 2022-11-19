@@ -48,6 +48,7 @@ var width := 10;
 var height := 24;
 var board: array [24,10] of integer;
 
+var seed := 0;
 var last_tetromino_index := 0;
 
 function init_game();
@@ -210,8 +211,9 @@ function setup_next_tetromino();
 begin
     current_tetromino := next_tetromino;
 
-    // TODO: add some randomization here.
-    last_tetromino_index := (last_tetromino_index + 1) % 5;
+    seed := (seed * 75 + 74) % 65537;
+    last_tetromino_index := seed % 5;
+
     if last_tetromino_index = 0 then
         next_tetromino := tetromino_t;
     else if last_tetromino_index = 1 then
@@ -517,9 +519,14 @@ end
 
 begin
     init_game();
+    seed := unix_time_millis();
 
     register_on_keydown(on_keydown);
     register_on_update(on_update);
+
+    output("Use left and right arrow to move tetromino\\n");
+    output("Use up arrow to rotate tetromino\\n");
+    output("Use down arrow to smash tetromino\\n");
 end
 `;
 

@@ -155,7 +155,8 @@ class Analyzer {
           this.globals.push(variable)
         }
       } catch (e) {
-        this.emitError(e as CompileErrorItem)
+        if (e instanceof CompileErrorItem) this.emitError(e)
+        else throw e
         if (this.tooManyErrors()) break
       }
     }
@@ -164,7 +165,8 @@ class Analyzer {
       try {
         this.analyzeFunction(decl)
       } catch (e) {
-        this.emitError(e as CompileErrorItem)
+        if (e instanceof CompileErrorItem) this.emitError(e)
+        else throw e
         if (this.tooManyErrors()) break
       }
     }
@@ -183,7 +185,8 @@ class Analyzer {
           mainToken = decl.body.begin
         }
       } catch (e) {
-        this.emitError(e as CompileErrorItem)
+        if (e instanceof CompileErrorItem) this.emitError(e)
+        else throw e
         if (this.tooManyErrors()) break
       }
     }
@@ -294,7 +297,8 @@ class Analyzer {
       try {
         statements.push(this.analyzeStatement(stmt))
       } catch (e) {
-        this.emitError(e as CompileErrorItem)
+        if (e instanceof CompileErrorItem) this.emitError(e)
+        else throw e
         if (this.tooManyErrors()) {
           break
         }

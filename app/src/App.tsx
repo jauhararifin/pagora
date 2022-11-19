@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import tetrisSourceCode from "./examples/tetris";
 import triangleSourceCode from "./examples/triangle";
 import helloSourceCode from "./examples/hello";
+import gameOfLifeSourceCode from "./examples/gameoflife";
 import { CanvasDisplayer, Machine, TextAreaStatusWriter } from '@pagora/runner'
 import { compile } from "@pagora/lang";
 
@@ -94,7 +95,7 @@ function Page() {
         </div>
         <div className="flex-1 flex flex-col divide-y-2">
           <div className="flex-1 overflow-clip" ref={canvasWrapperRef}>
-            <canvas className="absolute border-0 focus:border-0" ref={canvasRef} tabIndex={1}/>
+            <canvas className="absolute border-0 focus:border-0 outline-none" ref={canvasRef} tabIndex={1}/>
           </div>
           <textarea ref={statusRef} rows={7} disabled className="font-mono overflow-y-scroll px-3 py-1"></textarea>
         </div>
@@ -149,6 +150,10 @@ const templates: Template[] = [
   {
       name: "Tetris",
       sourceCode: tetrisSourceCode,
+  },
+  {
+      name: "Game of Life",
+      sourceCode: gameOfLifeSourceCode,
   },
 ]
 
