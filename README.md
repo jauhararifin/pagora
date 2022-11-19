@@ -8,16 +8,16 @@ Currently, it is interpreted in browser using javascript, but I'm planning to co
 
 # TODO
 
-- [] Support more instructions
-- [] Use 64 bit integer instead of bigint
-- [] WASM target
-- [] Better memory management
-- [] Exhaustive tests
-- [] Struct type
-- [] For loop
-- [] More canvas supports
-- [] Debugging
-- [] "Any" data type
-- [] Syntax highlighting
-- [] Code sharing
-- [] Pause the game
+- [ ] Support more instructions
+- [ ] Use 64 bit integer instead of bigint
+- [ ] WASM target
+- [ ] Better memory management
+- [ ] Exhaustive tests
+- [ ] Struct type
+- [ ] For loop
+- [ ] More canvas supports
+- [ ] Debugging
+- [ ] "Any" data type
+- [ ] Syntax highlighting
+- [ ] Code sharing
+- [ ] Pause the game

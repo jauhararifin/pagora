@@ -237,7 +237,11 @@ function Footer() {
   return (
     <nav className="relative w-full flex flex-wrap items-center justify-between py-2 bg-gray-700 text-gray-100 hover:text-gray-700 focus:text-gray-700">
       <div className="w-full text-white text-center">
-        <a href="https://github.com/jauhararifin/pagora">Github</a>
+        <a className="hover:underline" href="https://twitter.com/jauhararifin10">Created by Jauhar Arifin</a>
+        <span className="mx-2"></span>
+        <a className="hover:underline" href="https://github.com/jauhararifin/pagora">(Github)</a>
+        <span className="mx-2"></span>
+        <a className="hover:underline" href="https://jauhar.id">(Blog)</a>
       </div>
     </nav>
   );
