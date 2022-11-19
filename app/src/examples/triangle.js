@@ -1,5 +1,4 @@
 const triangleSourceCode = `begin
-    output("Program Triangle\\n");
     var n: integer := 10;
     var i := 0;
     while i < n do

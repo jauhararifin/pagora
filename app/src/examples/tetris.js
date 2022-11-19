@@ -66,19 +66,24 @@ begin
         end
         i := i + 1;
     end
+
+    next_tetromino := tetromino_t;
+    setup_next_tetromino();
 end
 
 function on_tick();
 begin
+    if is_over then
+        return;
     var touched_ground := is_touched_ground();
     if touched_ground then
     begin
         materialize_tetromino();
         pop_completed_rows();
         setup_next_tetromino();
-        var overlap_ground := is_overlap_ground();
-        if overlap_ground then
+        if is_overlap_ground() then
         begin
+            output("Game Over");
             in_game := false;
             is_over := true;
         end;
@@ -179,8 +184,8 @@ begin
             var x := 0;
             while x < width do
             begin
-                board[y + completed_rows_below, x] = board[y,x];
-                board[y,x] = TILE_EMPTY;
+                board[y + completed_rows_below, x] := board[y,x];
+                board[y,x] := TILE_EMPTY;
                 x := x + 1;
             end
         end
@@ -196,6 +201,7 @@ begin
     begin
         if board[row,x] != TILE_BLOCK then
             return false;
+        x := x + 1;
     end
     return true;
 end
@@ -218,7 +224,7 @@ begin
         next_tetromino := tetromino_i;
 
     current_y := 0;
-    current_x := width / 2 + 1;
+    current_x := width / 2 - 2;
 end
 
 function step_down();
@@ -228,6 +234,8 @@ end
 
 function on_go_right();
 begin
+    if is_over then
+        return;
     if is_hit_right_wall_or_tile() then
         return;
     current_x := current_x + 1;
@@ -242,12 +250,11 @@ begin
         var x := 0;
         while x < 4 do
         begin
-            if t[y,x] != 1 then
-                continue;
-            if is_tetromino_unit_right_wall_or_tile(y, x) then
+            if t[y,x] = 1 and is_tetromino_unit_right_wall_or_tile(y, x) then
                 return true;
             x := x + 1;
         end
+        y := y + 1;
     end
     return false;
 end
@@ -268,6 +275,8 @@ end
 
 function on_go_left();
 begin
+    if is_over then
+        return;
     if is_hit_left_wall_or_tile() then
         return;
     current_x := current_x - 1;
@@ -282,12 +291,11 @@ begin
         var x := 0;
         while x < 4 do
         begin
-            if t[y,x] != 1 then
-                continue;
-            if is_tetromino_unit_left_wall_or_tile(y, x) then
+            if t[y,x] = 1 and is_tetromino_unit_left_wall_or_tile(y, x) then
                 return true;
             x := x + 1;
         end
+        y := y + 1;
     end
     return false;
 end
@@ -308,6 +316,8 @@ end
 
 function on_rotate();
 begin
+    if is_over then
+        return;
     var initial_tetromino := current_tetromino;
     current_tetromino := rotate_tetromino(current_tetromino);
     if is_overlap_ground() then
@@ -326,7 +336,8 @@ end
 
 function on_smash();
 begin
-    var step_to_ground := height;
+    if is_over then
+        return;
 
     var current_tetromino_bottom_y: array[4] of integer := [0, 0, 0, 0];
     var x := 0;
@@ -339,6 +350,7 @@ begin
                 current_tetromino_bottom_y[x] := current_y + y;
             y := y + 1;
         end
+        x := x + 1;
     end
 
     var ground_y: array[4] of integer := [height, height, height, height];
@@ -348,7 +360,8 @@ begin
     begin
         if current_x + x >= width or current_x + x < 0 then
         begin
-            ground_y[x] = -1;
+            ground_y[x] := -1;
+            x := x + 1;
             continue;
         end
 
@@ -362,8 +375,10 @@ begin
             end
             y := y + 1;
         end
+        x := x + 1;
     end
 
+    var step_to_ground := height;
     var x := 0;
     while x < 4 do
     begin
@@ -412,23 +427,72 @@ begin
     on_draw();
 end
 
+var render_frame: array [24,10] of integer;
+
 function on_draw();
 begin
+    var block_size := 15;
+
+    var min_width := block_size * width;
+    var min_height := block_size * height;
+    var screen_width := get_width();
+    var screen_height := get_height();
+    if screen_width < min_width or screen_height < min_height then
+    begin
+      output("Cannot draw, screen too small\\n");  
+      return;
+    end
+
     var y := 0;
     while y < height do
     begin
         var x := 0;
         while x < width do
         begin
-            if board[y,x] = TILE_EMPTY then
-                output(".");
-            else if board[y,x] = TILE_BLOCK then
-                output("#");
-            else if board[y,x] = TILE_ALIVE then
-                output("@");
+            render_frame[y,x] := board[y,x];
             x := x + 1;
         end
-        output("\n");
+        y := y + 1;
+    end
+
+    if !is_over then
+    begin
+        var y := 0;
+        while y < 4 do
+        begin
+            var x := 0;
+            while x < 4 do
+            begin
+                var xx := current_x + x;
+                var yy := current_y + y;
+                if current_tetromino[y,x] = 1 and xx >= 0 and xx < width and yy >= 0 and yy < height then
+                begin
+                    render_frame[yy,xx] := TILE_ALIVE;
+                end
+                x := x + 1;
+            end
+            y := y + 1;
+        end
+    end
+
+    var y := 0;
+    while y < height do
+    begin
+        var x := 0;
+        while x < width do
+        begin
+            var color := "#fff";
+            if render_frame[y,x] = TILE_EMPTY then
+                color := "#f0f0f0";
+            else if render_frame[y,x] = TILE_BLOCK then
+                color := "#0f0f0f";
+            else if render_frame[y,x] = TILE_ALIVE then
+                color := "#f000f0";
+
+            draw_rect(x*block_size, y*block_size, block_size, block_size, color);
+
+            x := x + 1;
+        end
         y := y + 1;
     end
 end

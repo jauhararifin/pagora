@@ -1,5 +1,11 @@
 export interface Displayer {
-  putPixel: (x: number, y: number, color: string) => void
+  drawRect: (
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color: string
+  ) => void
   getWidth: () => number
   getHeigh: () => number
   onKeyDown: (f: (key: string) => void) => void
@@ -9,7 +15,13 @@ export interface Displayer {
 }
 
 export class NopDisplayer implements Displayer {
-  putPixel(x: number, y: number, color: string): void {}
+  drawRect(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color: string
+  ): void {}
 
   getWidth(): number {
     return 0
@@ -33,7 +45,11 @@ export class NopDisplayer implements Displayer {
 export class CanvasDisplayer implements Displayer {
   context: CanvasRenderingContext2D
   keydownHandler: (key: string) => void
-  updateHandler: () => void
+  canvasKeydownHandler = (ev: KeyboardEvent): void => {
+    this.keydownHandler(ev.key)
+  }
+
+  isStarted: boolean = false
 
   constructor(canvas: HTMLCanvasElement) {
     const context = canvas.getContext('2d')
@@ -43,12 +59,17 @@ export class CanvasDisplayer implements Displayer {
     this.context = context
 
     this.keydownHandler = (_) => {}
-    this.updateHandler = () => {}
   }
 
-  putPixel(x: number, y: number, color: string): void {
+  drawRect(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color: string
+  ): void {
     this.context.fillStyle = color
-    this.context.fillRect(x, y, 1, 1)
+    this.context.fillRect(x, y, width, height)
   }
 
   getWidth(): number {
@@ -61,14 +82,22 @@ export class CanvasDisplayer implements Displayer {
 
   onKeyDown(f: (key: string) => void): void {
     this.keydownHandler = f
+    if (this.isStarted) {
+      this.context.canvas.addEventListener('keydown', this.canvasKeydownHandler)
+    }
   }
 
   start(): void {
-    this.context.canvas.onkeydown = (ev) => this.keydownHandler(ev.key)
+    this.context.canvas.addEventListener('keydown', this.canvasKeydownHandler)
+    this.isStarted = true
   }
 
   stop(): void {
-    this.context.canvas.onkeydown = null
+    this.context.canvas.removeEventListener(
+      'keydown',
+      this.canvasKeydownHandler
+    )
+    this.isStarted = false
   }
 
   clearAndReset(): void {

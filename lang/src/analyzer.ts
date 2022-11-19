@@ -654,7 +654,6 @@ class Analyzer {
 
   private analyzeStringLitExpr(expr: StringLitExprNode): StringLitExpr {
     const trimQuote = expr.value.value.slice(1, expr.value.value.length - 1)
-    console.log(expr.value.value, '=============================', trimQuote)
     return {
       kind: ExprKind.STRING_LIT,
       isConstexpr: true,
@@ -760,7 +759,7 @@ class Analyzer {
       },
       [TokenKind.OR]: {
         acceptedTypes: [[Boolean, Boolean, Boolean]],
-        op: BinaryOp.AND,
+        op: BinaryOp.OR,
       },
       [TokenKind.BIT_AND]: {
         acceptedTypes: [[Integer, Integer, Integer]],

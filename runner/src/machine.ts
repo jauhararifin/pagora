@@ -81,7 +81,7 @@ export class Machine {
 
     this.executeStatement(program.main)
 
-    const fps = 24
+    const fps = 12
     if (this.timer === undefined) {
       this.timer = setInterval(() => {
         if (this.onUpdateHandler != null) {
@@ -89,6 +89,8 @@ export class Machine {
         }
       }, 1000 / fps)
     }
+
+    this.displayer.start()
   }
 
   stop(): void {
@@ -115,6 +117,7 @@ export class Machine {
       this.setSymbol(funcDecl.arguments[i].name, args[i])
     }
     this.executeBlockStmt(funcDecl.body)
+    this.popScope()
     const val = this.returnVal!
     this.returnVal = { kind: ValueKind.VOID, value: undefined }
     return val
@@ -127,12 +130,14 @@ export class Machine {
           throw new Error('invalid arguments')
         this.statusWriter.append(args[0].value)
         return { kind: ValueKind.VOID, value: undefined }
-      case 'draw_pixel': {
-        const [xVal, yVal, colorVal] = args
+      case 'draw_rect': {
+        const [xVal, yVal, wVal, hVal, colorVal] = args
         const x = Number(xVal.value as bigint)
         const y = Number(yVal.value as bigint)
+        const w = Number(wVal.value as bigint)
+        const h = Number(hVal.value as bigint)
         const color = colorVal.value as string
-        this.displayer.putPixel(x, y, color)
+        this.displayer.drawRect(x, y, w, h, color)
         return { kind: ValueKind.VOID, value: undefined }
       }
       case 'get_width':
@@ -155,7 +160,7 @@ export class Machine {
           throw new Error('invalid state. registering non function')
         this.onKeyDownHandler = args[0]
         return { kind: ValueKind.VOID, value: undefined }
-      case 'system_time_milis':
+      case 'system_time_millis':
         return {
           kind: ValueKind.INTEGER,
           value: BigInt(Date.now() - this.startTime!),
@@ -225,11 +230,12 @@ export class Machine {
   }
 
   executeVarStmt(stmt: VarStatement): ControlKind {
-    this.setSymbol(stmt.variable.name, this.zeroValue(stmt.variable.type))
+    const varValue = this.zeroValue(stmt.variable.type)
     if (stmt.variable.value !== undefined) {
       const value = this.evalExpr(stmt.variable.value)
-      this.setSymbol(stmt.variable.name, value)
+      varValue.value = value.value
     }
+    this.setSymbol(stmt.variable.name, varValue)
     return ControlKind.NORMAL
   }
 
@@ -280,17 +286,15 @@ export class Machine {
           throw new Error('invalid state. indexing non array')
         }
 
-        let index = 0
-        let size = 1
-        for (let i = expr.array.type.dimension.length - 1; i >= 0; i--) {
-          if (indices[i].kind !== ValueKind.INTEGER) {
+        let val = arr
+        for (const i of indices) {
+          if (i.kind !== ValueKind.INTEGER) {
             throw new Error('invalid state. indexing witout integer')
           }
-          index += Number(indices[i].value) * size
-          size *= Number(expr.array.type.dimension[i])
+          val = val.value[Number(i.value)]
         }
 
-        return arr.value[index]
+        return val
       }
       case ExprKind.CAST:
         throw new Error('not implemented yet')
@@ -312,7 +316,10 @@ export class Machine {
       case ExprKind.ARRAY_LIT:
         return {
           kind: ValueKind.ARRAY,
-          value: expr.values.flatMap((v) => this.evalExpr(v)),
+          value: expr.values.map((v) => {
+            const val = this.evalExpr(v)
+            return { kind: val.kind, value: val.value }
+          }),
         }
       case ExprKind.IDENT:
         return this.getSymbol(expr.ident)
@@ -374,7 +381,9 @@ export class Machine {
           return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
         else if (a.kind === ValueKind.STRING && b.kind === ValueKind.STRING)
           return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
-        else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
+        else {
+          throw new Error(`invalid state. cannot perform binop ${expr.op}`)
+        }
       case BinaryOp.NOT_EQUAL:
         if (a.kind === ValueKind.BOOLEAN && b.kind === ValueKind.BOOLEAN)
           return { kind: ValueKind.BOOLEAN, value: a.value !== b.value }
@@ -452,18 +461,25 @@ export class Machine {
       case TypeKind.STRING:
         return { kind: ValueKind.STRING, value: '' }
       case TypeKind.ARRAY: {
-        const value = []
-        const size = t.dimension.reduce((a, b) => a * b)
-        for (let i = 0; i < size; i++) {
-          value.push(this.zeroValue(t.type))
-        }
-        return { kind: ValueKind.ARRAY, value }
+        return this.zeroArray(t.dimension, t.type)
       }
       case TypeKind.VOID:
         return { kind: ValueKind.VOID, value: undefined }
       default:
         throw new Error('not implemented yet')
     }
+  }
+
+  zeroArray(dimension: bigint[], elementType: Type): Value {
+    const value = []
+    if (dimension.length === 1) {
+      for (let i = 0; i < dimension[0]; i++)
+        value.push(this.zeroValue(elementType))
+    } else {
+      for (let i = 0; i < dimension[0]; i++)
+        value.push(this.zeroArray(dimension.slice(1), elementType))
+    }
+    return { kind: ValueKind.ARRAY, value }
   }
 
   setReturnVal(value: Value): void {
@@ -475,14 +491,12 @@ export class Machine {
   }
 
   setSymbol(name: string, value: Value): void {
-    console.log('set', name, value)
     this.symbols[this.symbols.length - 1][name] = value
   }
 
   getSymbol(name: string): Value {
     for (let i = this.symbols.length - 1; i >= 0; i--) {
       if (name in this.symbols[i]) {
-        console.log('get', name, this.symbols[i][name])
         return this.symbols[i][name]
       }
     }

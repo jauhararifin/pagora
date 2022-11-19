@@ -1,13 +1,17 @@
 import { FunctionType, TypeKind } from './semantic'
 
-export type BuiltinAPIs = { [funcname: string]: FunctionType }
+export interface BuiltinAPIs {
+  [funcname: string]: FunctionType
+}
 
 export const apis: BuiltinAPIs = {
-  draw_pixel: {
+  draw_rect: {
     kind: TypeKind.FUNCTION,
     arguments: [
       { kind: TypeKind.INTEGER }, // x
       { kind: TypeKind.INTEGER }, // y
+      { kind: TypeKind.INTEGER }, // width
+      { kind: TypeKind.INTEGER }, // height
       { kind: TypeKind.STRING }, // color like #000
     ],
     return: { kind: TypeKind.VOID },
