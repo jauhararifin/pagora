@@ -1,14 +1,12 @@
 import {
   AssignStatementNode,
   BlockStatementNode,
-  DeclKind,
-  DeclNode,
   ExprNode,
   ExprNodeKind,
-  FunctionDeclNode,
+  FunctionNode,
   IfStatementNode,
-  MainDeclNode,
-  ParamGroup,
+  MainNode,
+  ParamNode,
   ParamsNode,
   ReturnStatementNode,
   RootNode,
@@ -16,28 +14,21 @@ import {
   StatementNodeKind,
   TypeExprNode,
   TypeExprNodeKind,
-  VariableDeclNode,
   VarNode,
   VarStatementNode,
   WhileStatementNode,
 } from './ast'
 
-export function encodeAst(root: RootNode): any[] {
-  return root.declarations.map(encodeDeclNode)
-}
-
-function encodeDeclNode(node: DeclNode): any[] {
-  switch (node.kind) {
-    case DeclKind.FUNCTION:
-      return encodeFunctionDeclNode(node)
-    case DeclKind.MAIN:
-      return encodeMainDeclNode(node)
-    case DeclKind.VARIABLE:
-      return encodeVariableDeclNode(node)
+export function encodeAst(root: RootNode): any {
+  const funcs = root.functions.map(encodeFunctionDeclNode)
+  const vars = root.variables.map(encodeVarNode)
+  if (root.main !== undefined) {
+    return funcs.concat(vars).concat(encodeMainDeclNode(root.main))
   }
+  return funcs.concat(vars)
 }
 
-function encodeFunctionDeclNode(node: FunctionDeclNode): any[] {
+function encodeFunctionDeclNode(node: FunctionNode): any[] {
   return [
     node.function.encode(),
     node.name.encode(),
@@ -46,16 +37,12 @@ function encodeFunctionDeclNode(node: FunctionDeclNode): any[] {
     node.closeBrac.encode(),
     node.arrow?.encode(),
     node.returnType != null ? encodeTypeExprNode(node.returnType) : undefined,
-    encodeBlockStatementNode(node.body),
+    node.body !== undefined ? encodeBlockStatementNode(node.body) : undefined,
   ]
 }
 
-function encodeMainDeclNode(node: MainDeclNode): any[] {
+function encodeMainDeclNode(node: MainNode): any[] {
   return encodeBlockStatementNode(node.body)
-}
-
-function encodeVariableDeclNode(node: VariableDeclNode): any[] {
-  return encodeVarNode(node.variable)
 }
 
 function encodeVarNode(node: VarNode): any[] {
@@ -73,7 +60,7 @@ function encodeParamsNode(node: ParamsNode): any[] {
   return node.params.map(encodeParamGroup)
 }
 
-function encodeParamGroup(node: ParamGroup): any[] {
+function encodeParamGroup(node: ParamNode): any[] {
   return [
     node.name.encode(),
     node.colon.encode(),
@@ -83,7 +70,7 @@ function encodeParamGroup(node: ParamGroup): any[] {
 
 function encodeTypeExprNode(node: TypeExprNode): any {
   switch (node.kind) {
-    case TypeExprNodeKind.PRIMITIVE:
+    case TypeExprNodeKind.IDENT:
       return node.type.encode()
     case TypeExprNodeKind.ARRAY:
       return [
@@ -92,12 +79,12 @@ function encodeTypeExprNode(node: TypeExprNode): any {
         node.dimension.values.flatMap(encodeExprNode),
         node.closeSquare.encode(),
         node.of.encode(),
-        encodeTypeExprNode(node.type),
+        encodeTypeExprNode(node.elementType),
       ]
   }
 }
 
-function encodeStatementNode(node: StatementNode): any[] {
+function encodeStatementNode(node: StatementNode): any {
   switch (node.kind) {
     case StatementNodeKind.VAR:
       return encodeVarStatement(node)
@@ -105,10 +92,8 @@ function encodeStatementNode(node: StatementNode): any[] {
       return encodeAssignStatement(node)
     case StatementNodeKind.RETURN:
       return encodeReturnStatement(node)
-    case StatementNodeKind.CONTINUE:
-      return ['continue']
-    case StatementNodeKind.BREAK:
-      return ['break']
+    case StatementNodeKind.KEYWORD:
+      return node.keyword.kind
     case StatementNodeKind.IF:
       return encodeIfStatement(node)
     case StatementNodeKind.WHILE:

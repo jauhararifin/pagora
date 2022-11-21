@@ -2,13 +2,8 @@ import {
   ArrayTypeNode,
   BlockStatementNode,
   CommaSeparatedExpr,
-  DeclKind,
-  DeclNode,
   ExprNode,
   ExprNodeKind,
-  FunctionDeclNode,
-  MainDeclNode,
-  ParamGroup,
   ParamsNode,
   RootNode,
   StatementNode,
@@ -16,9 +11,17 @@ import {
   TypeExprNode,
   TypeExprNodeKind,
   VarStatementNode,
-  VariableDeclNode,
+  FunctionNode,
+  VarNode,
+  MainNode,
+  ParamNode,
 } from './ast'
-import { CompileError, CompileErrorItem, UnexpectedToken } from './errors'
+import {
+  CompileError,
+  CompileErrorItem,
+  DuplicatedMain,
+  UnexpectedToken,
+} from './errors'
 import { PrimitiveTypes, Token, TokenKind } from './tokens'
 
 export function parse(tokens: Token[]): RootNode {
@@ -49,7 +52,10 @@ class Parser {
   }
 
   private parseRoot(): RootNode {
-    const declarations: DeclNode[] = []
+    const variables: VarNode[] = []
+    const functions: FunctionNode[] = []
+    let main: MainNode | undefined
+
     while (this.peek().kind !== TokenKind.EOF) {
       const token = this.expectEither(
         [TokenKind.VAR, TokenKind.FUNCTION, TokenKind.BEGIN],
@@ -58,14 +64,19 @@ class Parser {
       try {
         switch (token.kind) {
           case TokenKind.VAR:
-            declarations.push(this.parseVariableDecl())
+            variables.push(this.parseVarNode())
             break
           case TokenKind.FUNCTION:
-            declarations.push(this.parseFunctionDecl())
+            functions.push(this.parseFunctionDecl())
             break
-          case TokenKind.BEGIN:
-            declarations.push(this.parseMainDecl())
+          case TokenKind.BEGIN: {
+            const body = this.parseBlockStatement()
+            if (main !== undefined) {
+              throw new DuplicatedMain(main.body.begin, token)
+            }
+            main = { body }
             break
+          }
           default:
             throw new Error('unreachabe')
         }
@@ -75,17 +86,10 @@ class Parser {
       }
     }
 
-    return { declarations }
+    return { variables, functions, main }
   }
 
-  private parseVariableDecl(): VariableDeclNode {
-    return {
-      ...this.parseVarStatement(),
-      kind: DeclKind.VARIABLE,
-    }
-  }
-
-  private parseFunctionDecl(): FunctionDeclNode {
+  private parseFunctionDecl(): FunctionNode {
     const functionToken = this.expectEither([TokenKind.FUNCTION])
     const name = this.expectEither([TokenKind.IDENTIFIER])
     const openBrac = this.expectEither([TokenKind.OPEN_BRAC])
@@ -102,7 +106,6 @@ class Parser {
     const body = this.parseBlockStatement()
 
     return {
-      kind: DeclKind.FUNCTION,
       function: functionToken,
       name,
       openBrac,
@@ -116,7 +119,7 @@ class Parser {
 
   // TODO: figure out if `parseParams` can be abstracted away to reduce code duplication in parse comma separated expr.
   private parseParams(): ParamsNode {
-    const params: ParamGroup[] = []
+    const params: ParamNode[] = []
     const commas: Token[] = []
 
     const token = this.peek()
@@ -137,13 +140,6 @@ class Parser {
     }
 
     return { params, commas }
-  }
-
-  private parseMainDecl(): MainDeclNode {
-    return {
-      kind: DeclKind.MAIN,
-      body: this.parseBlockStatement(),
-    }
   }
 
   // TODO: fix the way statement parsing is designed. It feels weird that parseStatement returns undefined when
@@ -176,10 +172,8 @@ class Parser {
         result = this.parseReturnStatement()
         break
       case TokenKind.CONTINUE:
-        result = this.parseContinueStatement()
-        break
       case TokenKind.BREAK:
-        result = this.parseBreakStatement()
+        result = this.parseKeywordStatement()
         break
       case TokenKind.END:
         result = undefined
@@ -278,17 +272,10 @@ class Parser {
     }
   }
 
-  private parseContinueStatement(): StatementNode {
+  private parseKeywordStatement(): StatementNode {
     return {
-      kind: StatementNodeKind.CONTINUE,
-      continue: this.expectEither([TokenKind.CONTINUE]),
-    }
-  }
-
-  private parseBreakStatement(): StatementNode {
-    return {
-      kind: StatementNodeKind.BREAK,
-      break: this.expectEither([TokenKind.BREAK]),
+      kind: StatementNodeKind.KEYWORD,
+      keyword: this.expectEither([TokenKind.CONTINUE, TokenKind.BREAK]),
     }
   }
 
@@ -305,6 +292,13 @@ class Parser {
   }
 
   private parseVarStatement(): VarStatementNode {
+    return {
+      kind: StatementNodeKind.VAR,
+      variable: this.parseVarNode(),
+    }
+  }
+
+  private parseVarNode(): VarNode {
     const varToken = this.expectEither([TokenKind.VAR])
     const varName = this.expectEither([TokenKind.IDENTIFIER])
     const next = this.expectEither([TokenKind.COLON, TokenKind.ASSIGN])
@@ -315,40 +309,31 @@ class Parser {
       if (assignToken === undefined) {
         this.expectEither([TokenKind.SEMICOLON])
         return {
-          kind: StatementNodeKind.VAR,
-          variable: {
-            var: varToken,
-            name: varName,
-            colon: next,
-            type: typeExpr,
-          },
+          var: varToken,
+          name: varName,
+          colon: next,
+          type: typeExpr,
         }
       } else {
         const valueExpr = this.parseExpr()
         this.expectEither([TokenKind.SEMICOLON])
         return {
-          kind: StatementNodeKind.VAR,
-          variable: {
-            var: varToken,
-            name: varName,
-            colon: next,
-            type: typeExpr,
-            assign: assignToken,
-            value: valueExpr,
-          },
+          var: varToken,
+          name: varName,
+          colon: next,
+          type: typeExpr,
+          assign: assignToken,
+          value: valueExpr,
         }
       }
     } else {
       const valueExpr = this.parseExpr()
       this.expectEither([TokenKind.SEMICOLON])
       return {
-        kind: StatementNodeKind.VAR,
-        variable: {
-          var: varToken,
-          name: varName,
-          assign: next,
-          value: valueExpr,
-        },
+        var: varToken,
+        name: varName,
+        assign: next,
+        value: valueExpr,
       }
     }
   }
@@ -357,7 +342,7 @@ class Parser {
     const token = this.expectEither([...PrimitiveTypes, TokenKind.ARRAY])
 
     if (PrimitiveTypes.includes(token.kind)) {
-      return { kind: TypeExprNodeKind.PRIMITIVE, type: token }
+      return { kind: TypeExprNodeKind.IDENT, type: token }
     }
 
     this.prev()
@@ -379,7 +364,7 @@ class Parser {
       dimension: commaSeparatedSize,
       closeSquare,
       of: ofToken,
-      type: elementType,
+      elementType,
     }
   }
 

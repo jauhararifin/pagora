@@ -1,20 +1,13 @@
 import { Token } from './tokens'
 
 export interface RootNode {
-  declarations: DeclNode[]
-}
-
-export type DeclNode = FunctionDeclNode | VariableDeclNode | MainDeclNode
-
-export enum DeclKind {
-  FUNCTION = 'FUNCTION',
-  VARIABLE = 'VARIABLE',
-  MAIN = 'MAIN',
+  variables: VarNode[]
+  functions: FunctionNode[]
+  main?: MainNode // TODO: main is optional since we can have module in the future
 }
 
 // TODO: support native function with empty body
-export interface FunctionDeclNode {
-  kind: DeclKind.FUNCTION
+export interface FunctionNode {
   function: Token
   name: Token
   openBrac: Token
@@ -22,12 +15,7 @@ export interface FunctionDeclNode {
   closeBrac: Token
   arrow?: Token
   returnType?: TypeExprNode
-  body: BlockStatementNode
-}
-
-export interface VariableDeclNode {
-  kind: DeclKind.VARIABLE
-  variable: VarNode
+  body?: BlockStatementNode
 }
 
 export interface VarNode {
@@ -39,33 +27,32 @@ export interface VarNode {
   value?: ExprNode
 }
 
-export interface MainDeclNode {
-  kind: DeclKind.MAIN
+export interface MainNode {
   body: BlockStatementNode
 }
 
 export interface ParamsNode {
-  params: ParamGroup[]
+  params: ParamNode[]
   commas: Token[]
 }
 
-export interface ParamGroup {
+export interface ParamNode {
   name: Token // TODO: improve this, introduce multiple args grouping like golang.
   colon: Token
   type: TypeExprNode
 }
 
-export type TypeExprNode = PrimitiveTypeNode | ArrayTypeNode
+export type TypeExprNode = IdentTypeNode | ArrayTypeNode
 
 export enum TypeExprNodeKind {
-  PRIMITIVE = 'PRIMITIVE',
+  IDENT = 'IDENT',
   ARRAY = 'ARRAY',
   STRUCT = 'STRUCT',
   TUPLE = 'TUPLE',
 }
 
-export interface PrimitiveTypeNode {
-  kind: TypeExprNodeKind.PRIMITIVE
+export interface IdentTypeNode {
+  kind: TypeExprNodeKind.IDENT
   type: Token
 }
 
@@ -73,18 +60,17 @@ export interface ArrayTypeNode {
   kind: TypeExprNodeKind.ARRAY
   array: Token
   openSquare: Token
-  dimension: CommaSeparatedExpr // capture the commas position
+  dimension: CommaSeparatedExpr
   closeSquare: Token
   of: Token
-  type: TypeExprNode
+  elementType: TypeExprNode
 }
 
 export type StatementNode =
   | VarStatementNode
   | AssignStatementNode
   | ReturnStatementNode
-  | ContinueStatementNode
-  | BreakStatementNode
+  | KeywordStatementNode
   | IfStatementNode
   | WhileStatementNode
   | BlockStatementNode
@@ -96,8 +82,7 @@ export enum StatementNodeKind {
   RETURN = 'RETURN',
   IF = 'IF',
   WHILE = 'WHILE',
-  CONTINUE = 'CONTINUE',
-  BREAK = 'BREAK',
+  KEYWORD = 'KEYWORD',
   BLOCK = 'BLOCK',
   EXPR = 'EXPR',
 }
@@ -120,14 +105,9 @@ export interface ReturnStatementNode {
   value?: ExprNode
 }
 
-export interface ContinueStatementNode {
-  kind: StatementNodeKind.CONTINUE
-  continue: Token
-}
-
-export interface BreakStatementNode {
-  kind: StatementNodeKind.BREAK
-  break: Token
+export interface KeywordStatementNode {
+  kind: StatementNodeKind.KEYWORD
+  keyword: Token
 }
 
 export interface IfStatementNode {

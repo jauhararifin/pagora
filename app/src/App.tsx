@@ -5,6 +5,7 @@ import tetrisSourceCode from "./examples/tetris";
 import triangleSourceCode from "./examples/triangle";
 import helloSourceCode from "./examples/hello";
 import gameOfLifeSourceCode from "./examples/gameoflife";
+import snakeSourceCode from "./examples/snake";
 import { CanvasDisplayer, Machine, TextAreaStatusWriter } from '@pagora/runner'
 import { compile } from "@pagora/lang";
 
@@ -155,6 +156,10 @@ const templates: Template[] = [
       name: "Game of Life",
       sourceCode: gameOfLifeSourceCode,
   },
+  {
+      name: "Snake",
+      sourceCode: snakeSourceCode,
+  }
 ]
 
 function TemplateButton(props: {setCode: (code: string) => void}) {

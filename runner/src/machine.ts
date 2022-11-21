@@ -136,13 +136,15 @@ export class Machine {
       return this.executeNativeFunc(funcDecl.name, args)
     }
 
+    this.returnVal = this.zeroValue(funcDecl.type.return)
+
     this.addScope()
     for (let i = 0; i < funcDecl.arguments.length; i++) {
       this.setSymbol(funcDecl.arguments[i].name, args[i])
     }
     this.executeBlockStmt(funcDecl.body)
     this.popScope()
-    const val = this.returnVal!
+    const val = this.returnVal
     this.returnVal = { kind: ValueKind.VOID, value: undefined }
     return val
   }
@@ -605,7 +607,7 @@ export class Machine {
         return this.symbols[i][name]
       }
     }
-    throw new Error('invalid state. searching undefined symbol')
+    throw new Error(`invalid state. searching undefined symbol ${name}`)
   }
 
   popScope(): void {

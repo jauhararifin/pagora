@@ -35,8 +35,6 @@ import {
   Byte,
   ArrayLitExpr,
   StringLitExpr,
-  ContinueStatement,
-  BreakStatment,
   String,
 } from './semantic'
 import {
@@ -47,19 +45,16 @@ import {
   BinaryExprNode,
   BlockStatementNode,
   BooleanLitExprNode,
-  BreakStatementNode,
   CallExprNode,
   CastExprNode,
-  ContinueStatementNode,
-  DeclKind,
   ExprNode,
   ExprNodeKind,
   ExprStatementNode,
-  FunctionDeclNode,
+  FunctionNode,
   IdentExprNode,
   IfStatementNode,
   IntegerLitExprNode,
-  MainDeclNode,
+  KeywordStatementNode,
   ReturnStatementNode,
   RootNode,
   StatementNode,
@@ -68,7 +63,6 @@ import {
   TypeExprNode,
   TypeExprNodeKind,
   UnaryExprNode,
-  VariableDeclNode,
   VarNode,
   VarStatementNode,
   WhileStatementNode,
@@ -77,7 +71,6 @@ import {
   BuiltinRedeclared,
   CompileError,
   CompileErrorItem,
-  DuplicatedMain,
   InvalidBinaryOperator,
   InvalidUnaryOperator,
   MissingMain,
@@ -101,6 +94,7 @@ export function analyze(ast: RootNode, builtins: BuiltinAPIs = apis): Program {
 // TODO: add checking in the function body. Make sure that a function with return type always return.
 // TODO: add native function.
 // TODO: support any type
+// TODO: add warning support for comparing variable without using it. This is avoid common mistake of using = for :=.
 class Analyzer {
   functions: Function[] = []
   globals: Variable[] = []
@@ -136,21 +130,15 @@ class Analyzer {
       })
     }
 
-    const functionDecls: FunctionDeclNode[] = ast.declarations.flatMap((decl) =>
-      decl.kind === DeclKind.FUNCTION ? decl : []
-    )
-    const varDecls: VariableDeclNode[] = ast.declarations.flatMap((decl) =>
-      decl.kind === DeclKind.VARIABLE ? decl : []
-    )
-    const mainDecls: MainDeclNode[] = ast.declarations.flatMap((decl) =>
-      decl.kind === DeclKind.MAIN ? decl : []
-    )
+    const functionDecls = ast.functions
+    const varDecls = ast.variables
+    const mainDecl = ast.main
 
     this.analyzeFuncSignatures(functionDecls)
 
     for (const decl of varDecls) {
       try {
-        const variable = this.analyzeVariable(decl.variable, false)
+        const variable = this.analyzeVariable(decl, false)
         if (variable !== undefined) {
           this.globals.push(variable)
         }
@@ -171,39 +159,29 @@ class Analyzer {
       }
     }
 
-    let main: BlockStatement | undefined
-    let mainToken: Token | undefined
-    for (const decl of mainDecls) {
-      try {
-        this.addScope()
-        const stmt = this.analyzeBlockStatement(decl.body)
-        this.removeScope()
-        if (main !== undefined) {
-          this.emitError(new DuplicatedMain(mainToken!, decl.body.begin))
-        } else {
-          main = stmt
-          mainToken = decl.body.begin
-        }
-      } catch (e) {
-        if (e instanceof CompileErrorItem) this.emitError(e)
-        else throw e
-        if (this.tooManyErrors()) break
-      }
-    }
-
-    if (main === undefined) {
+    if (mainDecl === undefined) {
       this.emitError(new MissingMain())
       throw new CompileError(this.errors)
+    }
+
+    let main: BlockStatement | undefined
+    try {
+      this.addScope()
+      main = this.analyzeBlockStatement(mainDecl.body)
+      this.removeScope()
+    } catch (e) {
+      if (e instanceof CompileErrorItem) this.emitError(e)
+      else throw e
     }
 
     if (this.errors.length > 0) {
       throw new CompileError(this.errors)
     }
 
-    return { functions: this.functions, globals: this.globals, main }
+    return { functions: this.functions, globals: this.globals, main: main! }
   }
 
-  private analyzeFuncSignatures(declarations: FunctionDeclNode[]): void {
+  private analyzeFuncSignatures(declarations: FunctionNode[]): void {
     for (const declaration of declarations) {
       const name = declaration.name.value
 
@@ -221,7 +199,7 @@ class Analyzer {
     }
   }
 
-  private analyzeFunction(functionDecl: FunctionDeclNode): void {
+  private analyzeFunction(functionDecl: FunctionNode): void {
     this.assertTokenKind(functionDecl.name, TokenKind.IDENTIFIER)
 
     const name = functionDecl.name.value
@@ -251,17 +229,20 @@ class Analyzer {
       })
     )
 
-    this.addScope()
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i]
-      this.addSymbol(
-        arg.name,
-        functionDecl.params.params[i].name.position,
-        arg.type
-      )
+    let body: BlockStatement | undefined
+    if (functionDecl.body !== undefined) {
+      this.addScope()
+      for (let i = 0; i < args.length; i++) {
+        const arg = args[i]
+        this.addSymbol(
+          arg.name,
+          functionDecl.params.params[i].name.position,
+          arg.type
+        )
+      }
+      body = this.analyzeBlockStatement(functionDecl.body)
+      this.removeScope()
     }
-    const body = this.analyzeBlockStatement(functionDecl.body)
-    this.removeScope()
 
     this.functions.push({ name, type, arguments: args, body })
   }
@@ -282,10 +263,8 @@ class Analyzer {
         return this.analyzeWhileStatement(statement)
       case StatementNodeKind.RETURN:
         return this.analyzeReturnStatement(statement)
-      case StatementNodeKind.CONTINUE:
-        return this.analyzeContinueStatement(statement)
-      case StatementNodeKind.BREAK:
-        return this.analyzeBreakStatement(statement)
+      case StatementNodeKind.KEYWORD:
+        return this.analyzeKeywordStatement(statement)
     }
   }
 
@@ -442,25 +421,26 @@ class Analyzer {
     }
   }
 
-  private analyzeContinueStatement(
-    stmt: ContinueStatementNode
-  ): ContinueStatement {
-    if (this.loopDepth === 0) {
-      throw new NotInALoop(stmt.continue)
+  private analyzeKeywordStatement(stmt: KeywordStatementNode): Statement {
+    const keyword = stmt.keyword.kind
+    let kind: StatementKind | undefined
+    if (keyword === TokenKind.CONTINUE) {
+      kind = StatementKind.CONTINUE
+    } else if (keyword === TokenKind.BREAK) {
+      kind = StatementKind.BREAK
+    } else {
+      throw new Error(`${keyword} statement is not supported yet`)
     }
-    return { kind: StatementKind.CONTINUE }
-  }
 
-  private analyzeBreakStatement(stmt: BreakStatementNode): BreakStatment {
     if (this.loopDepth === 0) {
-      throw new NotInALoop(stmt.break)
+      throw new NotInALoop(stmt.keyword)
     }
-    return { kind: StatementKind.BREAK }
+    return { kind }
   }
 
   private analyzeType(node: TypeExprNode): Type {
     switch (node.kind) {
-      case TypeExprNodeKind.PRIMITIVE:
+      case TypeExprNodeKind.IDENT:
         switch (node.type.kind) {
           case TokenKind.INTEGER:
             return Integer
@@ -495,7 +475,7 @@ class Analyzer {
       dimensionNum.push(dim.constValue as bigint)
     }
 
-    const elementType = this.analyzeType(node.type)
+    const elementType = this.analyzeType(node.elementType)
 
     return {
       kind: TypeKind.ARRAY,
@@ -504,7 +484,7 @@ class Analyzer {
     }
   }
 
-  private analyzeFunctionType(node: FunctionDeclNode): FunctionType {
+  private analyzeFunctionType(node: FunctionNode): FunctionType {
     const args: Type[] = []
     for (const param of node.params.params) {
       const type = this.analyzeType(param.type)
