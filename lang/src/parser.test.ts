@@ -1,8 +1,8 @@
 import { parse } from './parser'
-import { tokenize } from './lexer'
 import { encodeAst } from './ast_util'
 import { CompileError, CompileErrorItem } from './errors'
 import { RootNode } from './ast'
+import { scan } from './scanner'
 
 interface Testcase {
   name: string
@@ -162,7 +162,7 @@ describe('tokenize test', () => {
     it(testcase.name, () => {
       let root: RootNode
       try {
-        const tokens = tokenize(testcase.sourceCode)
+        const tokens = scan(testcase.sourceCode)
         root = parse(tokens)
       } catch (e) {
         expect(e).toBeInstanceOf(CompileError)

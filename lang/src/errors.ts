@@ -32,6 +32,18 @@ export class UnexpectedCharacter extends CompileErrorItem {
   }
 }
 
+export class MissingClosingQuote extends CompileErrorItem {
+  constructor(position: Position) {
+    super(`Missing closing quote in string literal`, position)
+  }
+}
+
+export class TooManyErrors extends CompileErrorItem {
+  constructor() {
+    super(`Too many errors`)
+  }
+}
+
 export class UnexpectedToken extends CompileErrorItem {
   constructor(expected: TokenKind[] | string, found: Token) {
     const expectedMessage =

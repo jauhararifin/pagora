@@ -9,7 +9,7 @@ export class Token {
     this.position = pos
   }
 
-  repr(): string {
+  encode(): string {
     return (
       this.kind.toString() +
       (!KEYWORD.has(this.kind) ? `(${this.value.toString()})` : '')

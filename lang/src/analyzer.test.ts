@@ -2,8 +2,8 @@ import { CompileError } from './errors'
 import { analyze } from './analyzer'
 import { encodeProgram } from './semantic_util'
 import { parse } from './parser'
-import { tokenize } from './lexer'
 import { Program } from './semantic'
+import { scan } from './scanner'
 
 const program1Source = `
 function aplusb(a: integer, b: integer) -> integer;
@@ -164,7 +164,7 @@ describe('analyzer test', () => {
     it(testcase.name, () => {
       let program: Program
       try {
-        const tokens = tokenize(testcase.sourceCode)
+        const tokens = scan(testcase.sourceCode)
         const ast = parse(tokens)
         program = analyze(ast, {})
       } catch (e) {

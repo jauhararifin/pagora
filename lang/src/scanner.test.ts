@@ -1,5 +1,5 @@
 import { CompileError, CompileErrorItem } from './errors'
-import { tokenize } from './lexer'
+import { scan } from './scanner'
 
 interface Testcase {
   name: string
@@ -63,7 +63,7 @@ describe('tokenize test', () => {
       ],
     },
     {
-      name: 'simple for loop',
+      name: 'simple while loop',
       sourceCode: simpleWhileLoop,
       expectedResult: expectedSimpleWhileLoop,
     },
@@ -122,21 +122,26 @@ describe('tokenize test', () => {
     {
       name: 'incomplete program',
       sourceCode: 'begin output("hello end',
-      expectedResult: [`Error at 1:23: Unexpected character "EOF"`],
+      expectedResult: [
+        `Error at 1:23: Missing closing quote in string literal`,
+      ],
     },
   ]
 
   for (const testcase of testcases) {
     it(testcase.name, () => {
       try {
-        const tokens = tokenize(testcase.sourceCode)
-        const actualTokens = tokens?.map((tok) => tok.repr())
+        const tokens = scan(testcase.sourceCode)
+        const actualTokens = tokens?.map((tok) => tok.encode())
         expect(actualTokens).toStrictEqual(testcase.expectedResult)
       } catch (e) {
-        const err = e as CompileError
-        expect(err.errors.flatMap((v) => v.message)).toStrictEqual(
-          testcase.expectedResult
-        )
+        if (e instanceof CompileError) {
+          expect(e.errors.flatMap((v) => v.message)).toStrictEqual(
+            testcase.expectedResult
+          )
+        } else {
+          throw e
+        }
       }
     })
   }

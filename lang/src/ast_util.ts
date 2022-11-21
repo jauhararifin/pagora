@@ -39,12 +39,12 @@ function encodeDeclNode(node: DeclNode): any[] {
 
 function encodeFunctionDeclNode(node: FunctionDeclNode): any[] {
   return [
-    node.function.repr(),
-    node.name.repr(),
-    node.openBrac.repr(),
+    node.function.encode(),
+    node.name.encode(),
+    node.openBrac.encode(),
     encodeParamsNode(node.params),
-    node.closeBrac.repr(),
-    node.arrow?.repr(),
+    node.closeBrac.encode(),
+    node.arrow?.encode(),
     node.returnType != null ? encodeTypeExprNode(node.returnType) : undefined,
     encodeBlockStatementNode(node.body),
   ]
@@ -60,11 +60,11 @@ function encodeVariableDeclNode(node: VariableDeclNode): any[] {
 
 function encodeVarNode(node: VarNode): any[] {
   return [
-    node.var.repr(),
-    node.name.repr(),
-    node.colon?.repr(),
+    node.var.encode(),
+    node.name.encode(),
+    node.colon?.encode(),
     node.type != null ? encodeTypeExprNode(node.type) : undefined,
-    node.assign?.repr(),
+    node.assign?.encode(),
     node.value != null ? encodeExprNode(node.value) : undefined,
   ]
 }
@@ -74,20 +74,24 @@ function encodeParamsNode(node: ParamsNode): any[] {
 }
 
 function encodeParamGroup(node: ParamGroup): any[] {
-  return [node.name.repr(), node.colon.repr(), encodeTypeExprNode(node.type)]
+  return [
+    node.name.encode(),
+    node.colon.encode(),
+    encodeTypeExprNode(node.type),
+  ]
 }
 
 function encodeTypeExprNode(node: TypeExprNode): any {
   switch (node.kind) {
     case TypeExprNodeKind.PRIMITIVE:
-      return node.type.repr()
+      return node.type.encode()
     case TypeExprNodeKind.ARRAY:
       return [
-        node.array.repr(),
-        node.openSquare.repr(),
+        node.array.encode(),
+        node.openSquare.encode(),
         node.dimension.values.flatMap(encodeExprNode),
-        node.closeSquare.repr(),
-        node.of.repr(),
+        node.closeSquare.encode(),
+        node.of.encode(),
         encodeTypeExprNode(node.type),
       ]
   }
@@ -123,74 +127,74 @@ function encodeVarStatement(node: VarStatementNode): any[] {
 function encodeAssignStatement(node: AssignStatementNode): any[] {
   return [
     encodeExprNode(node.receiver),
-    node.assign.repr(),
+    node.assign.encode(),
     encodeExprNode(node.value),
   ]
 }
 
 function encodeReturnStatement(node: ReturnStatementNode): any[] {
   return [
-    node.return.repr(),
+    node.return.encode(),
     node.value != null ? encodeExprNode(node.value) : undefined,
   ]
 }
 
 function encodeIfStatement(node: IfStatementNode): any[] {
   return [
-    node.if.repr(),
+    node.if.encode(),
     encodeExprNode(node.condition),
-    node.then.repr(),
+    node.then.encode(),
     encodeStatementNode(node.body),
   ]
 }
 
 function encodeWhileStatement(node: WhileStatementNode): any[] {
   return [
-    node.while.repr(),
+    node.while.encode(),
     encodeExprNode(node.condition),
-    node.do.repr(),
+    node.do.encode(),
     encodeStatementNode(node.body),
   ]
 }
 
 function encodeBlockStatementNode(node: BlockStatementNode): any[] {
   return [
-    node.begin.repr(),
+    node.begin.encode(),
     node.statements.map(encodeStatementNode),
-    node.end.repr(),
+    node.end.encode(),
   ]
 }
 
 function encodeExprNode(node: ExprNode): any {
   switch (node.kind) {
     case ExprNodeKind.IDENT:
-      return node.name.repr()
+      return node.name.encode()
     case ExprNodeKind.INTEGER_LIT:
-      return node.value.repr()
+      return node.value.encode()
     case ExprNodeKind.BOOLEAN_LIT:
-      return node.value.repr()
+      return node.value.encode()
     case ExprNodeKind.BINARY:
-      return [encodeExprNode(node.a), node.op.repr(), encodeExprNode(node.b)]
+      return [encodeExprNode(node.a), node.op.encode(), encodeExprNode(node.b)]
     case ExprNodeKind.UNARY:
-      return [node.op.repr(), encodeExprNode(node.value)]
+      return [node.op.encode(), encodeExprNode(node.value)]
     case ExprNodeKind.CALL:
       return [
         encodeExprNode(node.callee),
-        node.openBrac.repr(),
+        node.openBrac.encode(),
         node.arguments.values.flatMap(encodeExprNode),
-        node.closeBrac.repr(),
+        node.closeBrac.encode(),
       ]
     case ExprNodeKind.ARRAY_INDEX:
       return [
         encodeExprNode(node.array),
-        node.openSquare.repr(),
+        node.openSquare.encode(),
         node.index.values.flatMap(encodeExprNode),
-        node.closeSquare.repr(),
+        node.closeSquare.encode(),
       ]
     case ExprNodeKind.CAST:
       return [
         encodeExprNode(node.source),
-        node.as.repr(),
+        node.as.encode(),
         encodeTypeExprNode(node.target),
       ]
     case ExprNodeKind.GROUPED:
