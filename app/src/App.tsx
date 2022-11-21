@@ -239,6 +239,8 @@ function Footer() {
       <div className="w-full text-white text-center">
         <a className="hover:underline" href="https://twitter.com/jauhararifin10">Created by Jauhar Arifin</a>
         <span className="mx-2"></span>
+        <a className="hover:underline" href="https://saweria.co/jauhararifin">(Donate)</a>
+        <span className="mx-2"></span>
         <a className="hover:underline" href="https://github.com/jauhararifin/pagora">(Github)</a>
         <span className="mx-2"></span>
         <a className="hover:underline" href="https://jauhar.id">(Blog)</a>
