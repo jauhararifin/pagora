@@ -51,7 +51,7 @@ var board: array [24,10] of integer;
 var seed := 0;
 var last_tetromino_index := 0;
 
-function init_game();
+function init_game()
 begin
     in_game := true;
     is_over := false;
@@ -72,7 +72,7 @@ begin
     setup_next_tetromino();
 end
 
-function on_tick();
+function on_tick()
 begin
     if is_over then
         return;
@@ -93,7 +93,7 @@ begin
         step_down();
 end
 
-function is_touched_ground() -> boolean;
+function is_touched_ground() -> boolean
 begin
     var y := 0;
     while y < 4 do
@@ -110,7 +110,7 @@ begin
     return false;
 end
 
-function is_tetromino_unit_touch_ground(y: integer, x: integer) -> boolean;
+function is_tetromino_unit_touch_ground(y: integer, x: integer) -> boolean
 begin
     var t := current_tetromino;
     if t[y,x] != 1 then
@@ -124,7 +124,7 @@ begin
     return false;
 end
 
-function is_tetromino_unit_overlap_block(y: integer, x: integer) -> boolean;
+function is_tetromino_unit_overlap_block(y: integer, x: integer) -> boolean
 begin
     var t := current_tetromino;
     if t[y,x] != 1 then
@@ -136,7 +136,7 @@ begin
     return false
 end
 
-function is_overlap_ground() -> boolean;
+function is_overlap_ground() -> boolean
 begin
     var y := 0;
     while y < 4 do
@@ -153,7 +153,7 @@ begin
     return false;
 end
 
-function materialize_tetromino();
+function materialize_tetromino()
 begin
     var t := current_tetromino;
     var y := 0;
@@ -170,7 +170,7 @@ begin
     end
 end
 
-function pop_completed_rows();
+function pop_completed_rows()
 begin
     var completed_rows_count := 0;
     var y := height - 1;
@@ -195,7 +195,7 @@ begin
     end
 end
 
-function is_row_completed(row: integer) -> boolean;
+function is_row_completed(row: integer) -> boolean
 begin
     var x := 0;
     while x < width do
@@ -207,7 +207,7 @@ begin
     return true;
 end
 
-function setup_next_tetromino();
+function setup_next_tetromino()
 begin
     current_tetromino := next_tetromino;
 
@@ -229,12 +229,12 @@ begin
     current_x := width / 2 - 2;
 end
 
-function step_down();
+function step_down()
 begin
     current_y := current_y + 1;
 end
 
-function on_go_right();
+function on_go_right()
 begin
     if is_over then
         return;
@@ -243,7 +243,7 @@ begin
     current_x := current_x + 1;
 end
 
-function is_hit_right_wall_or_tile() -> boolean; 
+function is_hit_right_wall_or_tile() -> boolean 
 begin
     var t := current_tetromino;
     var y := 0;
@@ -261,7 +261,7 @@ begin
     return false;
 end
 
-function is_tetromino_unit_right_wall_or_tile(y: integer, x: integer) -> boolean;
+function is_tetromino_unit_right_wall_or_tile(y: integer, x: integer) -> boolean
 begin
     var t := current_tetromino;
     if t[y,x] != 1 then
@@ -275,7 +275,7 @@ begin
     return false;
 end
 
-function on_go_left();
+function on_go_left()
 begin
     if is_over then
         return;
@@ -284,7 +284,7 @@ begin
     current_x := current_x - 1;
 end
 
-function is_hit_left_wall_or_tile() -> boolean;
+function is_hit_left_wall_or_tile() -> boolean
 begin
     var t := current_tetromino;
     var y := 0;
@@ -302,7 +302,7 @@ begin
     return false;
 end
 
-function is_tetromino_unit_left_wall_or_tile(y: integer, x: integer) -> boolean;
+function is_tetromino_unit_left_wall_or_tile(y: integer, x: integer) -> boolean
 begin
     var t := current_tetromino;
     if t[y,x] != 1 then
@@ -316,7 +316,7 @@ begin
     return false;
 end
 
-function on_rotate();
+function on_rotate()
 begin
     if is_over then
         return;
@@ -326,7 +326,7 @@ begin
         current_tetromino := initial_tetromino;
 end
 
-function rotate_tetromino(t: array[4,4] of integer) -> array[4,4] of integer;
+function rotate_tetromino(t: array[4,4] of integer) -> array[4,4] of integer
 begin
     return [
         [t[0,3], t[1,3], t[2,3], t[3,3]],
@@ -336,7 +336,7 @@ begin
     ];
 end
 
-function on_smash();
+function on_smash()
 begin
     if is_over then
         return;
@@ -357,7 +357,7 @@ begin
 
     var ground_y: array[4] of integer := [height, height, height, height];
 
-    var x := 0;
+    x := 0;
     while x < 4 do
     begin
         if current_x + x >= width or current_x + x < 0 then
@@ -381,7 +381,7 @@ begin
     end
 
     var step_to_ground := height;
-    var x := 0;
+    x := 0;
     while x < 4 do
     begin
         var y := 3;
@@ -410,7 +410,7 @@ begin
     end;
 end
 
-function on_keydown(key: string);
+function on_keydown(key: string)
 begin
     if key = "ArrowRight" then
         on_go_right();
@@ -423,7 +423,7 @@ begin
 end
 
 var last_tick: integer := 0;
-function on_update();
+function on_update()
 begin
     var t := system_time_millis();
     if t - last_tick > 500 then
@@ -437,7 +437,7 @@ end
 
 var render_frame: array [24,10] of integer;
 
-function on_draw();
+function on_draw()
 begin
     var block_size := 20;
 
@@ -488,7 +488,7 @@ begin
         end
     end
 
-    var y := 0;
+    y := 0;
     while y < height do
     begin
         var x := 0;

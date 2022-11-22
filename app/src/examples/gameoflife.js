@@ -6,7 +6,7 @@ var is_running: boolean := false;
 var LIFE: integer := 1;
 var DEAD: integer := 0;
 
-function on_mouse_click(x: integer, y: integer);
+function on_mouse_click(x: integer, y: integer)
 begin
   var w := get_width();
   var h := get_height();
@@ -30,20 +30,20 @@ end
 
 var mouse_x: integer;
 var mouse_y: integer;
-function on_mouse_move(x: integer, y: integer);
+function on_mouse_move(x: integer, y: integer)
 begin
     mouse_x := x;
     mouse_y := y;
 end
 
-function on_key_down(key: string);
+function on_key_down(key: string)
 begin
     if key = "Enter" then
         is_running := !is_running;
 end
 
 var last_tick: integer := 0;
-function on_update();
+function on_update()
 begin
     var t := system_time_millis();
     if t - last_tick > 10 then
@@ -55,7 +55,7 @@ begin
     draw_board();
 end
 
-function on_tick();
+function on_tick()
 begin
   // Rules from: https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
 
@@ -109,7 +109,7 @@ begin
     x := x + 1;
   end
 
-  var x := 0;
+  x := 0;
   while x < size do
   begin
     var y := 0;
@@ -122,7 +122,7 @@ begin
   end
 end
 
-function draw_board();
+function draw_board()
 begin
   var w := get_width();
   var h := get_height();

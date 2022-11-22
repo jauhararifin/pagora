@@ -22,7 +22,7 @@ var DIR_UP := 3;
 var food_x: integer;
 var food_y: integer;
 
-function init_game();
+function init_game()
 begin
   snake_x[0] := size / 2 - 1;
   snake_y[0] := size / 2;
@@ -40,7 +40,7 @@ begin
   randomize_food();
 end
 
-function on_tick();
+function on_tick()
 begin
   if is_game_over then
     return;
@@ -101,7 +101,7 @@ begin
   end
 end
 
-function randomize_food();
+function randomize_food()
 begin
   var available_x: array[40] of integer;
   var len := 0;
@@ -156,7 +156,7 @@ begin
 end
 
 var seed: integer;
-function next_random() -> integer;
+function next_random() -> integer
 begin
   seed := (seed * 75 + 74) % 65537;
   return seed;
@@ -164,7 +164,7 @@ end
 
 var last_ts := 0;
 var delay := 100;
-function on_update();
+function on_update()
 begin
   var t := system_time_millis();
   if t - last_ts > delay then
@@ -176,7 +176,7 @@ begin
   draw();
 end
 
-function on_keydown(key: string);
+function on_keydown(key: string)
 begin
   if key = "ArrowDown" and snake_direction != DIR_UP then
     snake_direction := DIR_DOWN;
@@ -188,7 +188,7 @@ begin
     snake_direction := DIR_LEFT;
 end
 
-function draw();
+function draw()
 begin
   var w := get_width();
   var h := get_height();
