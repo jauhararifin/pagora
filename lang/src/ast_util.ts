@@ -23,12 +23,12 @@ export function encodeAst(root: RootNode): any {
   const funcs = root.functions.map(encodeFunctionDeclNode)
   const vars = root.variables.map(encodeVarNode)
   if (root.main !== undefined) {
-    return funcs.concat(vars).concat(encodeMainDeclNode(root.main))
+    return funcs.concat(vars).concat([encodeMainDeclNode(root.main)])
   }
   return funcs.concat(vars)
 }
 
-function encodeFunctionDeclNode(node: FunctionNode): any[] {
+function encodeFunctionDeclNode(node: FunctionNode): any {
   return [
     node.function.encode(),
     node.name.encode(),
@@ -41,11 +41,11 @@ function encodeFunctionDeclNode(node: FunctionNode): any[] {
   ]
 }
 
-function encodeMainDeclNode(node: MainNode): any[] {
+function encodeMainDeclNode(node: MainNode): any {
   return encodeBlockStatementNode(node.body)
 }
 
-function encodeVarNode(node: VarNode): any[] {
+function encodeVarNode(node: VarNode): any {
   return [
     node.var.encode(),
     node.name.encode(),
@@ -56,11 +56,11 @@ function encodeVarNode(node: VarNode): any[] {
   ]
 }
 
-function encodeParamsNode(node: ParamsNode): any[] {
+function encodeParamsNode(node: ParamsNode): any {
   return node.params.map(encodeParamGroup)
 }
 
-function encodeParamGroup(node: ParamNode): any[] {
+function encodeParamGroup(node: ParamNode): any {
   return [
     node.name.encode(),
     node.colon.encode(),
@@ -84,7 +84,7 @@ function encodeTypeExprNode(node: TypeExprNode): any {
   }
 }
 
-function encodeStatementNode(node: StatementNode): any {
+export function encodeStatementNode(node: StatementNode): any {
   switch (node.kind) {
     case StatementNodeKind.VAR:
       return encodeVarStatement(node)
@@ -105,11 +105,11 @@ function encodeStatementNode(node: StatementNode): any {
   }
 }
 
-function encodeVarStatement(node: VarStatementNode): any[] {
+function encodeVarStatement(node: VarStatementNode): any {
   return encodeVarNode(node.variable)
 }
 
-function encodeAssignStatement(node: AssignStatementNode): any[] {
+function encodeAssignStatement(node: AssignStatementNode): any {
   return [
     encodeExprNode(node.receiver),
     node.assign.encode(),
@@ -117,23 +117,27 @@ function encodeAssignStatement(node: AssignStatementNode): any[] {
   ]
 }
 
-function encodeReturnStatement(node: ReturnStatementNode): any[] {
+function encodeReturnStatement(node: ReturnStatementNode): any {
   return [
     node.return.encode(),
     node.value != null ? encodeExprNode(node.value) : undefined,
   ]
 }
 
-function encodeIfStatement(node: IfStatementNode): any[] {
+function encodeIfStatement(node: IfStatementNode): any {
   return [
     node.if.encode(),
     encodeExprNode(node.condition),
     node.then.encode(),
     encodeStatementNode(node.body),
+    node.else?.encode(),
+    node.elseBody !== undefined
+      ? encodeStatementNode(node.elseBody)
+      : undefined,
   ]
 }
 
-function encodeWhileStatement(node: WhileStatementNode): any[] {
+function encodeWhileStatement(node: WhileStatementNode): any {
   return [
     node.while.encode(),
     encodeExprNode(node.condition),
@@ -142,7 +146,7 @@ function encodeWhileStatement(node: WhileStatementNode): any[] {
   ]
 }
 
-function encodeBlockStatementNode(node: BlockStatementNode): any[] {
+function encodeBlockStatementNode(node: BlockStatementNode): any {
   return [
     node.begin.encode(),
     node.statements.map(encodeStatementNode),

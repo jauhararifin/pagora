@@ -1,8 +1,8 @@
 import { MAX_ERRORS } from './config'
 import {
   CompileError,
-  CompileErrorItem,
   MissingClosingQuote,
+  MultiCompileError,
   TooManyErrors,
   UnexpectedCharacter,
 } from './errors'
@@ -11,7 +11,7 @@ import { Position, Token, TokenKind } from './tokens'
 export function scan(sourceCode: string): Token[] {
   const codes = new SourceCode(sourceCode)
   const tokens: Token[] = []
-  const errors: CompileErrorItem[] = []
+  const errors: CompileError[] = []
 
   while (!codes.empty()) {
     if (skipWhitespaces(codes)) continue
@@ -33,7 +33,7 @@ export function scan(sourceCode: string): Token[] {
   }
 
   if (errors.length > 0) {
-    throw new CompileError(errors)
+    throw new MultiCompileError(errors)
   }
 
   return tokens
@@ -52,7 +52,7 @@ class SourceCode {
 
     for (const c of codes) {
       col++
-      characters.push({ c, pos: { line, col } })
+      characters.push({ c, pos: new Position(line, col) })
 
       if (c === '\n') {
         line++
@@ -75,7 +75,7 @@ class SourceCode {
 
   pos(): Position {
     if (this.characters.length === 0) {
-      return { line: 0, col: 0 }
+      return new Position(0, 0)
     }
     return (
       this.characters[this.index]?.pos ??
@@ -130,7 +130,7 @@ function skipWhitespaces(sourceCode: SourceCode): boolean {
 interface ScanResult {
   consumed: boolean
   token?: Token
-  errors: CompileErrorItem[]
+  errors: CompileError[]
 }
 
 const SCANNED_NOTHING: ScanResult = { consumed: false, errors: [] }
@@ -231,7 +231,7 @@ function scanString(sourceCode: SourceCode): ScanResult {
   let afterBackslash = false
   let closed = false
   let value = openingQuote
-  const errors: CompileErrorItem[] = []
+  const errors: CompileError[] = []
 
   for (; !closed && !sourceCode.empty(); sourceCode.advance(1)) {
     const c = sourceCode.char()

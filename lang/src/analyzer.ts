@@ -70,11 +70,11 @@ import {
 import {
   BuiltinRedeclared,
   CompileError,
-  CompileErrorItem,
   InvalidBinaryOperator,
   InvalidUnaryOperator,
   MissingMain,
   MissingReturnValue,
+  MultiCompileError,
   MultipleDeclaration,
   NotAConstant,
   NotAssignable,
@@ -98,7 +98,7 @@ export function analyze(ast: RootNode, builtins: BuiltinAPIs = apis): Program {
 class Analyzer {
   functions: Function[] = []
   globals: Variable[] = []
-  errors: CompileErrorItem[] = []
+  errors: CompileError[] = []
 
   symbolTable: Array<{ [key: string]: [Position | 'builtin', Type] }> = []
   loopDepth: number = 0
@@ -143,7 +143,7 @@ class Analyzer {
           this.globals.push(variable)
         }
       } catch (e) {
-        if (e instanceof CompileErrorItem) this.emitError(e)
+        if (e instanceof CompileError) this.emitError(e)
         else throw e
         if (this.tooManyErrors()) break
       }
@@ -153,7 +153,7 @@ class Analyzer {
       try {
         this.analyzeFunction(decl)
       } catch (e) {
-        if (e instanceof CompileErrorItem) this.emitError(e)
+        if (e instanceof CompileError) this.emitError(e)
         else throw e
         if (this.tooManyErrors()) break
       }
@@ -161,7 +161,7 @@ class Analyzer {
 
     if (mainDecl === undefined) {
       this.emitError(new MissingMain())
-      throw new CompileError(this.errors)
+      throw new MultiCompileError(this.errors)
     }
 
     let main: BlockStatement | undefined
@@ -170,12 +170,12 @@ class Analyzer {
       main = this.analyzeBlockStatement(mainDecl.body)
       this.removeScope()
     } catch (e) {
-      if (e instanceof CompileErrorItem) this.emitError(e)
+      if (e instanceof CompileError) this.emitError(e)
       else throw e
     }
 
     if (this.errors.length > 0) {
-      throw new CompileError(this.errors)
+      throw new MultiCompileError(this.errors)
     }
 
     return { functions: this.functions, globals: this.globals, main: main! }
@@ -249,8 +249,12 @@ class Analyzer {
 
   private analyzeStatement(statement: StatementNode): Statement {
     switch (statement.kind) {
-      case StatementNodeKind.BLOCK:
-        return this.analyzeBlockStatement(statement)
+      case StatementNodeKind.BLOCK: {
+        this.addScope()
+        const stmt = this.analyzeBlockStatement(statement)
+        this.removeScope()
+        return stmt
+      }
       case StatementNodeKind.VAR:
         return this.analyzeVarStatement(statement)
       case StatementNodeKind.ASSIGN:
@@ -276,7 +280,7 @@ class Analyzer {
       try {
         statements.push(this.analyzeStatement(stmt))
       } catch (e) {
-        if (e instanceof CompileErrorItem) this.emitError(e)
+        if (e instanceof CompileError) this.emitError(e)
         else throw e
         if (this.tooManyErrors()) {
           break
@@ -306,11 +310,12 @@ class Analyzer {
     this.assertTokenKind(variable.name, TokenKind.IDENTIFIER)
 
     const name = variable.name.value
-    const symbol = this.getSymbol(name)
+    const symbol = this.inCurrentScope(name)
     if (symbol !== undefined) {
       const [declaredAt] = symbol
-      if (declaredAt instanceof Position)
+      if (declaredAt instanceof Position) {
         throw new MultipleDeclaration(declaredAt, variable.name)
+      }
     }
 
     if (variable.type === undefined && variable.value === undefined) {
@@ -990,6 +995,15 @@ class Analyzer {
     }
   }
 
+  private inCurrentScope(
+    name: string
+  ): [Position | 'builtin', Type] | undefined {
+    if (name in this.symbolTable[this.symbolTable.length - 1]) {
+      return this.symbolTable[this.symbolTable.length - 1][name]
+    }
+    return undefined
+  }
+
   private addSymbol(name: string, pos: Position, type: Type): void {
     this.symbolTable[this.symbolTable.length - 1][name] = [pos, type]
   }
@@ -1006,7 +1020,7 @@ class Analyzer {
     this.symbolTable.pop()
   }
 
-  private emitError(error: CompileErrorItem): void {
+  private emitError(error: CompileError): void {
     this.errors.push(error)
   }
 

@@ -1,10 +1,10 @@
-import { CompileError, CompileErrorItem } from './errors'
+import { CompileError, MultiCompileError } from './errors'
 import { scan } from './scanner'
 
 interface Testcase {
   name: string
   sourceCode: string
-  expectedResult: string[] | CompileErrorItem[]
+  expectedResult: string[] | CompileError[]
 }
 
 const simpleWhileLoop = `
@@ -135,7 +135,7 @@ describe('tokenize test', () => {
         const actualTokens = tokens?.map((tok) => tok.encode())
         expect(actualTokens).toStrictEqual(testcase.expectedResult)
       } catch (e) {
-        if (e instanceof CompileError) {
+        if (e instanceof MultiCompileError) {
           expect(e.errors.flatMap((v) => v.message)).toStrictEqual(
             testcase.expectedResult
           )

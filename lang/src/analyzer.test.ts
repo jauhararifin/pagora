@@ -1,4 +1,4 @@
-import { CompileError } from './errors'
+import { MultiCompileError } from './errors'
 import { analyze } from './analyzer'
 import { encodeProgram } from './semantic_util'
 import { parse } from './parser'
@@ -6,7 +6,7 @@ import { Program } from './semantic'
 import { scan } from './scanner'
 
 const program1Source = `
-function aplusb(a: integer, b: integer) -> integer;
+function aplusb(a: integer, b: integer) -> integer
 begin
     return a + b;
 end
@@ -119,6 +119,32 @@ const program3 = [
   ['main', [['assign', ['index', ['ident', 'some_array'], ['10', '10']], '2']]],
 ]
 
+const program4Source = `
+begin
+  var y := 0;
+  var x := 0;
+  while x > 0 do
+  begin
+    var y := 1;
+  end
+end
+`
+
+const program4 = [
+  [
+    'main',
+    [
+      ['var', 'y', 'INTEGER', '0'],
+      ['var', 'x', 'INTEGER', '0'],
+      [
+        'while',
+        ['GREATER_THAN', ['ident', 'x'], '0'],
+        [['var', 'y', 'INTEGER', '1']],
+      ],
+    ],
+  ],
+]
+
 const arrayDimMismatchSource = `
 var some_array: array [10,10,10] of integer;
 begin
@@ -154,6 +180,11 @@ describe('analyzer test', () => {
       expectedResult: program3,
     },
     {
+      name: 'program 4',
+      sourceCode: program4Source,
+      expectedResult: program4,
+    },
+    {
       name: 'array dimension mismatch',
       sourceCode: arrayDimMismatchSource,
       expectedResult: arrayDimMismatchError,
@@ -168,13 +199,16 @@ describe('analyzer test', () => {
         const ast = parse(tokens)
         program = analyze(ast, {})
       } catch (e) {
-        const err = e as CompileError
-        for (let i = 0; i < err.errors.length; i++) {
-          expect(err.errors[i].message).toStrictEqual(
-            testcase.expectedResult[i]
-          )
+        if (e instanceof MultiCompileError) {
+          for (let i = 0; i < e.errors.length; i++) {
+            expect(e.errors[i].message).toStrictEqual(
+              testcase.expectedResult[i]
+            )
+          }
+          return
+        } else {
+          throw e
         }
-        return
       }
 
       expect(encodeProgram(program)).toStrictEqual(testcase.expectedResult)

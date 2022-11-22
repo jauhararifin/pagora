@@ -1,16 +1,16 @@
-import { parse } from './parser'
-import { encodeAst } from './ast_util'
-import { CompileError, CompileErrorItem } from './errors'
+import { parse, parseStatement, TokenIterator } from './parser'
+import { encodeAst, encodeStatementNode } from './ast_util'
+import { CompileError, MultiCompileError } from './errors'
 import { RootNode } from './ast'
 import { scan } from './scanner'
 
 interface Testcase {
   name: string
   sourceCode: string
-  expectedResult: any | CompileErrorItem[]
+  expectedResult: any | CompileError[]
 }
 
-describe('tokenize test', () => {
+describe('parsing test', () => {
   const testcases: Testcase[] = [
     {
       name: 'global variable without value',
@@ -165,17 +165,94 @@ describe('tokenize test', () => {
         const tokens = scan(testcase.sourceCode)
         root = parse(tokens)
       } catch (e) {
-        expect(e).toBeInstanceOf(CompileError)
-        const err = e as CompileError
-        for (let i = 0; i < err.errors.length; i++) {
-          expect(err.errors[i].message).toStrictEqual(
-            testcase.expectedResult[i]
-          )
+        if (e instanceof MultiCompileError) {
+          for (let i = 0; i < e.errors.length; i++) {
+            expect(e.errors[i].message).toStrictEqual(
+              testcase.expectedResult[i]
+            )
+          }
+          return
+        } else {
+          throw e
         }
-        return
       }
 
       expect(encodeAst(root)).toStrictEqual(testcase.expectedResult)
     })
   }
+})
+
+describe('parse statement', () => {
+  it('if statement', () => {
+    const sourceCode = `if a then b(); else c();`
+    const expectedAst = [
+      'IF',
+      'IDENTIFIER(a)',
+      'THEN',
+      ['IDENTIFIER(b)', 'OPEN_BRAC', [], 'CLOSE_BRAC'],
+      'ELSE',
+      ['IDENTIFIER(c)', 'OPEN_BRAC', [], 'CLOSE_BRAC'],
+    ]
+    const tokens = scan(sourceCode)
+    const [statementNode, error] = parseStatement(new TokenIterator(tokens))
+    expect(error).toBeUndefined()
+    expect(encodeStatementNode(statementNode!)).toStrictEqual(expectedAst)
+  })
+
+  it('while statement', () => {
+    const sourceCode = `
+    begin
+      var y := 0; 
+      while a do begin 
+        var y := 1;
+        var x := 1;
+      end
+    end
+    `
+    const expectedAst = [
+      'BEGIN',
+      [
+        [
+          'VAR',
+          'IDENTIFIER(y)',
+          undefined,
+          undefined,
+          'ASSIGN',
+          'INTEGER_LITERAL(0)',
+        ],
+        [
+          'WHILE',
+          'IDENTIFIER(a)',
+          'DO',
+          [
+            'BEGIN',
+            [
+              [
+                'VAR',
+                'IDENTIFIER(y)',
+                undefined,
+                undefined,
+                'ASSIGN',
+                'INTEGER_LITERAL(1)',
+              ],
+              [
+                'VAR',
+                'IDENTIFIER(x)',
+                undefined,
+                undefined,
+                'ASSIGN',
+                'INTEGER_LITERAL(1)',
+              ],
+            ],
+            'END',
+          ],
+        ],
+      ],
+      'END',
+    ]
+    const tokens = scan(sourceCode)
+    const [statementNode, error] = parseStatement(new TokenIterator(tokens))
+    expect(error).toBeUndefined()
+    expect(encodeStatementNode(statementNode!)).toStrictEqual(expectedAst)
+  })
 })

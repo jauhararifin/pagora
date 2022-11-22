@@ -2,49 +2,44 @@ import { ArrayIndexExprNode, CallExprNode } from './ast'
 import { BinaryOp, Expr, Type, TypeKind } from './semantic'
 import { Position, Token, TokenKind } from './tokens'
 
-export class CompileError extends Error {
-  errors: CompileErrorItem[]
-  constructor(errors: CompileErrorItem[]) {
-    super(errors.map((err) => err.message).join('\n'))
+// TODO: I think CompileErrorItem is not necessary. We can just use `CompileError` only and have a special type to hold
+// multiple errors, like `MultiCompileError`.
+
+export class CompileError extends Error {}
+
+export class MultiCompileError extends CompileError {
+  errors: CompileError[]
+  constructor(errors: CompileError[]) {
+    super(errors.map((v) => v.message).join('\n'))
     this.errors = errors
   }
 }
 
-export class CompileErrorItem extends Error {
-  position?: Position
-  msg: string
-
-  constructor(message: string, position?: Position) {
-    if (position != null) {
-      super(`Error at ${position.line}:${position.col}: ${message}`)
-    } else {
-      super(message)
-    }
-
-    this.msg = message
-    this.position = position
+export class ErrorWithPosition extends CompileError {
+  constructor(message: string, position: Position) {
+    super(`Error at ${position.toString()}: ${message}`)
   }
 }
 
-export class UnexpectedCharacter extends CompileErrorItem {
+export class UnexpectedCharacter extends ErrorWithPosition {
   constructor(char: string, position: Position) {
     super(`Unexpected character ${JSON.stringify(char)}`, position)
   }
 }
 
-export class MissingClosingQuote extends CompileErrorItem {
+export class MissingClosingQuote extends ErrorWithPosition {
   constructor(position: Position) {
     super(`Missing closing quote in string literal`, position)
   }
 }
 
-export class TooManyErrors extends CompileErrorItem {
+export class TooManyErrors extends CompileError {
   constructor() {
     super(`Too many errors`)
   }
 }
 
-export class UnexpectedToken extends CompileErrorItem {
+export class UnexpectedToken extends ErrorWithPosition {
   constructor(expected: TokenKind[] | string, found: Token) {
     const expectedMessage =
       typeof expected === 'string'
@@ -55,7 +50,7 @@ export class UnexpectedToken extends CompileErrorItem {
   }
 }
 
-export class MultipleDeclaration extends CompileErrorItem {
+export class MultipleDeclaration extends ErrorWithPosition {
   constructor(declaredAt: Position, redeclaredAt: Token) {
     super(
       `${redeclaredAt.value} is already declared at ${declaredAt.toString()}`,
@@ -64,7 +59,7 @@ export class MultipleDeclaration extends CompileErrorItem {
   }
 }
 
-export class BuiltinRedeclared extends CompileErrorItem {
+export class BuiltinRedeclared extends CompileError {
   constructor(declaredAt: Token) {
     super(
       `${
@@ -74,54 +69,54 @@ export class BuiltinRedeclared extends CompileErrorItem {
   }
 }
 
-export class TypeMismatch extends CompileErrorItem {
+export class TypeMismatch extends ErrorWithPosition {
   constructor(source: Expr, expectedType: Type | TypeKind) {
     // TODO: use proper error message
     super(`Type mismatch`, source.position)
   }
 }
 
-export class MissingReturnValue extends CompileErrorItem {
+export class MissingReturnValue extends ErrorWithPosition {
   constructor(returnToken: Token) {
     // TODO: use proper error message
     super('Missing return value', returnToken.position)
   }
 }
 
-export class NotAConstant extends CompileErrorItem {
+export class NotAConstant extends ErrorWithPosition {
   constructor(source: Expr) {
     super('Not a compile-time constant expression', source.position)
   }
 }
 
-export class CannotAssign extends CompileErrorItem {
+export class CannotAssign extends ErrorWithPosition {
   constructor(source: Expr, target: Type) {
     // TODO: use proper error message
     super('Cannot assign source to target_type', source.position)
   }
 }
 
-export class NotAssignable extends CompileErrorItem {
+export class NotAssignable extends ErrorWithPosition {
   constructor(receiver: Expr) {
     // TODO: use proper error message
     super('receievr is not assignable', receiver.position)
   }
 }
 
-export class UndefinedSymbol extends CompileErrorItem {
+export class UndefinedSymbol extends ErrorWithPosition {
   constructor(token: Token) {
     super(`Undefined symbol ${token.value}`, token.position)
   }
 }
 
-export class InvalidBinaryOperator extends CompileErrorItem {
+export class InvalidBinaryOperator extends ErrorWithPosition {
   constructor(a: Expr, op: BinaryOp, b: Expr) {
     // TODO: use proper error message
     super(`Cannot perform ${op.toString()} operation with a and b`, a.position)
   }
 }
 
-export class InvalidUnaryOperator extends CompileErrorItem {
+export class InvalidUnaryOperator extends ErrorWithPosition {
   constructor(value: Expr, op: Token) {
     // TODO: use proper error message
     super(
@@ -131,19 +126,19 @@ export class InvalidUnaryOperator extends CompileErrorItem {
   }
 }
 
-export class NotInALoop extends CompileErrorItem {
+export class NotInALoop extends ErrorWithPosition {
   constructor(control: Token) {
     super('Not in a loop', control.position)
   }
 }
 
-export class MissingMain extends CompileErrorItem {
+export class MissingMain extends CompileError {
   constructor() {
     super('Missing main in the program')
   }
 }
 
-export class DuplicatedMain extends CompileErrorItem {
+export class DuplicatedMain extends ErrorWithPosition {
   constructor(declared: Token, redeclared: Token) {
     super(
       `Main program is already declared at ${declared.position.toString()}`,
@@ -152,7 +147,7 @@ export class DuplicatedMain extends CompileErrorItem {
   }
 }
 
-export class WrongNumberOfArgument extends CompileErrorItem {
+export class WrongNumberOfArgument extends ErrorWithPosition {
   constructor(expr: CallExprNode, expected: number) {
     super(
       `Wrong number of arguments. Expected ${expected}, got ${expr.arguments.values.length}`,
@@ -161,7 +156,7 @@ export class WrongNumberOfArgument extends CompileErrorItem {
   }
 }
 
-export class WrongNumberOfIndex extends CompileErrorItem {
+export class WrongNumberOfIndex extends ErrorWithPosition {
   constructor(expr: ArrayIndexExprNode, expected: number) {
     super(
       `Wrong number of index. Expected ${expected}, got ${expr.index.values.length}`,
