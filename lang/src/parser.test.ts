@@ -15,15 +15,9 @@ describe('parsing test', () => {
     {
       name: 'global variable without value',
       sourceCode: 'var some_var: integer;',
+      // prettier-ignore
       expectedResult: [
-        [
-          'VAR',
-          'IDENTIFIER(some_var)',
-          'COLON',
-          'INTEGER',
-          undefined,
-          undefined,
-        ],
+        ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'INTEGER', undefined, undefined],
       ],
     },
     {
@@ -34,43 +28,21 @@ describe('parsing test', () => {
         var some_var: byte;
         var some_var: integer;
       `,
+      // prettier-ignore
       expectedResult: [
         ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'REAL', undefined, undefined],
-        [
-          'VAR',
-          'IDENTIFIER(some_var)',
-          'COLON',
-          'BOOLEAN',
-          undefined,
-          undefined,
-        ],
+        ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'BOOLEAN', undefined, undefined],
         ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'BYTE', undefined, undefined],
-        [
-          'VAR',
-          'IDENTIFIER(some_var)',
-          'COLON',
-          'INTEGER',
-          undefined,
-          undefined,
-        ],
+        ['VAR', 'IDENTIFIER(some_var)', 'COLON', 'INTEGER', undefined, undefined],
       ],
     },
     {
       name: 'variable with array type',
       sourceCode: 'var some_var: array[10,20] of integer;',
+      // prettier-ignore
       expectedResult: [
-        [
-          'VAR',
-          'IDENTIFIER(some_var)',
-          'COLON',
-          [
-            'ARRAY',
-            'OPEN_SQUARE',
-            ['INTEGER_LITERAL(10)', 'INTEGER_LITERAL(20)'],
-            'CLOSE_SQUARE',
-            'OF',
-            'INTEGER',
-          ],
+        ['VAR', 'IDENTIFIER(some_var)', 'COLON',
+          ['ARRAY', 'OPEN_SQUARE', ['INTEGER_LITERAL(10)', 'INTEGER_LITERAL(20)'], 'CLOSE_SQUARE', 'OF','INTEGER'],
           undefined,
           undefined,
         ],
@@ -79,39 +51,29 @@ describe('parsing test', () => {
     {
       name: 'plus and multiply precedence',
       sourceCode: 'begin 1 + 2 * 3 + 4 / 5; end',
+      // prettier-ignore
       expectedResult: [
-        [
-          'BEGIN',
+        ['BEGIN', [
           [
-            [
-              [
-                'INTEGER_LITERAL(1)',
-                'PLUS',
-                ['INTEGER_LITERAL(2)', 'MULTIPLY', 'INTEGER_LITERAL(3)'],
-              ],
-              'PLUS',
-              ['INTEGER_LITERAL(4)', 'DIV', 'INTEGER_LITERAL(5)'],
-            ],
+            ['INTEGER_LITERAL(1)', 'PLUS', ['INTEGER_LITERAL(2)', 'MULTIPLY', 'INTEGER_LITERAL(3)']],
+            'PLUS',
+            ['INTEGER_LITERAL(4)', 'DIV', 'INTEGER_LITERAL(5)'],
           ],
-          'END',
-        ],
+        ], 'END'],
       ],
     },
     {
       name: 'plus and multiply precedence 2',
       sourceCode: 'begin i*2+1; end',
+      // prettier-ignore
       expectedResult: [
-        [
-          'BEGIN',
+        ['BEGIN', [
           [
-            [
-              ['IDENTIFIER(i)', 'MULTIPLY', 'INTEGER_LITERAL(2)'],
-              'PLUS',
-              'INTEGER_LITERAL(1)',
-            ],
+            ['IDENTIFIER(i)', 'MULTIPLY', 'INTEGER_LITERAL(2)'],
+            'PLUS',
+            'INTEGER_LITERAL(1)',
           ],
-          'END',
-        ],
+        ], 'END'],
       ],
     },
     {
@@ -209,47 +171,20 @@ describe('parse statement', () => {
       end
     end
     `
+
+    // prettier-ignore
     const expectedAst = [
-      'BEGIN',
-      [
-        [
-          'VAR',
-          'IDENTIFIER(y)',
-          undefined,
-          undefined,
-          'ASSIGN',
-          'INTEGER_LITERAL(0)',
-        ],
-        [
-          'WHILE',
-          'IDENTIFIER(a)',
-          'DO',
-          [
-            'BEGIN',
-            [
-              [
-                'VAR',
-                'IDENTIFIER(y)',
-                undefined,
-                undefined,
-                'ASSIGN',
-                'INTEGER_LITERAL(1)',
-              ],
-              [
-                'VAR',
-                'IDENTIFIER(x)',
-                undefined,
-                undefined,
-                'ASSIGN',
-                'INTEGER_LITERAL(1)',
-              ],
-            ],
-            'END',
-          ],
-        ],
-      ],
-      'END',
+      'BEGIN',[
+        ['VAR', 'IDENTIFIER(y)', undefined, undefined, 'ASSIGN', 'INTEGER_LITERAL(0)'],
+        ['WHILE', 'IDENTIFIER(a)', 'DO', [
+            'BEGIN', [
+              ['VAR', 'IDENTIFIER(y)', undefined, undefined, 'ASSIGN', 'INTEGER_LITERAL(1)'],
+              ['VAR', 'IDENTIFIER(x)', undefined, undefined, 'ASSIGN', 'INTEGER_LITERAL(1)'],
+            ], 'END',
+        ]],
+      ], 'END',
     ]
+
     const tokens = scan(sourceCode)
     const [statementNode, error] = parseStatement(new TokenIterator(tokens))
     expect(error).toBeUndefined()

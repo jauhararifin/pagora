@@ -86,8 +86,4 @@ export const apis: BuiltinAPIs = {
     arguments: [],
     return: { kind: TypeKind.INTEGER },
   },
-  // TODO: add function to registerEvent like `onMouseClick(functionName)`
-  // TODO: add function to registerEvent like `onResize(functionName)`
-  // TODO: add function to registerEvent like `onDraw(functionName)`
-  // TODO: add function to registerEvent like `onTick(functionName)`
 }

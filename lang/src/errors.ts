@@ -10,6 +10,29 @@ export class CompileError extends Error {}
 export class MultiCompileError extends CompileError {
   errors: CompileError[]
   constructor(errors: CompileError[]) {
+    errors = errors.flatMap((e) => {
+      if (!(e instanceof MultiCompileError)) {
+        return [e]
+      }
+
+      let errors: MultiCompileError[] = [e]
+      const result: CompileError[] = [e]
+      while (errors.length > 0) {
+        const temp = errors.flatMap((e) => e.errors)
+
+        errors = []
+        for (const e of temp) {
+          if (e instanceof MultiCompileError) {
+            errors.push(e)
+          } else {
+            result.push(e)
+          }
+        }
+      }
+
+      return result
+    })
+
     super(errors.map((v) => v.message).join('\n'))
     this.errors = errors
   }

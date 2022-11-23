@@ -206,6 +206,16 @@ function TemplateButton(props: {setCode: (code: string) => void}) {
   </div>
 }
 
+// function Overlay(props: {children: ReactNode, show:  boolean}) {
+//   const {children, show} = props
+//   return <>
+//     {show && <div className="w-screen h-screen fixed z-40 m-0 p-0 top-0 left-0 bg-black opacity-80">a</div>}
+//     {show 
+//       ? <div className="z-50 ">{children}</div>
+//       : children}
+//   </>
+// }
+
 function ExecuteButton(props: {
   onStart: () => void,
   onStop: () => void,

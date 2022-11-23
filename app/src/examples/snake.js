@@ -9,6 +9,7 @@ var HEAD := 3;
 var is_game_over := false;
 
 var snake_size: integer;
+var snake_next_direction: integer;
 var snake_direction: integer;
 var snake_x: array[1600] of integer;
 var snake_y: array[1600] of integer;
@@ -42,6 +43,15 @@ end
 
 function on_tick()
 begin
+  if snake_next_direction = DIR_UP and snake_direction != DIR_DOWN then
+    snake_direction := DIR_UP;
+  else if snake_next_direction = DIR_RIGHT and snake_direction != DIR_LEFT then
+    snake_direction := DIR_RIGHT;
+  else if snake_next_direction = DIR_LEFT and snake_direction != DIR_RIGHT then
+    snake_direction := DIR_LEFT;
+  else if snake_next_direction = DIR_DOWN and snake_direction != DIR_UP then
+    snake_direction := DIR_DOWN;
+
   if is_game_over then
     return;
 
@@ -179,13 +189,13 @@ end
 function on_keydown(key: string)
 begin
   if key = "ArrowDown" and snake_direction != DIR_UP then
-    snake_direction := DIR_DOWN;
+    snake_next_direction := DIR_DOWN;
   else if key = "ArrowRight" and snake_direction != DIR_LEFT then
-    snake_direction := DIR_RIGHT;
+    snake_next_direction := DIR_RIGHT;
   else if key = "ArrowUp" and snake_direction != DIR_DOWN then
-    snake_direction := DIR_UP;
+    snake_next_direction := DIR_UP;
   else if key = "ArrowLeft" and snake_direction != DIR_RIGHT then
-    snake_direction := DIR_LEFT;
+    snake_next_direction := DIR_LEFT;
 end
 
 function draw()
@@ -227,6 +237,7 @@ begin
 end
 
 begin
+  output("Use arrow key to control the snake\\n");
   seed := unix_time_millis();
   init_game();
 

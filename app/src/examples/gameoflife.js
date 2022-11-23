@@ -166,7 +166,7 @@ end
 begin
     output("https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life\\n");
     output("Use enter to play/pause\\n");
-    output("Click the board to set the cell into life or dead\\n");
+    output("When paused, click the board to set the cell into life or dead\\n");
 
     board[20,20] := LIFE;
     board[21,20] := LIFE;

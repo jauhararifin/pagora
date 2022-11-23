@@ -20,6 +20,7 @@ import {
   VarStatementNode,
   WhileStatementNode,
 } from './ast'
+import { MAX_ERRORS } from './config'
 import {
   CompileError,
   DuplicatedMain,
@@ -104,6 +105,9 @@ function parseRoot(tokens: TokenIterator): Result<RootNode> {
       if (error !== undefined) {
         errors.push(error)
         skipUntil(tokens, [TokenKind.SEMICOLON])
+        if (errors.length > MAX_ERRORS) {
+          break
+        }
         continue
       }
       variables.push(varNode)
@@ -112,6 +116,9 @@ function parseRoot(tokens: TokenIterator): Result<RootNode> {
       if (error !== undefined) {
         errors.push(error)
         skipUntil(tokens, [TokenKind.SEMICOLON])
+        if (errors.length > MAX_ERRORS) {
+          break
+        }
         continue
       }
       functions.push(functionNode)
@@ -119,17 +126,27 @@ function parseRoot(tokens: TokenIterator): Result<RootNode> {
       if (main !== undefined) {
         errors.push(new DuplicatedMain(main.body.begin, tokens.token()))
         skipUntil(tokens, [TokenKind.SEMICOLON])
+        if (errors.length > MAX_ERRORS) {
+          break
+        }
       }
 
       const [body, error] = parseBlockStatement(tokens)
       if (error !== undefined) {
         errors.push(error)
+        skipUntil(tokens, [TokenKind.SEMICOLON])
+        if (errors.length > MAX_ERRORS) {
+          break
+        }
       } else {
         main = { body }
       }
     } else {
       errors.push(new UnexpectedToken('declaration', tokens.token()))
       skipUntil(tokens, [TokenKind.SEMICOLON])
+      if (errors.length > MAX_ERRORS) {
+        break
+      }
     }
   }
 
@@ -361,6 +378,10 @@ function parseBlockStatement(
     const [stmt, error] = parseStatement(tokens)
     if (error !== undefined) {
       errors.push(error)
+      skipUntil(tokens, [TokenKind.SEMICOLON])
+      if (errors.length > MAX_ERRORS) {
+        return err(new MultiCompileError(errors))
+      }
     } else {
       statements.push(stmt)
     }
@@ -370,6 +391,10 @@ function parseBlockStatement(
     return err(new UnexpectedToken([TokenKind.END], tokens.token()))
   }
   const end = tokens.take()
+
+  if (errors.length > 0) {
+    return err(new MultiCompileError(errors))
+  }
 
   return ok({ kind: StatementNodeKind.BLOCK, begin, statements, end })
 }
