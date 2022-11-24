@@ -94,6 +94,7 @@ export function analyze(ast: RootNode, builtins: BuiltinAPIs = apis): Program {
 
   const errors: CompileError[] = []
 
+  const functions = [...builtins.functions]
   for (const func of builtins.functions) {
     ctx.addBuiltinSymbol(func.name, func.type)
   }
@@ -128,8 +129,6 @@ export function analyze(ast: RootNode, builtins: BuiltinAPIs = apis): Program {
 
     variables.push(varResult.ok)
   }
-
-  const functions: Function[] = []
 
   for (const func of ast.functions) {
     const funcResult = analyzeFunction(ctx, func)
@@ -822,7 +821,8 @@ function analyzeBinaryExpr(
   } else if (
     compBinOp.has(op.kind) &&
     ((typeEqual(a.type, Real) && typeEqual(b.type, Real)) ||
-      (typeEqual(a.type, Integer) && typeEqual(b.type, Integer)))
+      (typeEqual(a.type, Integer) && typeEqual(b.type, Integer)) ||
+      (typeEqual(a.type, String) && typeEqual(b.type, String)))
   ) {
     resultType = Boolean
   } else if (

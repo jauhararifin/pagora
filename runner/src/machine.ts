@@ -140,7 +140,7 @@ export class Machine {
 
     this.addScope()
     for (let i = 0; i < funcDecl.arguments.length; i++) {
-      this.setSymbol(funcDecl.arguments[i].name, args[i])
+      this.setSymbol(funcDecl.arguments[i], args[i])
     }
     this.executeBlockStmt(funcDecl.body)
     this.popScope()
@@ -568,7 +568,7 @@ export class Machine {
       case TypeKind.STRING:
         return { kind: ValueKind.STRING, value: '' }
       case TypeKind.ARRAY: {
-        return this.zeroArray(t.dimension, t.type)
+        return this.zeroArray(t.dimension, t.elementType)
       }
       case TypeKind.VOID:
         return { kind: ValueKind.VOID, value: undefined }
@@ -607,7 +607,7 @@ export class Machine {
         return this.symbols[i][name]
       }
     }
-    throw new Error(`invalid state. searching undefined symbol ${name}`)
+    throw new Error(`invalid state. searching undefined symbol "${name}"`)
   }
 
   popScope(): void {
