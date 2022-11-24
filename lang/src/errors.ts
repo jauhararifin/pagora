@@ -16,7 +16,7 @@ export class MultiCompileError extends CompileError {
       }
 
       let errors: MultiCompileError[] = [e]
-      const result: CompileError[] = [e]
+      const result: CompileError[] = []
       while (errors.length > 0) {
         const temp = errors.flatMap((e) => e.errors)
 
@@ -95,9 +95,41 @@ export class BuiltinRedeclared extends CompileError {
 }
 
 export class TypeMismatch extends ErrorWithPosition {
-  constructor(source: Expr, expectedType: Type | TypeKind) {
-    // TODO: use proper error message
-    super(`Type mismatch`, source.position)
+  constructor(source: Expr, expectedType: Type | string) {
+    let expectedStr: string = ''
+    if (typeof expectedType === 'string') {
+      expectedStr = expectedType
+    } else {
+      expectedStr = typeToString(expectedType)
+    }
+
+    super(
+      `Type mismatch, expected ${expectedStr} got ${typeToString(source.type)}`,
+      source.position
+    )
+  }
+}
+
+function typeToString(type: Type): string {
+  switch (type.kind) {
+    case TypeKind.VOID:
+      return 'void'
+    case TypeKind.INTEGER:
+      return 'integer'
+    case TypeKind.REAL:
+      return 'real'
+    case TypeKind.BOOLEAN:
+      return 'boolean'
+    case TypeKind.STRING:
+      return 'string'
+    case TypeKind.BYTE:
+      return 'byte'
+    case TypeKind.ARRAY:
+      return `array[${type.dimension
+        .map((v) => v.toString())
+        .join(',')}] of ${typeToString(type.elementType)}`
+    case TypeKind.FUNCTION:
+      return 'function'
   }
 }
 

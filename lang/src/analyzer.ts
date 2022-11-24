@@ -404,6 +404,9 @@ function analyzeVarStatement(
   if (result.err !== undefined) {
     return err(result.err)
   }
+
+  ctx.addSymbol(stmt.variable.name, result.ok.type)
+
   return ok({ kind: StatementKind.VAR, variable: result.ok })
 }
 
@@ -686,14 +689,14 @@ function analyzeArrayLitExpr(
   let elementType = values[0].type
   let dimension = [BigInt.asIntN(64, BigInt(values.length))]
   if (values[0].type.kind === TypeKind.ARRAY) {
-    elementType = values[0].type.type
+    elementType = values[0].type.elementType
     dimension = [dimension[0], ...values[0].type.dimension]
   }
 
   const typ: Type = {
     kind: TypeKind.ARRAY,
     dimension,
-    type: elementType,
+    elementType,
   }
 
   return ok({
@@ -821,7 +824,7 @@ function analyzeBinaryExpr(
     ((typeEqual(a.type, Real) && typeEqual(b.type, Real)) ||
       (typeEqual(a.type, Integer) && typeEqual(b.type, Integer)))
   ) {
-    resultType = a.type
+    resultType = Boolean
   } else if (
     boolBinOp.has(op.kind) &&
     typeEqual(a.type, Boolean) &&
@@ -981,7 +984,7 @@ function analyzeArrayIndexExpr(
     isConstexpr: false,
     constValue: undefined,
     isAssignable: true,
-    type: array.type.type,
+    type: array.type.elementType,
     position: array.position,
     array,
     indices,
@@ -1102,7 +1105,7 @@ function analyzeArrayType(
   return ok({
     kind: TypeKind.ARRAY,
     dimension: dimensionNum,
-    type: elementType,
+    elementType,
   })
 }
 
@@ -1121,7 +1124,7 @@ function typeEqual(a: Type, b: Type): boolean {
         return false
       }
 
-    return typeEqual(a.type, bType.type)
+    return typeEqual(a.elementType, bType.elementType)
   } else if (a.kind === TypeKind.FUNCTION) {
     const bType = b as FunctionType
     return (

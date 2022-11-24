@@ -38,7 +38,7 @@ function encodeFunction(func: Function): any {
   return [
     'func',
     func.name,
-    func.arguments.map((arg) => [arg.name, encodeType(arg.type)]),
+    func.arguments.map((arg, i) => [arg, encodeType(func.type.arguments[i])]),
     encodeType(func.type.return),
     func.body != null ? encodeBlockStmt(func.body) : undefined,
   ]
@@ -61,7 +61,7 @@ function encodeType(type: Type): any {
     return [
       'array',
       type.dimension.map((d) => d.toString()),
-      encodeType(type.type),
+      encodeType(type.elementType),
     ]
   }
 

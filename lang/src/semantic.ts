@@ -46,7 +46,7 @@ export const Void: Type = { kind: TypeKind.VOID }
 export interface ArrayType {
   kind: TypeKind.ARRAY
   dimension: bigint[]
-  type: Type
+  elementType: Type
 }
 
 export interface FunctionType {

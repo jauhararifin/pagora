@@ -2,7 +2,6 @@ import { MultiCompileError } from './errors'
 import { analyze } from './analyzer'
 import { encodeProgram } from './semantic_util'
 import { parse } from './parser'
-import { Program } from './semantic'
 import { scan } from './scanner'
 
 const program1Source = `
@@ -145,21 +144,10 @@ const program4 = [
   ],
 ]
 
-const arrayDimMismatchSource = `
-var some_array: array [10,10,10] of integer;
-begin
-  some_array[0,0] := 2;
-end
-`
-
-const arrayDimMismatchError: string[] = [
-  'Error at 4:13: Wrong number of index. Expected 3, got 2',
-]
-
 interface Testcase {
   name: string
   sourceCode: string
-  expectedResult?: any
+  expectedResult: any
 }
 
 describe('analyzer test', () => {
@@ -184,6 +172,31 @@ describe('analyzer test', () => {
       sourceCode: program4Source,
       expectedResult: program4,
     },
+  ]
+
+  for (const testcase of testcases) {
+    it(testcase.name, () => {
+      const tokens = scan(testcase.sourceCode)
+      const ast = parse(tokens)
+      const program = analyze(ast, { functions: [] })
+      expect(encodeProgram(program)).toStrictEqual(testcase.expectedResult)
+    })
+  }
+})
+
+const arrayDimMismatchSource = `
+var some_array: array [10,10,10] of integer;
+begin
+  some_array[0,0] := 2;
+end
+`
+
+const arrayDimMismatchError: string[] = [
+  'Error at 4:13: Wrong number of index. Expected 3, got 2',
+]
+
+describe('failed analyzer test', () => {
+  const testcases: Testcase[] = [
     {
       name: 'array dimension mismatch',
       sourceCode: arrayDimMismatchSource,
@@ -193,25 +206,16 @@ describe('analyzer test', () => {
 
   for (const testcase of testcases) {
     it(testcase.name, () => {
-      let program: Program
+      const tokens = scan(testcase.sourceCode)
+      const ast = parse(tokens)
       try {
-        const tokens = scan(testcase.sourceCode)
-        const ast = parse(tokens)
-        program = analyze(ast, { functions: [] })
+        analyze(ast, { functions: [] })
       } catch (e) {
-        if (e instanceof MultiCompileError) {
-          for (let i = 0; i < e.errors.length; i++) {
-            expect(e.errors[i].message).toStrictEqual(
-              testcase.expectedResult[i]
-            )
-          }
-          return
-        } else {
-          throw e
-        }
+        expect(e).toBeInstanceOf(MultiCompileError)
+        const err = e as MultiCompileError
+        const actualMessages = err.errors.map((err) => err.message)
+        expect(actualMessages).toStrictEqual(testcase.expectedResult)
       }
-
-      expect(encodeProgram(program)).toStrictEqual(testcase.expectedResult)
     })
   }
 })
