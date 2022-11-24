@@ -1,5 +1,5 @@
 import { ArrayIndexExprNode, CallExprNode } from './ast'
-import { BinaryOp, Expr, Type, TypeKind } from './semantic'
+import { Expr, Type, TypeKind } from './semantic'
 import { Position, Token, TokenKind } from './tokens'
 
 // TODO: I think CompileErrorItem is not necessary. We can just use `CompileError` only and have a special type to hold
@@ -74,9 +74,11 @@ export class UnexpectedToken extends ErrorWithPosition {
 }
 
 export class MultipleDeclaration extends ErrorWithPosition {
-  constructor(declaredAt: Position, redeclaredAt: Token) {
+  constructor(declaredAt: Token, redeclaredAt: Token) {
     super(
-      `${redeclaredAt.value} is already declared at ${declaredAt.toString()}`,
+      `${
+        redeclaredAt.value
+      } is already declared at ${declaredAt.position.toString()}`,
       redeclaredAt.position
     )
   }
@@ -133,9 +135,9 @@ export class UndefinedSymbol extends ErrorWithPosition {
 }
 
 export class InvalidBinaryOperator extends ErrorWithPosition {
-  constructor(a: Expr, op: BinaryOp, b: Expr) {
+  constructor(a: Expr, op: Token, b: Expr) {
     // TODO: use proper error message
-    super(`Cannot perform ${op.toString()} operation with a and b`, a.position)
+    super(`Cannot perform ${op.kind} operation with a and b`, a.position)
   }
 }
 

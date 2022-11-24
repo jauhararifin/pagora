@@ -830,6 +830,9 @@ function parsePrimaryExpr(tokens: TokenIterator): Result<ExprNode> {
   } else if (tokens.kind() === TokenKind.INTEGER_LITERAL) {
     const value = tokens.take()
     return ok({ kind: ExprNodeKind.INTEGER_LIT, value })
+  } else if (tokens.kind() === TokenKind.REAL_LITERAL) {
+    const value = tokens.take()
+    return ok({ kind: ExprNodeKind.REAL_LIT, value })
   } else if (
     tokens.kind() === TokenKind.TRUE ||
     tokens.kind() === TokenKind.FALSE

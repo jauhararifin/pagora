@@ -9,13 +9,8 @@ export interface Program {
 export interface Function {
   name: string
   type: FunctionType
-  arguments: Argument[]
+  arguments: string[]
   body?: BlockStatement
-}
-
-export interface Argument {
-  name: string
-  type: Type
 }
 
 export type Type = PrimitiveType | ArrayType | FunctionType
@@ -146,6 +141,7 @@ export type Expr =
   | CharLitExpr
   | BooleanLitExpr
   | StringLitExpr
+  | RealLitExpr
   | ArrayLitExpr
   | IdentExpr
 

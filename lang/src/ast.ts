@@ -146,6 +146,7 @@ export type ExprNode =
   | BooleanLitExprNode
   | ArrayLitExprNode
   | StringLitExprNode
+  | RealLitExprNode
   | BinaryExprNode
   | UnaryExprNode
   | CallExprNode
@@ -156,7 +157,7 @@ export type ExprNode =
 export enum ExprNodeKind {
   IDENT = 'IDENT',
   INTEGER_LIT = 'INTEGER_LIT',
-  FLOAT_LIT = 'FLOAT_LIT',
+  REAL_LIT = 'REAL_LIT',
   BOOLEAN_LIT = 'BOOLEAN_LIT',
   ARRAY_LIT = 'ARRAY_LIT',
   TUPLE_LIT = 'TUPLE_LIT',
@@ -188,6 +189,11 @@ export interface BooleanLitExprNode {
 
 export interface StringLitExprNode {
   kind: ExprNodeKind.STRING_LIT
+  value: Token
+}
+
+export interface RealLitExprNode {
+  kind: ExprNodeKind.REAL_LIT
   value: Token
 }
 

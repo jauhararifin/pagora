@@ -197,7 +197,7 @@ describe('analyzer test', () => {
       try {
         const tokens = scan(testcase.sourceCode)
         const ast = parse(tokens)
-        program = analyze(ast, {})
+        program = analyze(ast, { functions: [] })
       } catch (e) {
         if (e instanceof MultiCompileError) {
           for (let i = 0; i < e.errors.length; i++) {

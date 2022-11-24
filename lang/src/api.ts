@@ -1,11 +1,12 @@
-import { FunctionType, TypeKind } from './semantic'
+import { Function, TypeKind } from './semantic'
 
 export interface BuiltinAPIs {
-  [funcname: string]: FunctionType
+  functions: Function[]
 }
 
-export const apis: BuiltinAPIs = {
-  draw_rect: {
+const drawRect: Function = {
+  name: 'draw_rect',
+  type: {
     kind: TypeKind.FUNCTION,
     arguments: [
       { kind: TypeKind.INTEGER }, // x
@@ -17,22 +18,42 @@ export const apis: BuiltinAPIs = {
     ],
     return: { kind: TypeKind.VOID },
   },
-  get_width: {
+  arguments: ['x', 'y', 'width', 'height', 'stroke', 'fill'],
+}
+
+const getWidth: Function = {
+  name: 'get_width',
+  type: {
     kind: TypeKind.FUNCTION,
     arguments: [],
-    return: { kind: TypeKind.INTEGER }, // width
+    return: { kind: TypeKind.INTEGER },
   },
-  get_height: {
+  arguments: ['width'],
+}
+
+const getHeight: Function = {
+  name: 'get_height',
+  type: {
     kind: TypeKind.FUNCTION,
     arguments: [],
-    return: { kind: TypeKind.INTEGER }, // height
+    return: { kind: TypeKind.INTEGER },
   },
-  output: {
+  arguments: ['height'],
+}
+
+const output: Function = {
+  name: 'output',
+  type: {
     kind: TypeKind.FUNCTION,
     arguments: [{ kind: TypeKind.STRING }],
     return: { kind: TypeKind.VOID },
   },
-  register_on_update: {
+  arguments: ['message'],
+}
+
+const registerOnUpdate: Function = {
+  name: 'register_on_update',
+  type: {
     kind: TypeKind.FUNCTION,
     arguments: [
       {
@@ -43,7 +64,12 @@ export const apis: BuiltinAPIs = {
     ],
     return: { kind: TypeKind.VOID },
   },
-  register_on_keydown: {
+  arguments: ['callback'],
+}
+
+const registerOnKeydown: Function = {
+  name: 'register_on_keydown',
+  type: {
     kind: TypeKind.FUNCTION,
     arguments: [
       {
@@ -54,7 +80,12 @@ export const apis: BuiltinAPIs = {
     ],
     return: { kind: TypeKind.VOID },
   },
-  register_on_mouse_click: {
+  arguments: ['callback'],
+}
+
+const registerOnClick: Function = {
+  name: 'register_on_mouse_click',
+  type: {
     kind: TypeKind.FUNCTION,
     arguments: [
       {
@@ -65,7 +96,12 @@ export const apis: BuiltinAPIs = {
     ],
     return: { kind: TypeKind.VOID },
   },
-  register_on_mouse_move: {
+  arguments: ['callback'],
+}
+
+const registerOnMouseMove: Function = {
+  name: 'register_on_mouse_move',
+  type: {
     kind: TypeKind.FUNCTION,
     arguments: [
       {
@@ -76,14 +112,40 @@ export const apis: BuiltinAPIs = {
     ],
     return: { kind: TypeKind.VOID },
   },
-  unix_time_millis: {
+  arguments: ['callback'],
+}
+
+const unixTimeMillis: Function = {
+  name: 'unix_time_millis',
+  type: {
     kind: TypeKind.FUNCTION,
     arguments: [],
     return: { kind: TypeKind.INTEGER },
   },
-  system_time_millis: {
+  arguments: [],
+}
+
+const systemTimeMillis: Function = {
+  name: 'system_time_millis',
+  type: {
     kind: TypeKind.FUNCTION,
     arguments: [],
     return: { kind: TypeKind.INTEGER },
   },
+  arguments: [],
+}
+
+export const apis: BuiltinAPIs = {
+  functions: [
+    drawRect,
+    getWidth,
+    getHeight,
+    output,
+    registerOnUpdate,
+    registerOnKeydown,
+    registerOnClick,
+    registerOnMouseMove,
+    unixTimeMillis,
+    systemTimeMillis,
+  ],
 }
