@@ -26,7 +26,6 @@ export class Machine {
   statusWriter: StatusWriter = new NopStatusWriter()
 
   symbols: SymbolTable = new SymbolTable()
-  returnVal: Value | undefined
   startTime: number | undefined
   timer: NodeJS.Timer | undefined
 
@@ -39,7 +38,6 @@ export class Machine {
     this.startTime = Date.now()
     this.symbols.reset()
     this.symbols.addScope()
-    this.returnVal = { kind: ValueKind.VOID, value: undefined }
 
     this.onKeyDownHandler = undefined
     this.onMouseMoveHandler = undefined
@@ -76,7 +74,7 @@ export class Machine {
       this.mouseClickHandler(x, y)
     })
 
-    this.executeStatement(program.main)
+    executeStatement(this.symbols, program.main)
 
     const fps = 12
     if (this.timer === undefined) {
@@ -136,39 +134,82 @@ export class Machine {
       return this.executeNativeFunc(funcDecl.name, args)
     }
 
-    this.returnVal = zeroValue(funcDecl.type.return)
+    let returnVal = zeroValue(funcDecl.type.return)
 
     this.symbols.addScope()
     for (let i = 0; i < funcDecl.arguments.length; i++) {
       this.symbols.setSymbol(funcDecl.arguments[i], args[i])
     }
-    this.executeBlockStmt(funcDecl.body)
+    const control = executeBlockStmt(this.symbols, funcDecl.body)
     this.symbols.popScope()
-    const val = this.returnVal
-    this.returnVal = { kind: ValueKind.VOID, value: undefined }
-    return val
+
+    if (control.kind === ControlKind.RETURN) {
+      returnVal = control.value
+    }
+
+    return returnVal
   }
 
   private executeNativeFunc(name: string, args: Value[]): Value {
     switch (name) {
       case 'output':
-        if (args[0].kind !== ValueKind.STRING)
-          throw new Error('invalid arguments')
-        // if (args[0].value.startsWith('step')) {
-        //   console.log(this.symbols)
-        //   // eslint-disable-next-line no-debugger
-        //   debugger
-        // }
+        if (args.length !== 1) {
+          throw new Error(
+            `invalid arguments. Expected 1 argument, but found ${args.length} arguments`
+          )
+        }
+        if (args[0].kind !== ValueKind.STRING) {
+          throw new Error(
+            `invalid arguments. First argument expected to be string but found ${args[0].kind}`
+          )
+        }
         this.statusWriter.append(args[0].value)
         return { kind: ValueKind.VOID, value: undefined }
       case 'draw_rect': {
+        if (args.length !== 6) {
+          throw new Error(
+            `invalid arguments. Expected 6 argument, but found ${args.length} arguments`
+          )
+        }
+
         const [xVal, yVal, wVal, hVal, strokeVal, bgVal] = args
-        const x = Number(xVal.value as bigint)
-        const y = Number(yVal.value as bigint)
-        const w = Number(wVal.value as bigint)
-        const h = Number(hVal.value as bigint)
-        const strokeColor = strokeVal.value as string
-        const bgColor = bgVal.value as string
+        if (xVal.kind !== ValueKind.INTEGER) {
+          throw new Error(
+            `invalid arguments. First argument expected to be integer but found ${args[0].kind}`
+          )
+        }
+        if (yVal.kind !== ValueKind.INTEGER) {
+          throw new Error(
+            `invalid arguments. Second argument expected to be integer but found ${args[1].kind}`
+          )
+        }
+        if (wVal.kind !== ValueKind.INTEGER) {
+          throw new Error(
+            `invalid arguments. Third argument expected to be integer but found ${args[2].kind}`
+          )
+        }
+        if (hVal.kind !== ValueKind.INTEGER) {
+          throw new Error(
+            `invalid arguments. Forth argument expected to be integer but found ${args[3].kind}`
+          )
+        }
+        if (strokeVal.kind !== ValueKind.STRING) {
+          throw new Error(
+            `invalid arguments. Fifth argument expected to be integer but found ${args[4].kind}`
+          )
+        }
+        if (bgVal.kind !== ValueKind.STRING) {
+          throw new Error(
+            `invalid arguments. Sixth argument expected to be integer but found ${args[5].kind}`
+          )
+        }
+
+        const x = Number(xVal.value)
+        const y = Number(yVal.value)
+        const w = Number(wVal.value)
+        const h = Number(hVal.value)
+        const strokeColor = strokeVal.value
+        const bgColor = bgVal.value
         this.displayer.drawRect(x, y, w, h, strokeColor, bgColor)
         return { kind: ValueKind.VOID, value: undefined }
       }
@@ -183,21 +224,59 @@ export class Machine {
           value: BigInt(this.displayer.getHeigh()),
         }
       case 'register_on_update':
-        if (args[0].kind !== ValueKind.FUNC)
-          throw new Error('invalid state. registering non function')
+        if (args.length !== 1) {
+          throw new Error(
+            `invalid arguments. Expected 1 argument, but found ${args.length} arguments`
+          )
+        }
+        if (args[0].kind !== ValueKind.FUNC) {
+          throw new Error(
+            `invalid arguments. First argument expected to be a function but found ${args[0].kind}`
+          )
+        }
         this.onUpdateHandler = args[0]
         return { kind: ValueKind.VOID, value: undefined }
       case 'register_on_keydown':
+        if (args.length !== 1) {
+          throw new Error(
+            `invalid arguments. Expected 1 argument, but found ${args.length} arguments`
+          )
+        }
+        if (args[0].kind !== ValueKind.FUNC) {
+          throw new Error(
+            `invalid arguments. First argument expected to be a function but found ${args[0].kind}`
+          )
+        }
         if (args[0].kind !== ValueKind.FUNC)
           throw new Error('invalid state. registering non function')
         this.onKeyDownHandler = args[0]
         return { kind: ValueKind.VOID, value: undefined }
       case 'register_on_mouse_move':
+        if (args.length !== 1) {
+          throw new Error(
+            `invalid arguments. Expected 1 argument, but found ${args.length} arguments`
+          )
+        }
+        if (args[0].kind !== ValueKind.FUNC) {
+          throw new Error(
+            `invalid arguments. First argument expected to be a function but found ${args[0].kind}`
+          )
+        }
         if (args[0].kind !== ValueKind.FUNC)
           throw new Error('invalid state. registering non function')
         this.onMouseMoveHandler = args[0]
         return { kind: ValueKind.VOID, value: undefined }
       case 'register_on_mouse_click':
+        if (args.length !== 1) {
+          throw new Error(
+            `invalid arguments. Expected 1 argument, but found ${args.length} arguments`
+          )
+        }
+        if (args[0].kind !== ValueKind.FUNC) {
+          throw new Error(
+            `invalid arguments. First argument expected to be a function but found ${args[0].kind}`
+          )
+        }
         if (args[0].kind !== ValueKind.FUNC)
           throw new Error('invalid state. registering non function')
         this.onMouseClickHandler = args[0]
@@ -216,119 +295,117 @@ export class Machine {
         throw new Error(`native function '${name}' is not implemented yet`)
     }
   }
-
-  private executeStatement(stmt: Statement): ControlKind {
-    switch (stmt.kind) {
-      case StatementKind.BLOCK:
-        return this.executeBlockStmt(stmt)
-      case StatementKind.VAR:
-        return this.executeVarStmt(stmt)
-      case StatementKind.IF: {
-        return this.executeIfStmt(stmt)
-      }
-      case StatementKind.WHILE:
-        return this.executeWhileStmt(stmt)
-      case StatementKind.ASSIGN: {
-        const value = evalExpr(this.symbols, stmt.value)
-        const target = evalExpr(this.symbols, stmt.target)
-        target.value = value.value
-        return ControlKind.NORMAL
-      }
-      case StatementKind.EXPR:
-        evalExpr(this.symbols, stmt.value)
-        return ControlKind.NORMAL
-      case StatementKind.RETURN:
-        if (stmt.value !== undefined) {
-          const value = evalExpr(this.symbols, stmt.value)
-          this.setReturnVal(value)
-        } else {
-          this.setReturnVal({ kind: ValueKind.VOID, value: undefined })
-        }
-        return ControlKind.RETURN
-      case StatementKind.BREAK:
-        return ControlKind.BREAK
-      case StatementKind.CONTINUE:
-        return ControlKind.CONTINUE
-      default:
-        throw new Error('unreachable')
-    }
-  }
-
-  private executeBlockStmt(stmt: BlockStatement): ControlKind {
-    this.symbols.addScope()
-
-    for (const s of stmt.body) {
-      const control = this.executeStatement(s)
-      switch (control) {
-        case ControlKind.BREAK:
-        case ControlKind.CONTINUE:
-        case ControlKind.RETURN:
-          this.symbols.popScope()
-          return control
-        case ControlKind.NORMAL:
-          break
-        default:
-          throw new Error('unreachable')
-      }
-    }
-
-    this.symbols.popScope()
-    return ControlKind.NORMAL
-  }
-
-  private executeVarStmt(stmt: VarStatement): ControlKind {
-    const varValue = zeroValue(stmt.variable.type)
-    if (stmt.variable.value !== undefined) {
-      const value = evalExpr(this.symbols, stmt.variable.value)
-      varValue.value = value.value
-    }
-    this.symbols.setSymbol(stmt.variable.name, varValue)
-    return ControlKind.NORMAL
-  }
-
-  private executeIfStmt(stmt: IfStatement): ControlKind {
-    const cond = evalExpr(this.symbols, stmt.condition) as BooleanValue
-    if (cond.value) {
-      return this.executeStatement(stmt.body)
-    } else if (stmt.else !== undefined) {
-      return this.executeStatement(stmt.else)
-    }
-    return ControlKind.NORMAL
-  }
-
-  private executeWhileStmt(stmt: WhileStatement): ControlKind {
-    while (true) {
-      const cond = evalExpr(this.symbols, stmt.condition) as BooleanValue
-      if (!cond.value) break
-
-      const control = this.executeStatement(stmt.body)
-      switch (control) {
-        case ControlKind.BREAK:
-          return ControlKind.NORMAL
-        case ControlKind.CONTINUE:
-          continue
-        case ControlKind.RETURN:
-          return control
-        case ControlKind.NORMAL:
-          break
-        default:
-          throw new Error('unreachable')
-      }
-    }
-
-    return ControlKind.NORMAL
-  }
-
-  private setReturnVal(value: Value): void {
-    this.returnVal = value
-  }
 }
+
+type Control =
+  | { kind: ControlKind.NORMAL | ControlKind.CONTINUE | ControlKind.BREAK }
+  | { kind: ControlKind.RETURN; value: Value }
 
 enum ControlKind {
   NORMAL = 'NORMAL',
   CONTINUE = 'CONTINUE',
   BREAK = 'BREAK',
   RETURN = 'RETURN',
+}
+
+function executeStatement(symbols: SymbolTable, stmt: Statement): Control {
+  switch (stmt.kind) {
+    case StatementKind.BLOCK:
+      return executeBlockStmt(symbols, stmt)
+    case StatementKind.VAR:
+      return executeVarStmt(symbols, stmt)
+    case StatementKind.IF: {
+      return executeIfStmt(symbols, stmt)
+    }
+    case StatementKind.WHILE:
+      return executeWhileStmt(symbols, stmt)
+    case StatementKind.ASSIGN: {
+      const value = evalExpr(symbols, stmt.value)
+      const target = evalExpr(symbols, stmt.target)
+      target.value = value.value
+      return { kind: ControlKind.NORMAL }
+    }
+    case StatementKind.EXPR:
+      evalExpr(symbols, stmt.value)
+      return { kind: ControlKind.NORMAL }
+    case StatementKind.RETURN: {
+      let returnValue: Value
+      if (stmt.value !== undefined) {
+        const value = evalExpr(symbols, stmt.value)
+        returnValue = value
+      } else {
+        returnValue = { kind: ValueKind.VOID, value: undefined }
+      }
+      return { kind: ControlKind.RETURN, value: returnValue }
+    }
+    case StatementKind.BREAK:
+      return { kind: ControlKind.BREAK }
+    case StatementKind.CONTINUE:
+      return { kind: ControlKind.CONTINUE }
+  }
+}
+
+function executeBlockStmt(symbols: SymbolTable, stmt: BlockStatement): Control {
+  symbols.addScope()
+
+  for (const s of stmt.body) {
+    const control = executeStatement(symbols, s)
+    switch (control.kind) {
+      case ControlKind.BREAK:
+      case ControlKind.CONTINUE:
+      case ControlKind.RETURN:
+        symbols.popScope()
+        return control
+      case ControlKind.NORMAL:
+        break
+      default:
+        throw new Error('unreachable')
+    }
+  }
+
+  symbols.popScope()
+  return { kind: ControlKind.NORMAL }
+}
+
+function executeVarStmt(symbols: SymbolTable, stmt: VarStatement): Control {
+  const varValue = zeroValue(stmt.variable.type)
+  if (stmt.variable.value !== undefined) {
+    const value = evalExpr(symbols, stmt.variable.value)
+    varValue.value = value.value
+  }
+  symbols.setSymbol(stmt.variable.name, varValue)
+  return { kind: ControlKind.NORMAL }
+}
+
+function executeIfStmt(symbols: SymbolTable, stmt: IfStatement): Control {
+  const cond = evalExpr(symbols, stmt.condition) as BooleanValue
+  if (cond.value) {
+    return executeStatement(symbols, stmt.body)
+  } else if (stmt.else !== undefined) {
+    return executeStatement(symbols, stmt.else)
+  }
+
+  return { kind: ControlKind.NORMAL }
+}
+
+function executeWhileStmt(symbols: SymbolTable, stmt: WhileStatement): Control {
+  while (true) {
+    const cond = evalExpr(symbols, stmt.condition) as BooleanValue
+    if (!cond.value) break
+
+    const control = executeStatement(symbols, stmt.body)
+    if (control.kind === ControlKind.BREAK) {
+      return { kind: ControlKind.NORMAL }
+    } else if (control.kind === ControlKind.CONTINUE) {
+      continue
+    } else if (control.kind === ControlKind.RETURN) {
+      return control
+    } else if (control.kind !== ControlKind.NORMAL) {
+      throw new Error(`unreachable state`)
+    }
+  }
+
+  return { kind: ControlKind.NORMAL }
 }
 
 function evalExpr(symbols: SymbolTable, expr: Expr): Value {
@@ -350,22 +427,27 @@ function evalExpr(symbols: SymbolTable, expr: Expr): Value {
         if (i.kind !== ValueKind.INTEGER) {
           throw new Error('invalid state. indexing witout integer')
         }
-        // if (val === undefined || i === undefined) {
-        //   console.log('indexerrror', {
-        //     val,
-        //     i,
-        //     expr,
-        //     arr,
-        //     indices,
-        //     sym: this.symbols,
-        //   })
-        // }
         val = val.value[Number(i.value)]
       }
 
       return val
     }
     case ExprKind.CAST:
+      if (
+        expr.source.type.kind === TypeKind.REAL &&
+        expr.type.kind === TypeKind.INTEGER
+      ) {
+        const source = evalExpr(symbols, expr.source)
+        if (source.kind !== ValueKind.REAL) {
+          throw new Error(
+            `invalid state, source should be resolved to a real number`
+          )
+        }
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt.asIntN(64, BigInt(source.value)),
+        }
+      }
       throw new Error('Cast operation is not implemented yet')
     case ExprKind.CALL: {
       const args = expr.arguments.map((v) => evalExpr(symbols, v))

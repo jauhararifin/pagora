@@ -16,6 +16,7 @@ export class TextAreaStatusWriter implements StatusWriter {
 
   append(text: string): void {
     this.textarea.value += text
+    this.textarea.scrollTop = this.textarea.scrollHeight
   }
 
   clear(): void {
