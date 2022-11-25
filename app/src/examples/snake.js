@@ -168,7 +168,9 @@ end
 var seed: integer;
 function next_random() -> integer
 begin
-  seed := (seed * 75 + 74) % 65537;
+  seed := (seed * 1103515245 + 12345) % 281474976710656;
+  if seed < 0 then
+    seed := seed + 281474976710656;
   return seed;
 end
 

@@ -12,10 +12,24 @@ var tetromino_l: array [4,4] of integer := [
     [0,0,0,0]
 ];
 
-var tetromino_z: array [4,4] of integer := [
+var tetromino_j: array [4,4] of integer := [
+    [0,0,1,0],
+    [0,0,1,0],
+    [0,1,1,0],
+    [0,0,0,0]
+];
+
+var tetromino_s: array [4,4] of integer := [
     [0,1,0,0],
     [0,1,1,0],
     [0,0,1,0],
+    [0,0,0,0]
+];
+
+var tetromino_z: array [4,4] of integer := [
+    [0,0,1,0],
+    [0,1,1,0],
+    [0,1,0,0],
     [0,0,0,0]
 ];
 
@@ -211,17 +225,21 @@ function setup_next_tetromino()
 begin
     current_tetromino := next_tetromino;
 
-    seed := (seed * 75 + 74) % 65537;
-    last_tetromino_index := seed % 5;
+    seed := (seed * 1103515245 + 12345) % 281474976710656;
+    last_tetromino_index := ((seed % 7) + 7) % 7;
 
     if last_tetromino_index = 0 then
         next_tetromino := tetromino_t;
     else if last_tetromino_index = 1 then
         next_tetromino := tetromino_l;
     else if last_tetromino_index = 2 then
-        next_tetromino := tetromino_o;
+        next_tetromino := tetromino_j;
     else if last_tetromino_index = 3 then
+        next_tetromino := tetromino_o;
+    else if last_tetromino_index = 4 then
         next_tetromino := tetromino_z;
+    else if last_tetromino_index = 5 then
+        next_tetromino := tetromino_s;
     else
         next_tetromino := tetromino_i;
 

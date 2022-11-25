@@ -137,7 +137,7 @@ begin
   var offset_y := (h - board_size) / 2;
   var block_size := board_size / size;
 
-  draw_rect(0, 0, w, h, "#000", "#000");
+  draw_rect(0, 0, w, h, "#fff", "#fff");
 
   var x := 0;
   while x < size do
@@ -146,7 +146,7 @@ begin
     while y < size do
     begin
         if board[x,y] = LIFE then
-            draw_rect(offset_x + x * block_size, offset_y + y * block_size, block_size, block_size, "#000", "#fff");
+            draw_rect(offset_x + x * block_size, offset_y + y * block_size, block_size, block_size, "#000", "#000");
         y := y + 1;
     end
     x := x + 1;
@@ -156,10 +156,10 @@ begin
   var select_y := (mouse_y - offset_y) / block_size;
   if select_x >= 0 and select_x < size and select_y >= 0 and select_y < size then
   begin
-    var color := "#000";
+    var color := "#fff";
     if board[select_x,select_y] = LIFE then
-        color := "#fff";
-    draw_rect(offset_x + select_x * block_size, offset_y + select_y * block_size, block_size, block_size, "#fff", color);
+        color := "#000";
+    draw_rect(offset_x + select_x * block_size, offset_y + select_y * block_size, block_size, block_size, "#f0f", color);
   end
 end
 
