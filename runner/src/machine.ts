@@ -49,7 +49,7 @@ export class Machine {
     for (const global of program.globals) {
       const value =
         global.value != null
-          ? this.evalExpr(global.value)
+          ? evalExpr(this.symbols, global.value)
           : zeroValue(global.type)
       this.symbols.setSymbol(global.name, value)
     }
@@ -229,17 +229,17 @@ export class Machine {
       case StatementKind.WHILE:
         return this.executeWhileStmt(stmt)
       case StatementKind.ASSIGN: {
-        const value = this.evalExpr(stmt.value)
-        const target = this.evalExpr(stmt.target)
+        const value = evalExpr(this.symbols, stmt.value)
+        const target = evalExpr(this.symbols, stmt.target)
         target.value = value.value
         return ControlKind.NORMAL
       }
       case StatementKind.EXPR:
-        this.evalExpr(stmt.value)
+        evalExpr(this.symbols, stmt.value)
         return ControlKind.NORMAL
       case StatementKind.RETURN:
         if (stmt.value !== undefined) {
-          const value = this.evalExpr(stmt.value)
+          const value = evalExpr(this.symbols, stmt.value)
           this.setReturnVal(value)
         } else {
           this.setReturnVal({ kind: ValueKind.VOID, value: undefined })
@@ -279,7 +279,7 @@ export class Machine {
   private executeVarStmt(stmt: VarStatement): ControlKind {
     const varValue = zeroValue(stmt.variable.type)
     if (stmt.variable.value !== undefined) {
-      const value = this.evalExpr(stmt.variable.value)
+      const value = evalExpr(this.symbols, stmt.variable.value)
       varValue.value = value.value
     }
     this.symbols.setSymbol(stmt.variable.name, varValue)
@@ -287,7 +287,7 @@ export class Machine {
   }
 
   private executeIfStmt(stmt: IfStatement): ControlKind {
-    const cond = this.evalExpr(stmt.condition) as BooleanValue
+    const cond = evalExpr(this.symbols, stmt.condition) as BooleanValue
     if (cond.value) {
       return this.executeStatement(stmt.body)
     } else if (stmt.else !== undefined) {
@@ -298,7 +298,7 @@ export class Machine {
 
   private executeWhileStmt(stmt: WhileStatement): ControlKind {
     while (true) {
-      const cond = this.evalExpr(stmt.condition) as BooleanValue
+      const cond = evalExpr(this.symbols, stmt.condition) as BooleanValue
       if (!cond.value) break
 
       const control = this.executeStatement(stmt.body)
@@ -319,244 +319,6 @@ export class Machine {
     return ControlKind.NORMAL
   }
 
-  private evalExpr(expr: Expr): Value {
-    switch (expr.kind) {
-      case ExprKind.BINARY:
-        return this.evalBinary(expr)
-      case ExprKind.UNARY:
-        return this.evalUnary(expr)
-      case ExprKind.INDEX: {
-        const arr = this.evalExpr(expr.array)
-        const indices = expr.indices.map((v) => this.evalExpr(v))
-
-        if (expr.array.type.kind !== TypeKind.ARRAY) {
-          throw new Error('invalid state. indexing non array')
-        }
-
-        let val = arr
-        for (const i of indices) {
-          if (i.kind !== ValueKind.INTEGER) {
-            throw new Error('invalid state. indexing witout integer')
-          }
-          // if (val === undefined || i === undefined) {
-          //   console.log('indexerrror', {
-          //     val,
-          //     i,
-          //     expr,
-          //     arr,
-          //     indices,
-          //     sym: this.symbols,
-          //   })
-          // }
-          val = val.value[Number(i.value)]
-        }
-
-        return val
-      }
-      case ExprKind.CAST:
-        throw new Error('not implemented yet')
-      case ExprKind.CALL: {
-        const args = expr.arguments.map((v) => this.evalExpr(v))
-        const func = this.evalExpr(expr.function)
-        if (func.kind !== ValueKind.FUNC) {
-          throw new Error('invalid state. calling non functtion')
-        }
-
-        return func.value(args)
-      }
-      case ExprKind.INTEGER_LIT:
-        return { kind: ValueKind.INTEGER, value: expr.value }
-      case ExprKind.BOOLEAN_LIT:
-        return { kind: ValueKind.BOOLEAN, value: expr.value }
-      case ExprKind.STRING_LIT:
-        return { kind: ValueKind.STRING, value: expr.value }
-      case ExprKind.ARRAY_LIT:
-        return {
-          kind: ValueKind.ARRAY,
-          value: expr.values.map((v) => {
-            const val = this.evalExpr(v)
-            return { kind: val.kind, value: val.value }
-          }),
-        }
-      case ExprKind.IDENT:
-        return this.symbols.getSymbol(expr.ident)
-      default:
-        throw new Error(`eval ${expr.kind} is not implemented yet`)
-    }
-  }
-
-  private evalBinary(expr: BinaryExpr): Value {
-    switch (expr.op) {
-      case BinaryOp.PLUS: {
-        const a = this.evalExpr(expr.a)
-        const b = this.evalExpr(expr.b)
-        if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL)
-          return { kind: ValueKind.REAL, value: a.value + b.value }
-        else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER)
-          return { kind: ValueKind.INTEGER, value: a.value + b.value }
-        else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-      }
-      case BinaryOp.MINUS: {
-        const a = this.evalExpr(expr.a)
-        const b = this.evalExpr(expr.b)
-        if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL)
-          return { kind: ValueKind.REAL, value: a.value - b.value }
-        else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER)
-          return { kind: ValueKind.INTEGER, value: a.value - b.value }
-        else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-      }
-      case BinaryOp.DIV: {
-        const a = this.evalExpr(expr.a)
-        const b = this.evalExpr(expr.b)
-        if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER)
-          return { kind: ValueKind.INTEGER, value: a.value / b.value }
-        else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-      }
-      case BinaryOp.MUL: {
-        const a = this.evalExpr(expr.a)
-        const b = this.evalExpr(expr.b)
-        if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL)
-          return { kind: ValueKind.REAL, value: a.value * b.value }
-        else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER)
-          return { kind: ValueKind.INTEGER, value: a.value * b.value }
-        else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-      }
-      case BinaryOp.MOD: {
-        const a = this.evalExpr(expr.a)
-        const b = this.evalExpr(expr.b)
-        if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER)
-          return { kind: ValueKind.INTEGER, value: a.value % b.value }
-        else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-      }
-      case BinaryOp.AND: {
-        const a = this.evalExpr(expr.a)
-        if (a.kind !== ValueKind.BOOLEAN)
-          throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-        if (!a.value) return a
-
-        const b = this.evalExpr(expr.b)
-        if (b.kind !== ValueKind.BOOLEAN)
-          throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-
-        return { kind: ValueKind.BOOLEAN, value: a.value && b.value }
-      }
-      case BinaryOp.OR: {
-        const a = this.evalExpr(expr.a)
-        if (a.kind !== ValueKind.BOOLEAN)
-          throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-        if (a.value) return a
-
-        const b = this.evalExpr(expr.b)
-        if (b.kind !== ValueKind.BOOLEAN)
-          throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-
-        return { kind: ValueKind.BOOLEAN, value: a.value || b.value }
-      }
-      case BinaryOp.BIT_AND: {
-        throw new Error('not implemented yet')
-      }
-      case BinaryOp.BIT_OR: {
-        throw new Error('not implemented yet')
-      }
-      case BinaryOp.BIT_XOR: {
-        throw new Error('not implemented yet')
-      }
-      case BinaryOp.EQUAL: {
-        const a = this.evalExpr(expr.a)
-        const b = this.evalExpr(expr.b)
-        if (a.kind === ValueKind.BOOLEAN && b.kind === ValueKind.BOOLEAN)
-          return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
-        else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER)
-          return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
-        else if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL)
-          return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
-        else if (a.kind === ValueKind.STRING && b.kind === ValueKind.STRING)
-          return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
-        else {
-          throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-        }
-      }
-      case BinaryOp.NOT_EQUAL: {
-        const a = this.evalExpr(expr.a)
-        const b = this.evalExpr(expr.b)
-        if (a.kind === ValueKind.BOOLEAN && b.kind === ValueKind.BOOLEAN)
-          return { kind: ValueKind.BOOLEAN, value: a.value !== b.value }
-        else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER)
-          return { kind: ValueKind.BOOLEAN, value: a.value !== b.value }
-        else if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL)
-          return { kind: ValueKind.BOOLEAN, value: a.value !== b.value }
-        else if (a.kind === ValueKind.STRING && b.kind === ValueKind.STRING)
-          return { kind: ValueKind.BOOLEAN, value: a.value !== b.value }
-        else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-      }
-      case BinaryOp.GREATER_THAN: {
-        const a = this.evalExpr(expr.a)
-        const b = this.evalExpr(expr.b)
-        if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL)
-          return { kind: ValueKind.BOOLEAN, value: a.value > b.value }
-        else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER)
-          return { kind: ValueKind.BOOLEAN, value: a.value > b.value }
-        else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-      }
-      case BinaryOp.GREATER_THAN_EQUAL: {
-        const a = this.evalExpr(expr.a)
-        const b = this.evalExpr(expr.b)
-        if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL)
-          return { kind: ValueKind.BOOLEAN, value: a.value >= b.value }
-        else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER)
-          return { kind: ValueKind.BOOLEAN, value: a.value >= b.value }
-        else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-      }
-      case BinaryOp.LESS_THAN: {
-        const a = this.evalExpr(expr.a)
-        const b = this.evalExpr(expr.b)
-        if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL)
-          return { kind: ValueKind.BOOLEAN, value: a.value < b.value }
-        else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER)
-          return { kind: ValueKind.BOOLEAN, value: a.value < b.value }
-        else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-      }
-      case BinaryOp.LESS_THAN_EQUAL: {
-        const a = this.evalExpr(expr.a)
-        const b = this.evalExpr(expr.b)
-        if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL)
-          return { kind: ValueKind.BOOLEAN, value: a.value <= b.value }
-        else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER)
-          return { kind: ValueKind.BOOLEAN, value: a.value <= b.value }
-        else throw new Error(`invalid state. cannot perform binop ${expr.op}`)
-      }
-      case BinaryOp.SHIFT_LEFT:
-        throw new Error('not implemented yet')
-      case BinaryOp.SHIFT_RIGHT:
-        throw new Error('not implemented yet')
-    }
-  }
-
-  private evalUnary(expr: UnaryExpr): Value {
-    const v = this.evalExpr(expr.value)
-    switch (expr.op) {
-      case UnaryOp.PLUS:
-        return v
-      case UnaryOp.MINUS: {
-        switch (v.kind) {
-          case ValueKind.INTEGER:
-            return { kind: ValueKind.INTEGER, value: -v.value }
-          case ValueKind.REAL:
-            return { kind: ValueKind.REAL, value: -v.value }
-          default:
-            throw new Error('invalid state. cannot perform MINUS operator')
-        }
-      }
-      case UnaryOp.NOT:
-        if (v.kind !== ValueKind.BOOLEAN) {
-          throw new Error('invalid state. cannot perform NOT operator')
-        }
-        return { kind: ValueKind.BOOLEAN, value: !v.value }
-      case UnaryOp.BIT_NOT:
-        throw new Error('not implemented yet')
-    }
-  }
-
   private setReturnVal(value: Value): void {
     this.returnVal = value
   }
@@ -567,6 +329,394 @@ enum ControlKind {
   CONTINUE = 'CONTINUE',
   BREAK = 'BREAK',
   RETURN = 'RETURN',
+}
+
+function evalExpr(symbols: SymbolTable, expr: Expr): Value {
+  switch (expr.kind) {
+    case ExprKind.BINARY:
+      return evalBinary(symbols, expr)
+    case ExprKind.UNARY:
+      return evalUnary(symbols, expr)
+    case ExprKind.INDEX: {
+      const arr = evalExpr(symbols, expr.array)
+      const indices = expr.indices.map((v) => evalExpr(symbols, v))
+
+      if (expr.array.type.kind !== TypeKind.ARRAY) {
+        throw new Error('invalid state. indexing non array')
+      }
+
+      let val = arr
+      for (const i of indices) {
+        if (i.kind !== ValueKind.INTEGER) {
+          throw new Error('invalid state. indexing witout integer')
+        }
+        // if (val === undefined || i === undefined) {
+        //   console.log('indexerrror', {
+        //     val,
+        //     i,
+        //     expr,
+        //     arr,
+        //     indices,
+        //     sym: this.symbols,
+        //   })
+        // }
+        val = val.value[Number(i.value)]
+      }
+
+      return val
+    }
+    case ExprKind.CAST:
+      throw new Error('Cast operation is not implemented yet')
+    case ExprKind.CALL: {
+      const args = expr.arguments.map((v) => evalExpr(symbols, v))
+      const func = evalExpr(symbols, expr.function)
+      if (func.kind !== ValueKind.FUNC) {
+        throw new Error('invalid state. calling non functtion')
+      }
+
+      return func.value(args)
+    }
+    case ExprKind.INTEGER_LIT:
+      return { kind: ValueKind.INTEGER, value: expr.value }
+    case ExprKind.BOOLEAN_LIT:
+      return { kind: ValueKind.BOOLEAN, value: expr.value }
+    case ExprKind.STRING_LIT:
+      return { kind: ValueKind.STRING, value: expr.value }
+    case ExprKind.ARRAY_LIT:
+      return {
+        kind: ValueKind.ARRAY,
+        value: expr.values.map((v) => {
+          const val = evalExpr(symbols, v)
+          return { kind: val.kind, value: val.value }
+        }),
+      }
+    case ExprKind.IDENT:
+      return symbols.getSymbol(expr.ident)
+    default:
+      throw new Error(`eval ${expr.kind} is not implemented yet`)
+  }
+}
+
+function evalBinary(symbols: SymbolTable, expr: BinaryExpr): Value {
+  switch (expr.op) {
+    case BinaryOp.PLUS: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL) {
+        return { kind: ValueKind.REAL, value: a.value + b.value }
+      } else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt.asIntN(64, a.value + b.value),
+        }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.MINUS: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL) {
+        return { kind: ValueKind.REAL, value: a.value - b.value }
+      } else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt.asIntN(64, a.value - b.value),
+        }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.DIV: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL) {
+        return { kind: ValueKind.REAL, value: a.value - b.value }
+      } else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt.asIntN(64, a.value / b.value),
+        }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.MUL: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL) {
+        return { kind: ValueKind.REAL, value: a.value * b.value }
+      } else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt.asIntN(64, a.value * b.value),
+        }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.MOD: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt.asIntN(64, a.value % b.value),
+        }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.AND: {
+      const a = evalExpr(symbols, expr.a)
+      if (a.kind !== ValueKind.BOOLEAN) {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+      if (!a.value) {
+        return a
+      }
+
+      const b = evalExpr(symbols, expr.b)
+      if (b.kind !== ValueKind.BOOLEAN) {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+
+      return { kind: ValueKind.BOOLEAN, value: a.value && b.value }
+    }
+    case BinaryOp.OR: {
+      const a = evalExpr(symbols, expr.a)
+      if (a.kind !== ValueKind.BOOLEAN) {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+      if (a.value) {
+        return a
+      }
+
+      const b = evalExpr(symbols, expr.b)
+      if (b.kind !== ValueKind.BOOLEAN) {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+
+      return { kind: ValueKind.BOOLEAN, value: a.value || b.value }
+    }
+    case BinaryOp.BIT_AND: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt.asIntN(64, BigInt.asIntN(64, a.value & b.value)),
+        }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.BIT_OR: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt.asIntN(64, BigInt.asIntN(64, a.value | b.value)),
+        }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.BIT_XOR: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt.asIntN(64, BigInt.asIntN(64, a.value ^ b.value)),
+        }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.EQUAL: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.BOOLEAN && b.kind === ValueKind.BOOLEAN) {
+        return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
+      } else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
+      } else if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL) {
+        return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
+      } else if (a.kind === ValueKind.STRING && b.kind === ValueKind.STRING) {
+        return { kind: ValueKind.BOOLEAN, value: a.value === b.value }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.NOT_EQUAL: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.BOOLEAN && b.kind === ValueKind.BOOLEAN) {
+        return { kind: ValueKind.BOOLEAN, value: a.value !== b.value }
+      } else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return { kind: ValueKind.BOOLEAN, value: a.value !== b.value }
+      } else if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL) {
+        return { kind: ValueKind.BOOLEAN, value: a.value !== b.value }
+      } else if (a.kind === ValueKind.STRING && b.kind === ValueKind.STRING) {
+        return { kind: ValueKind.BOOLEAN, value: a.value !== b.value }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.GREATER_THAN: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL) {
+        return { kind: ValueKind.BOOLEAN, value: a.value > b.value }
+      } else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return { kind: ValueKind.BOOLEAN, value: a.value > b.value }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.GREATER_THAN_EQUAL: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL) {
+        return { kind: ValueKind.BOOLEAN, value: a.value >= b.value }
+      } else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return { kind: ValueKind.BOOLEAN, value: a.value >= b.value }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.LESS_THAN: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL) {
+        return { kind: ValueKind.BOOLEAN, value: a.value < b.value }
+      } else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return { kind: ValueKind.BOOLEAN, value: a.value < b.value }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.LESS_THAN_EQUAL: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.REAL && b.kind === ValueKind.REAL) {
+        return { kind: ValueKind.BOOLEAN, value: a.value <= b.value }
+      } else if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return { kind: ValueKind.BOOLEAN, value: a.value <= b.value }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.SHIFT_LEFT: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt.asIntN(64, a.value << b.value),
+        }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    case BinaryOp.SHIFT_RIGHT: {
+      const a = evalExpr(symbols, expr.a)
+      const b = evalExpr(symbols, expr.b)
+      if (a.kind === ValueKind.INTEGER && b.kind === ValueKind.INTEGER) {
+        return {
+          kind: ValueKind.INTEGER,
+          value: BigInt.asIntN(64, a.value >> b.value),
+        }
+      } else {
+        throw new Error(
+          `Cannot perform binary operation ${expr.op} on ${a.kind}`
+        )
+      }
+    }
+    default:
+      throw new Error(`Cannot perform binary operation. Unrecognized operator`)
+  }
+}
+
+function evalUnary(symbols: SymbolTable, expr: UnaryExpr): Value {
+  const v = evalExpr(symbols, expr.value)
+  switch (expr.op) {
+    case UnaryOp.PLUS:
+      switch (v.kind) {
+        case ValueKind.INTEGER:
+          return { kind: ValueKind.INTEGER, value: v.value }
+        case ValueKind.REAL:
+          return { kind: ValueKind.REAL, value: v.value }
+        default:
+          throw new Error(
+            `Cannot perform unary PLUS operation on ${v.kind} type`
+          )
+      }
+    case UnaryOp.MINUS: {
+      switch (v.kind) {
+        case ValueKind.INTEGER:
+          return { kind: ValueKind.INTEGER, value: BigInt.asIntN(64, -v.value) }
+        case ValueKind.REAL:
+          return { kind: ValueKind.REAL, value: -v.value }
+        default:
+          throw new Error(
+            `Cannot perform unary MINUS operation on ${v.kind} type`
+          )
+      }
+    }
+    case UnaryOp.NOT:
+      if (v.kind !== ValueKind.BOOLEAN) {
+        throw new Error(`Cannot perform unary NOT operation on ${v.kind} type`)
+      }
+      return { kind: ValueKind.BOOLEAN, value: !v.value }
+    case UnaryOp.BIT_NOT:
+      if (v.kind !== ValueKind.INTEGER) {
+        throw new Error(
+          `Cannot perform unary BIT_NOT operation on ${v.kind} type`
+        )
+      }
+      return { kind: ValueKind.INTEGER, value: BigInt.asIntN(64, ~v.value) }
+  }
 }
 
 function zeroValue(t: Type): Value {
