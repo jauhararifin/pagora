@@ -18,13 +18,14 @@ import {
 } from '@pagora/lang'
 import { Displayer, NopDisplayer } from './display'
 import { NopStatusWriter, StatusWriter } from './status'
+import { SymbolTable } from './symbols'
 import { BooleanValue, FuncValue, Value, ValueKind } from './value'
 
 export class Machine {
   displayer: Displayer = new NopDisplayer()
   statusWriter: StatusWriter = new NopStatusWriter()
 
-  symbols: Array<{ [name: string]: Value }> = []
+  symbols: SymbolTable = new SymbolTable()
   returnVal: Value | undefined
   startTime: number | undefined
   timer: NodeJS.Timer | undefined
@@ -34,30 +35,23 @@ export class Machine {
   onMouseMoveHandler: FuncValue | undefined
   onMouseClickHandler: FuncValue | undefined
 
-  attachDisplayer(displayer: Displayer): void {
-    this.displayer = displayer
-    this.displayer.onKeyDown((key) => {
-      this.keydownHandler(key)
-    })
-  }
-
-  attachStatusWriter(statusWriter: StatusWriter): void {
-    this.statusWriter = statusWriter
-  }
-
   start(program: Program): void {
     this.startTime = Date.now()
-    this.symbols = []
+    this.symbols.reset()
+    this.symbols.addScope()
     this.returnVal = { kind: ValueKind.VOID, value: undefined }
 
-    this.addScope()
+    this.onKeyDownHandler = undefined
+    this.onMouseMoveHandler = undefined
+    this.onMouseClickHandler = undefined
+    this.onUpdateHandler = undefined
 
     for (const global of program.globals) {
       const value =
         global.value != null
           ? this.evalExpr(global.value)
-          : this.zeroValue(global.type)
-      this.setSymbol(global.name, value)
+          : zeroValue(global.type)
+      this.symbols.setSymbol(global.name, value)
     }
 
     for (const func of program.functions) {
@@ -67,13 +61,8 @@ export class Machine {
           return this.executeFunc(func, args)
         },
       }
-      this.setSymbol(func.name, value)
+      this.symbols.setSymbol(func.name, value)
     }
-
-    this.onKeyDownHandler = undefined
-    this.onMouseMoveHandler = undefined
-    this.onMouseClickHandler = undefined
-    this.onUpdateHandler = undefined
 
     this.statusWriter.clear()
     this.displayer.clearAndReset()
@@ -110,12 +99,23 @@ export class Machine {
     }
   }
 
-  keydownHandler(key: string): void {
+  attachDisplayer(displayer: Displayer): void {
+    this.displayer = displayer
+    this.displayer.onKeyDown((key) => {
+      this.keydownHandler(key)
+    })
+  }
+
+  attachStatusWriter(statusWriter: StatusWriter): void {
+    this.statusWriter = statusWriter
+  }
+
+  private keydownHandler(key: string): void {
     if (this.onKeyDownHandler === undefined) return
     this.onKeyDownHandler.value([{ kind: ValueKind.STRING, value: key }])
   }
 
-  mouseMoveHandler(x: number, y: number): void {
+  private mouseMoveHandler(x: number, y: number): void {
     if (this.onMouseMoveHandler === undefined) return
     this.onMouseMoveHandler.value([
       { kind: ValueKind.INTEGER, value: BigInt(x) },
@@ -123,7 +123,7 @@ export class Machine {
     ])
   }
 
-  mouseClickHandler(x: number, y: number): void {
+  private mouseClickHandler(x: number, y: number): void {
     if (this.onMouseClickHandler === undefined) return
     this.onMouseClickHandler.value([
       { kind: ValueKind.INTEGER, value: BigInt(x) },
@@ -131,25 +131,25 @@ export class Machine {
     ])
   }
 
-  executeFunc(funcDecl: Function, args: Value[]): Value {
+  private executeFunc(funcDecl: Function, args: Value[]): Value {
     if (funcDecl.body === undefined) {
       return this.executeNativeFunc(funcDecl.name, args)
     }
 
-    this.returnVal = this.zeroValue(funcDecl.type.return)
+    this.returnVal = zeroValue(funcDecl.type.return)
 
-    this.addScope()
+    this.symbols.addScope()
     for (let i = 0; i < funcDecl.arguments.length; i++) {
-      this.setSymbol(funcDecl.arguments[i], args[i])
+      this.symbols.setSymbol(funcDecl.arguments[i], args[i])
     }
     this.executeBlockStmt(funcDecl.body)
-    this.popScope()
+    this.symbols.popScope()
     const val = this.returnVal
     this.returnVal = { kind: ValueKind.VOID, value: undefined }
     return val
   }
 
-  executeNativeFunc(name: string, args: Value[]): Value {
+  private executeNativeFunc(name: string, args: Value[]): Value {
     switch (name) {
       case 'output':
         if (args[0].kind !== ValueKind.STRING)
@@ -217,7 +217,7 @@ export class Machine {
     }
   }
 
-  executeStatement(stmt: Statement): ControlKind {
+  private executeStatement(stmt: Statement): ControlKind {
     switch (stmt.kind) {
       case StatementKind.BLOCK:
         return this.executeBlockStmt(stmt)
@@ -254,8 +254,8 @@ export class Machine {
     }
   }
 
-  executeBlockStmt(stmt: BlockStatement): ControlKind {
-    this.addScope()
+  private executeBlockStmt(stmt: BlockStatement): ControlKind {
+    this.symbols.addScope()
 
     for (const s of stmt.body) {
       const control = this.executeStatement(s)
@@ -263,7 +263,7 @@ export class Machine {
         case ControlKind.BREAK:
         case ControlKind.CONTINUE:
         case ControlKind.RETURN:
-          this.popScope()
+          this.symbols.popScope()
           return control
         case ControlKind.NORMAL:
           break
@@ -272,21 +272,21 @@ export class Machine {
       }
     }
 
-    this.popScope()
+    this.symbols.popScope()
     return ControlKind.NORMAL
   }
 
-  executeVarStmt(stmt: VarStatement): ControlKind {
-    const varValue = this.zeroValue(stmt.variable.type)
+  private executeVarStmt(stmt: VarStatement): ControlKind {
+    const varValue = zeroValue(stmt.variable.type)
     if (stmt.variable.value !== undefined) {
       const value = this.evalExpr(stmt.variable.value)
       varValue.value = value.value
     }
-    this.setSymbol(stmt.variable.name, varValue)
+    this.symbols.setSymbol(stmt.variable.name, varValue)
     return ControlKind.NORMAL
   }
 
-  executeIfStmt(stmt: IfStatement): ControlKind {
+  private executeIfStmt(stmt: IfStatement): ControlKind {
     const cond = this.evalExpr(stmt.condition) as BooleanValue
     if (cond.value) {
       return this.executeStatement(stmt.body)
@@ -296,7 +296,7 @@ export class Machine {
     return ControlKind.NORMAL
   }
 
-  executeWhileStmt(stmt: WhileStatement): ControlKind {
+  private executeWhileStmt(stmt: WhileStatement): ControlKind {
     while (true) {
       const cond = this.evalExpr(stmt.condition) as BooleanValue
       if (!cond.value) break
@@ -319,7 +319,7 @@ export class Machine {
     return ControlKind.NORMAL
   }
 
-  evalExpr(expr: Expr): Value {
+  private evalExpr(expr: Expr): Value {
     switch (expr.kind) {
       case ExprKind.BINARY:
         return this.evalBinary(expr)
@@ -379,13 +379,13 @@ export class Machine {
           }),
         }
       case ExprKind.IDENT:
-        return this.getSymbol(expr.ident)
+        return this.symbols.getSymbol(expr.ident)
       default:
         throw new Error(`eval ${expr.kind} is not implemented yet`)
     }
   }
 
-  evalBinary(expr: BinaryExpr): Value {
+  private evalBinary(expr: BinaryExpr): Value {
     switch (expr.op) {
       case BinaryOp.PLUS: {
         const a = this.evalExpr(expr.a)
@@ -532,7 +532,7 @@ export class Machine {
     }
   }
 
-  evalUnary(expr: UnaryExpr): Value {
+  private evalUnary(expr: UnaryExpr): Value {
     const v = this.evalExpr(expr.value)
     switch (expr.op) {
       case UnaryOp.PLUS:
@@ -557,61 +557,8 @@ export class Machine {
     }
   }
 
-  zeroValue(t: Type): Value {
-    switch (t.kind) {
-      case TypeKind.INTEGER:
-        return { kind: ValueKind.INTEGER, value: BigInt(0) }
-      case TypeKind.REAL:
-        return { kind: ValueKind.REAL, value: 0 }
-      case TypeKind.BOOLEAN:
-        return { kind: ValueKind.BOOLEAN, value: false }
-      case TypeKind.STRING:
-        return { kind: ValueKind.STRING, value: '' }
-      case TypeKind.ARRAY: {
-        return this.zeroArray(t.dimension, t.elementType)
-      }
-      case TypeKind.VOID:
-        return { kind: ValueKind.VOID, value: undefined }
-      default:
-        throw new Error('not implemented yet')
-    }
-  }
-
-  zeroArray(dimension: bigint[], elementType: Type): Value {
-    const value = []
-    if (dimension.length === 1) {
-      for (let i = 0; i < dimension[0]; i++)
-        value.push(this.zeroValue(elementType))
-    } else {
-      for (let i = 0; i < dimension[0]; i++)
-        value.push(this.zeroArray(dimension.slice(1), elementType))
-    }
-    return { kind: ValueKind.ARRAY, value }
-  }
-
-  setReturnVal(value: Value): void {
+  private setReturnVal(value: Value): void {
     this.returnVal = value
-  }
-
-  addScope(): void {
-    this.symbols.push({})
-  }
-
-  setSymbol(name: string, value: Value): void {
-    this.symbols[this.symbols.length - 1][name] = value
-  }
-
-  getSymbol(name: string): Value {
-    for (let i = this.symbols.length - 1; i >= 0; i--) {
-      if (name in this.symbols[i]) {
-        return this.symbols[i][name]
-      }
-    }
-    throw new Error(`invalid state. searching undefined symbol "${name}"`)
-  }
-
-  popScope(): void {
-    this.symbols.pop()
   }
 }
 
@@ -620,4 +567,36 @@ enum ControlKind {
   CONTINUE = 'CONTINUE',
   BREAK = 'BREAK',
   RETURN = 'RETURN',
+}
+
+function zeroValue(t: Type): Value {
+  switch (t.kind) {
+    case TypeKind.INTEGER:
+      return { kind: ValueKind.INTEGER, value: BigInt(0) }
+    case TypeKind.REAL:
+      return { kind: ValueKind.REAL, value: 0 }
+    case TypeKind.BOOLEAN:
+      return { kind: ValueKind.BOOLEAN, value: false }
+    case TypeKind.STRING:
+      return { kind: ValueKind.STRING, value: '' }
+    case TypeKind.ARRAY:
+      return zeroArray(t.dimension, t.elementType)
+    case TypeKind.VOID:
+      return { kind: ValueKind.VOID, value: undefined }
+    default:
+      throw new Error(
+        `Failed creating zero value of ${t.kind}. ${t.kind} type is not implemented yet.`
+      )
+  }
+}
+
+function zeroArray(dimension: bigint[], elementType: Type): Value {
+  const value = []
+  if (dimension.length === 1) {
+    for (let i = 0; i < dimension[0]; i++) value.push(zeroValue(elementType))
+  } else {
+    for (let i = 0; i < dimension[0]; i++)
+      value.push(zeroArray(dimension.slice(1), elementType))
+  }
+  return { kind: ValueKind.ARRAY, value }
 }
