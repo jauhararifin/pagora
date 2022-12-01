@@ -2,9 +2,10 @@ use std::{iter::Peekable, vec::IntoIter};
 
 use crate::{
     ast::{
-        ArrayTypeNode, AssignStmtNode, BlockStmtNode, CallExprNode, ElseIfStmtNode, ElseStmtNode,
-        ExprNode, FuncHeadNode, FuncNode, IfStmtNode, Item, ParameterNode, ReturnStmtNode,
-        RootNode, StmtNode, TypeExprNode, VarNode, WhileStmtNode,
+        ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
+        CastExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode, FuncNode,
+        GroupedExprNode, IfStmtNode, IndexExprNode, Item, ParameterNode, ReturnStmtNode, RootNode,
+        StmtNode, TypeExprNode, UnaryExprNode, VarNode, WhileStmtNode,
     },
     errors::{CompileError, MultiErrors, UnexpectedToken},
     tokens::{Position, Token, TokenKind},
@@ -415,10 +416,175 @@ fn parse_assign_or_call_stmt(tokens: &mut TokenStream) -> Result<StmtNode, Compi
     }
 }
 
-fn parse_call_stmt(tokens: &mut TokenStream) -> Result<CallExprNode, CompileError> {
-    todo!();
-}
+const BINOP_PRECEDENCE: &'static [TokenKind] = &[
+    TokenKind::Or,
+    TokenKind::And,
+    TokenKind::BitOr,
+    TokenKind::BitXor,
+    TokenKind::BitAnd,
+    TokenKind::Eq,
+    TokenKind::NEq,
+    TokenKind::Lt,
+    TokenKind::LEq,
+    TokenKind::Gt,
+    TokenKind::GEq,
+    TokenKind::ShiftLeft,
+    TokenKind::ShiftRight,
+    TokenKind::Add,
+    TokenKind::Sub,
+    TokenKind::Mul,
+    TokenKind::Div,
+    TokenKind::Mod,
+];
 
 fn parse_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
-    todo!();
+    parse_binary_expr(tokens, TokenKind::Or)
+}
+
+fn parse_binary_expr(tokens: &mut TokenStream, op: TokenKind) -> Result<ExprNode, CompileError> {
+    let next_op = BINOP_PRECEDENCE.iter().skip_while(|p| *p != &op).next();
+
+    let a = if let Some(next_op) = next_op {
+        parse_binary_expr(tokens, *next_op)?
+    } else {
+        parse_index_expr(tokens)?
+    };
+
+    let mut result = a;
+    while let Some(op_token) = tokens.take_if(op) {
+        let b = if let Some(next_op) = next_op {
+            parse_binary_expr(tokens, *next_op)?
+        } else {
+            parse_index_expr(tokens)?
+        };
+        result = ExprNode::Binary(BinaryExprNode {
+            a: Box::new(result),
+            op: op_token,
+            b: Box::new(b),
+        });
+    }
+
+    Ok(result)
+}
+
+fn parse_index_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
+    let target = parse_cast_expr(tokens)?;
+    if let Some(open_square) = tokens.take_if(TokenKind::OpenSquare) {
+        let index = parse_expr(tokens)?;
+        let close_square = tokens.take(TokenKind::CloseSquare)?;
+        Ok(ExprNode::Index(IndexExprNode {
+            target: Box::new(target),
+            open_square,
+            index: Box::new(index),
+            close_square,
+        }))
+    } else {
+        Ok(target)
+    }
+}
+
+fn parse_cast_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
+    let value = parse_unary_expr(tokens)?;
+    if let Some(as_tok) = tokens.take_if(TokenKind::As) {
+        let target = parse_type_expr(tokens)?;
+        Ok(ExprNode::Cast(CastExprNode {
+            value: Box::new(value),
+            as_tok,
+            target: Box::new(target),
+        }))
+    } else {
+        Ok(value)
+    }
+}
+
+const UNARY_OP: &'static [TokenKind] = &[
+    TokenKind::BitNot,
+    TokenKind::Sub,
+    TokenKind::Add,
+    TokenKind::Not,
+];
+
+fn parse_unary_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
+    if !UNARY_OP.contains(&tokens.kind()) {
+        return parse_call_expr(tokens);
+    }
+
+    let op = tokens.next();
+    let value = parse_call_expr(tokens)?;
+    Ok(ExprNode::Unary(UnaryExprNode {
+        op,
+        value: Box::new(value),
+    }))
+}
+
+fn parse_call_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
+    let target = parse_primary_expr(tokens)?;
+
+    if tokens.kind() != TokenKind::OpenBrac {
+        return Ok(target);
+    }
+
+    let (open_brac, arguments, close_brac) = parse_sequence(
+        tokens,
+        TokenKind::OpenBrac,
+        TokenKind::Comma,
+        TokenKind::CloseBrac,
+        parse_expr,
+    )?;
+
+    Ok(ExprNode::Call(CallExprNode {
+        target: Box::new(target),
+        open_brac,
+        arguments,
+        close_brac,
+    }))
+}
+
+const EXPR_SYNC_TOKEN: &'static [TokenKind] = &[
+    TokenKind::OpenBrac,
+    TokenKind::OpenSquare,
+    TokenKind::Ident,
+    TokenKind::IntegerLit,
+    TokenKind::RealLit,
+    TokenKind::StringLit,
+    TokenKind::True,
+    TokenKind::False,
+];
+
+fn parse_primary_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
+    match tokens.kind() {
+        TokenKind::OpenBrac => {
+            let open_brac = tokens.take(TokenKind::OpenBrac)?;
+            let value = parse_expr(tokens)?;
+            let close_brac = tokens.take(TokenKind::CloseBrac)?;
+            Ok(ExprNode::Grouped(GroupedExprNode {
+                open_brac,
+                value: Box::new(value),
+                close_brac,
+            }))
+        }
+        TokenKind::OpenSquare => {
+            let (open_square, elements, close_square) = parse_sequence(
+                tokens,
+                TokenKind::OpenSquare,
+                TokenKind::Comma,
+                TokenKind::CloseSquare,
+                parse_expr,
+            )?;
+            Ok(ExprNode::ArrayLit(ArrayLitNode {
+                open_square,
+                elements,
+                close_square,
+            }))
+        }
+        TokenKind::Ident => Ok(ExprNode::Ident(tokens.next())),
+        TokenKind::IntegerLit => Ok(ExprNode::IntegerLit(tokens.next())),
+        TokenKind::RealLit => Ok(ExprNode::RealLit(tokens.next())),
+        TokenKind::StringLit => Ok(ExprNode::StringLit(tokens.next())),
+        TokenKind::True | TokenKind::False => Ok(ExprNode::BooleanLit(tokens.next())),
+        _ => Err(CompileError::unexpected_token(
+            Vec::from(EXPR_SYNC_TOKEN),
+            tokens.next(),
+        )),
+    }
 }

@@ -58,7 +58,7 @@ pub enum ExprNode {
     RealLit(Token),
     BooleanLit(Token),
     StringLit(Token),
-    ArrayLit,
+    ArrayLit(ArrayLitNode),
     Binary(BinaryExprNode),
     Unary(UnaryExprNode),
     Call(CallExprNode),
@@ -69,8 +69,8 @@ pub enum ExprNode {
 
 pub struct ArrayLitNode {
     pub open_square: Token,
-    pub items: Vec<ExprNode>,
-    pub close_sqare: Token,
+    pub elements: Vec<ExprNode>,
+    pub close_square: Token,
 }
 
 pub struct BinaryExprNode {
