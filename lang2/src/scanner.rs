@@ -1,13 +1,13 @@
 use crate::{
-    errors::CompileError,
+    errors::{CompileError, MultiErrors},
     tokens::{Position, Token, TokenKind},
 };
 use std::{iter::Peekable, vec::IntoIter};
 
-pub fn scan(code: &str) -> Result<Vec<Token>, Vec<CompileError>> {
+pub fn scan(code: &str) -> Result<Vec<Token>, CompileError> {
     let mut scanner = Scanner::new(code);
     let mut result = vec![];
-    let mut errors = vec![];
+    let mut errors = MultiErrors::new();
 
     loop {
         match scanner.next() {
@@ -18,7 +18,7 @@ pub fn scan(code: &str) -> Result<Vec<Token>, Vec<CompileError>> {
     }
 
     if !errors.is_empty() {
-        Err(errors)
+        Err(errors.into())
     } else {
         Ok(result)
     }
@@ -33,14 +33,14 @@ fn load_chars(s: &str) -> Vec<CharPos> {
     let mut line = 1;
     let mut col = 0;
     let mut result = vec![];
-    for c in s.chars() {
+    for ch in s.chars() {
         col += 1;
         result.push(CharPos {
-            ch: c.clone(),
+            ch,
             pos: Position { line, col },
         });
 
-        if c == '\n' {
+        if ch == '\n' {
             col = 0;
             line += 1;
         }
@@ -112,6 +112,7 @@ impl Scanner {
             "var" => TokenKind::Var,
             "as" => TokenKind::As,
             "func" => TokenKind::Function,
+            "native" => TokenKind::Native,
             "true" => TokenKind::True,
             "false" => TokenKind::False,
             "if" => TokenKind::If,
@@ -136,19 +137,16 @@ impl Scanner {
         };
 
         let position = tok.pos;
-        let opening_quote = tok.ch.clone();
+        let opening_quote = tok.ch;
         let mut value = String::from(tok.ch);
-        let mut errors = vec![];
+        let mut errors = MultiErrors::new();
 
         let mut after_backslash = false;
         let mut is_closed = false;
 
         while let Some(c) = self.source_code.next() {
             if c.ch == '\n' {
-                errors.push(CompileError::UnexpectedChar {
-                    pos: c.pos,
-                    ch: c.ch,
-                });
+                errors.push(CompileError::unexpected_char(c.pos, c.ch));
                 break;
             }
 
@@ -162,10 +160,7 @@ impl Scanner {
                     '"' => Ok('"'),
                     '\'' => Ok('\''),
                     '`' => Ok('`'),
-                    _ => Err(CompileError::UnexpectedChar {
-                        pos: c.pos,
-                        ch: c.ch,
-                    }),
+                    _ => Err(CompileError::unexpected_char(c.pos, c.ch)),
                 };
 
                 if let Ok(c) = next_char {
@@ -186,13 +181,11 @@ impl Scanner {
         }
 
         if !is_closed {
-            errors.push(CompileError::MissingClosingQuote {
-                pos: position.clone(),
-            });
+            errors.push(CompileError::missing_closing_quote(position));
         }
 
         if !errors.is_empty() {
-            ScanResult::Err(CompileError::MultiErrors(errors))
+            ScanResult::Err(errors.into())
         } else {
             ScanResult::Token(Token {
                 kind: TokenKind::StringLit,
@@ -246,19 +239,29 @@ impl Scanner {
             ("/", TokenKind::Div),
             (":", TokenKind::Colon),
             (";", TokenKind::Semicolon),
+            ("<<", TokenKind::ShiftLeft),
             ("<=", TokenKind::LEq),
             ("<", TokenKind::Lt),
+            (">>", TokenKind::ShiftRight),
             (">=", TokenKind::GEq),
             (">", TokenKind::Gt),
+            ("{", TokenKind::OpenBlock),
+            ("}", TokenKind::CloseBlock),
             ("[", TokenKind::OpenSquare),
             ("]", TokenKind::CloseSquare),
             ("(", TokenKind::OpenBrac),
             (")", TokenKind::CloseBrac),
             (",", TokenKind::Comma),
             ("%", TokenKind::Mod),
+            ("&&", TokenKind::And),
+            ("&", TokenKind::BitAnd),
+            ("||", TokenKind::Or),
+            ("|", TokenKind::BitOr),
+            ("^", TokenKind::BitXor),
+            ("~", TokenKind::BitNot),
         ];
 
-        let Some(position) = self.source_code.peek().and_then(|c| Some(c.pos.clone())) else {
+        let Some(position) = self.source_code.peek().and_then(|c| Some(c.pos)) else {
             return ScanResult::None;
         };
 
@@ -272,7 +275,7 @@ impl Scanner {
             for (op, k) in symbols.iter() {
                 if op.starts_with(&sym) {
                     found = true;
-                    kind = k.clone();
+                    kind = *k;
                 }
             }
             if !found {
@@ -326,10 +329,7 @@ impl Scanner {
 
     fn scan_unexpected_chars(&mut self) -> ScanResult {
         if let Some(char_pos) = self.source_code.next() {
-            ScanResult::Err(CompileError::UnexpectedChar {
-                pos: char_pos.pos,
-                ch: char_pos.ch,
-            })
+            ScanResult::Err(CompileError::unexpected_char(char_pos.pos, char_pos.ch))
         } else {
             ScanResult::None
         }
@@ -341,46 +341,22 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_a() {
+    fn test_simple_scan() {
         let source_code = "var a: integer = 10;";
-        let tokens = scan(&source_code).unwrap();
+        let tokens: Vec<TokenKind> = scan(&source_code)
+            .unwrap()
+            .into_iter()
+            .map(|tok| tok.kind)
+            .collect();
         assert_eq!(
             vec![
-                Token {
-                    kind: TokenKind::Var,
-                    position: Position { line: 1, col: 1 },
-                    value: "var".into(),
-                },
-                Token {
-                    kind: TokenKind::Ident,
-                    position: Position { line: 1, col: 5 },
-                    value: "a".into(),
-                },
-                Token {
-                    kind: TokenKind::Colon,
-                    position: Position { line: 1, col: 6 },
-                    value: ":".into(),
-                },
-                Token {
-                    kind: TokenKind::Ident,
-                    position: Position { line: 1, col: 8 },
-                    value: "integer".into(),
-                },
-                Token {
-                    kind: TokenKind::Assign,
-                    position: Position { line: 1, col: 16 },
-                    value: "=".into(),
-                },
-                Token {
-                    kind: TokenKind::IntegerLit,
-                    position: Position { line: 1, col: 18 },
-                    value: "10".into(),
-                },
-                Token {
-                    kind: TokenKind::Semicolon,
-                    position: Position { line: 1, col: 20 },
-                    value: ";".into(),
-                }
+                TokenKind::Var,
+                TokenKind::Ident,
+                TokenKind::Colon,
+                TokenKind::Ident,
+                TokenKind::Assign,
+                TokenKind::IntegerLit,
+                TokenKind::Semicolon,
             ],
             tokens
         );

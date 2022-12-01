@@ -1,17 +1,17 @@
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Copy, Default)]
 pub struct Position {
     pub line: i64,
     pub col: i64,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
     pub position: Position,
     pub value: String,
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum TokenKind {
     Invalid,
     Eof,
@@ -20,6 +20,7 @@ pub enum TokenKind {
     Var,
     As,
     Function,
+    Native,
     Comma,
     Colon,
     Arrow,
@@ -36,7 +37,6 @@ pub enum TokenKind {
     IntegerLit,
     RealLit,
     StringLit,
-    CharLit,
     True,
     False,
 
@@ -73,7 +73,4 @@ pub enum TokenKind {
     Continue,
     Break,
     Return,
-
-    Array,
-    Of,
 }
