@@ -1,14 +1,17 @@
 use crate::tokens::Token;
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct RootNode {
     pub items: Vec<Item>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Item {
     Var(VarNode),
     Func(FuncNode),
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct VarNode {
     pub var: Token,
     pub name: Token,
@@ -18,11 +21,13 @@ pub struct VarNode {
     pub value: Option<ExprNode>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct FuncNode {
     pub head: FuncHeadNode,
     pub body: Option<BlockStmtNode>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct FuncHeadNode {
     pub func: Token,
     pub native: Option<Token>,
@@ -34,17 +39,20 @@ pub struct FuncHeadNode {
     pub return_type: Option<TypeExprNode>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct ParameterNode {
     pub name: Token,
     pub colon: Token,
     pub typ: TypeExprNode,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum TypeExprNode {
     Ident(Token),
     Array(ArrayTypeNode),
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct ArrayTypeNode {
     pub element_type: Box<TypeExprNode>,
     pub open_square: Token,
@@ -52,6 +60,7 @@ pub struct ArrayTypeNode {
     pub close_square: Token,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum ExprNode {
     Ident(Token),
     IntegerLit(Token),
@@ -67,23 +76,27 @@ pub enum ExprNode {
     Grouped(GroupedExprNode),
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct ArrayLitNode {
     pub open_square: Token,
     pub elements: Vec<ExprNode>,
     pub close_square: Token,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct BinaryExprNode {
     pub a: Box<ExprNode>,
     pub op: Token,
     pub b: Box<ExprNode>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct UnaryExprNode {
     pub op: Token,
     pub value: Box<ExprNode>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct CallExprNode {
     pub target: Box<ExprNode>,
     pub open_brac: Token,
@@ -91,6 +104,7 @@ pub struct CallExprNode {
     pub close_brac: Token,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct IndexExprNode {
     pub target: Box<ExprNode>,
     pub open_square: Token,
@@ -98,18 +112,21 @@ pub struct IndexExprNode {
     pub close_square: Token,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct CastExprNode {
     pub value: Box<ExprNode>,
     pub as_tok: Token,
     pub target: Box<TypeExprNode>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct GroupedExprNode {
     pub open_brac: Token,
     pub value: Box<ExprNode>,
     pub close_brac: Token,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum StmtNode {
     Block(BlockStmtNode),
     Var(VarNode),
@@ -121,17 +138,20 @@ pub enum StmtNode {
     Call(CallExprNode),
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct AssignStmtNode {
     pub receiver: ExprNode,
     pub assign: Token,
     pub value: ExprNode,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct ReturnStmtNode {
     pub return_tok: Token,
     pub value: Option<ExprNode>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct IfStmtNode {
     pub if_tok: Token,
     pub condition: ExprNode,
@@ -140,6 +160,7 @@ pub struct IfStmtNode {
     pub else_stmt: Option<ElseStmtNode>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct ElseIfStmtNode {
     pub else_tok: Token,
     pub if_tok: Token,
@@ -147,17 +168,20 @@ pub struct ElseIfStmtNode {
     pub body: BlockStmtNode,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct ElseStmtNode {
     pub else_tok: Token,
     pub body: BlockStmtNode,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct WhileStmtNode {
     pub while_tok: Token,
     pub condition: ExprNode,
     pub body: BlockStmtNode,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct BlockStmtNode {
     pub open_block: Token,
     pub statements: Vec<StmtNode>,

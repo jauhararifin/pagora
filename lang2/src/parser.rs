@@ -442,7 +442,11 @@ fn parse_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
 }
 
 fn parse_binary_expr(tokens: &mut TokenStream, op: TokenKind) -> Result<ExprNode, CompileError> {
-    let next_op = BINOP_PRECEDENCE.iter().skip_while(|p| *p != &op).next();
+    let next_op = BINOP_PRECEDENCE
+        .iter()
+        .skip_while(|p| *p != &op)
+        .skip(1)
+        .next();
 
     let a = if let Some(next_op) = next_op {
         parse_binary_expr(tokens, *next_op)?
@@ -586,5 +590,132 @@ fn parse_primary_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError
             Vec::from(EXPR_SYNC_TOKEN),
             tokens.next(),
         )),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::scanner::scan;
+
+    #[test]
+    fn testcase_1() {
+        let source_code = r##"
+        var a: int = 10; 
+        func add() -> int { 
+            return a + b; 
+        }
+        "##;
+        let tokens = scan(source_code).unwrap();
+        let ast = parse(tokens).unwrap();
+        let expected = RootNode {
+            items: vec![
+                Item::Var(VarNode {
+                    var: Token {
+                        kind: TokenKind::Var,
+                        position: Position { line: 2, col: 9 },
+                        value: "var".into(),
+                    },
+                    name: Token {
+                        kind: TokenKind::Ident,
+                        position: Position { line: 2, col: 13 },
+                        value: "a".into(),
+                    },
+                    colon: Some(Token {
+                        kind: TokenKind::Colon,
+                        position: Position { line: 2, col: 14 },
+                        value: ":".into(),
+                    }),
+                    typ: Some(TypeExprNode::Ident(Token {
+                        kind: TokenKind::Ident,
+                        position: Position { line: 2, col: 16 },
+                        value: "int".into(),
+                    })),
+                    assign: Some(Token {
+                        kind: TokenKind::Assign,
+                        position: Position { line: 2, col: 20 },
+                        value: "=".into(),
+                    }),
+                    value: Some(ExprNode::IntegerLit(Token {
+                        kind: TokenKind::IntegerLit,
+                        position: Position { line: 2, col: 22 },
+                        value: "10".into(),
+                    })),
+                }),
+                Item::Func(FuncNode {
+                    head: FuncHeadNode {
+                        func: Token {
+                            kind: TokenKind::Function,
+                            position: Position { line: 3, col: 9 },
+                            value: "func".into(),
+                        },
+                        native: None,
+                        name: Token {
+                            kind: TokenKind::Ident,
+                            position: Position { line: 3, col: 14 },
+                            value: "add".into(),
+                        },
+                        open_brac: Token {
+                            kind: TokenKind::OpenBrac,
+                            position: Position { line: 3, col: 17 },
+                            value: "(".into(),
+                        },
+                        parameters: vec![],
+                        close_brac: Token {
+                            kind: TokenKind::CloseBrac,
+                            position: Position { line: 3, col: 18 },
+                            value: ")".into(),
+                        },
+                        arrow: Some(Token {
+                            kind: TokenKind::Arrow,
+                            position: Position { line: 3, col: 20 },
+                            value: "->".into(),
+                        }),
+                        return_type: Some(TypeExprNode::Ident(Token {
+                            kind: TokenKind::Ident,
+                            position: Position { line: 3, col: 23 },
+                            value: "int".into(),
+                        })),
+                    },
+                    body: Some(BlockStmtNode {
+                        open_block: Token {
+                            kind: TokenKind::OpenBlock,
+                            position: Position { line: 3, col: 27 },
+                            value: "{".into(),
+                        },
+                        statements: vec![StmtNode::Return(ReturnStmtNode {
+                            return_tok: Token {
+                                kind: TokenKind::Return,
+                                position: Position { line: 4, col: 13 },
+                                value: "return".into(),
+                            },
+                            value: Some(ExprNode::Binary(BinaryExprNode {
+                                a: Box::new(ExprNode::Ident(Token {
+                                    kind: TokenKind::Ident,
+                                    position: Position { line: 4, col: 20 },
+                                    value: "a".into(),
+                                })),
+                                op: Token {
+                                    kind: TokenKind::Add,
+                                    position: Position { line: 4, col: 22 },
+                                    value: "+".into(),
+                                },
+                                b: Box::new(ExprNode::Ident(Token {
+                                    kind: TokenKind::Ident,
+                                    position: Position { line: 4, col: 24 },
+                                    value: "b".into(),
+                                })),
+                            })),
+                        })],
+                        close_block: Token {
+                            kind: TokenKind::CloseBlock,
+                            position: Position { line: 5, col: 9 },
+                            value: "}".into(),
+                        },
+                    }),
+                }),
+            ],
+        };
+        assert_eq!(expected, ast,);
     }
 }
