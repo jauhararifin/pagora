@@ -6,13 +6,17 @@ use std::{
 
 use crate::{
     ast::{
-        AssignStmtNode, BlockStmtNode, CallExprNode, ExprNode, FuncNode, IfStmtNode, Item,
-        ReturnStmtNode, RootNode, StmtNode, TypeExprNode, VarNode, WhileStmtNode,
+        ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
+        CastExprNode, ExprNode, FuncNode, GroupedExprNode, IfStmtNode, IndexExprNode, Item,
+        ReturnStmtNode, RootNode, StmtNode, TypeExprNode, UnaryExprNode, VarNode, WhileStmtNode,
     },
-    errors::{CompileError, MultiErrors, NotAssignable, TypeMismatch},
+    errors::{
+        CompileError, MultiErrors, NotAssignable, TypeMismatch, UndefinedSymbol, UndefinedType,
+    },
     semantic::{
-        AssignStatement, BlockStatement, Builtin, CallExpr, CallStatement, Expr, Function,
-        FunctionType, IfStatement, Program, Statement, Type, Variable, WhileStatement,
+        ArrayType, AssignStatement, BlockStatement, Builtin, CallStatement, Expr, ExprKind,
+        FloatType, Function, FunctionType, IdentExpr, IfStatement, IntType, Program, Statement,
+        Type, Variable, WhileStatement,
     },
     tokens::{Token, TokenKind},
 };
@@ -48,7 +52,7 @@ pub fn analyze(root: RootNode, builtin: Builtin) -> Result<Program, CompileError
     }
 
     let mut variables = Vec::<Variable>::new();
-    for var_node in var_nodes {
+    for var_node in var_nodes.iter() {
         let name_tok = var_node.name.clone();
         match analyze_variable(&mut ctx, var_node) {
             Ok(variable) => {
@@ -166,16 +170,16 @@ impl Context {
     }
 }
 
-fn analyze_variable(ctx: &mut Context, var_node: VarNode) -> Result<Variable, CompileError> {
-    let name = var_node.name.value;
+fn analyze_variable(ctx: &mut Context, var_node: &VarNode) -> Result<Variable, CompileError> {
+    let name = var_node.name.value.clone();
 
-    let value = if let Some(expr_node) = var_node.value {
-        Some(analyze_expr(ctx, expr_node)?)
+    let value = if let Some(ref expr_node) = var_node.value {
+        Some(analyze_expr(ctx, expr_node, None)?)
     } else {
         None
     };
 
-    let typ = if let Some(type_node) = var_node.typ {
+    let typ = if let Some(ref type_node) = var_node.typ {
         analyze_type(ctx, type_node)?
     } else if let Some(ref value) = value {
         value.result_type.clone()
@@ -214,7 +218,7 @@ fn analyze_function(ctx: &mut Context, func_node: FuncNode) -> Result<Function, 
         .map(|param| param.name.value.clone())
         .collect();
 
-    let body = if let Some(body) = func_node.body {
+    let body = if let Some(ref body) = func_node.body {
         let additional_symbols = zip(
             func_type.parameters.iter(),
             func_node.head.parameters.iter(),
@@ -237,13 +241,13 @@ fn analyze_function(ctx: &mut Context, func_node: FuncNode) -> Result<Function, 
     })
 }
 
-fn analyze_statement(ctx: &mut Context, stmt: StmtNode) -> Result<Statement, CompileError> {
+fn analyze_statement(ctx: &mut Context, stmt: &StmtNode) -> Result<Statement, CompileError> {
     Ok(match stmt {
         StmtNode::Block(stmt) => Statement::Block(analyze_block_statement(ctx, stmt, vec![])?),
         StmtNode::Var(stmt) => Statement::Var(analyze_variable(ctx, stmt)?),
         StmtNode::Return(stmt) => Statement::Return(analyze_return_statement(ctx, stmt)?),
         StmtNode::Keyword(stmt) => analyze_keyword_statement(stmt),
-        StmtNode::If(stmt) => Statement::If(analyze_if_statement(ctx, stmt)?),
+        StmtNode::If(stmt) => Statement::If(analyze_if_statement(ctx, &stmt)?),
         StmtNode::While(stmt) => Statement::While(analyze_while_statement(ctx, stmt)?),
         StmtNode::Assign(stmt) => Statement::Assign(analyze_assign_statement(ctx, stmt)?),
         StmtNode::Call(stmt) => Statement::Call(analyze_call_statement(ctx, stmt)?),
@@ -252,7 +256,7 @@ fn analyze_statement(ctx: &mut Context, stmt: StmtNode) -> Result<Statement, Com
 
 fn analyze_block_statement(
     ctx: &mut Context,
-    stmt: BlockStmtNode,
+    stmt: &BlockStmtNode,
     additional_symbols: Vec<Symbol>,
 ) -> Result<BlockStatement, CompileError> {
     ctx.add_scope();
@@ -268,7 +272,7 @@ fn analyze_block_statement(
 
     let mut errors = MultiErrors::new();
     let mut statements = Vec::<Statement>::new();
-    for item in stmt.statements {
+    for item in stmt.statements.iter() {
         match analyze_statement(ctx, item) {
             Ok(statement) => statements.push(statement),
             Err(err) => errors.push(err),
@@ -286,16 +290,20 @@ fn analyze_block_statement(
 
 fn analyze_return_statement(
     ctx: &mut Context,
-    stmt: ReturnStmtNode,
+    stmt: &ReturnStmtNode,
 ) -> Result<Option<Expr>, CompileError> {
-    Ok(if let Some(value) = stmt.value {
-        Some(analyze_expr(ctx, value)?)
+    Ok(if let Some(ref value) = stmt.value {
+        Some(analyze_expr(
+            ctx,
+            value,
+            Some(ctx.current_return_type.clone()),
+        )?)
     } else {
         None
     })
 }
 
-fn analyze_keyword_statement(keyword: Token) -> Statement {
+fn analyze_keyword_statement(keyword: &Token) -> Statement {
     match keyword.kind {
         TokenKind::Continue => Statement::Continue,
         TokenKind::Break => Statement::Break,
@@ -306,27 +314,27 @@ fn analyze_keyword_statement(keyword: Token) -> Statement {
     }
 }
 
-fn analyze_if_statement(ctx: &mut Context, stmt: IfStmtNode) -> Result<IfStatement, CompileError> {
-    let mut else_stmt = if let Some(s) = stmt.else_stmt {
-        let body = analyze_block_statement(ctx, s.body, vec![])?;
+fn analyze_if_statement(ctx: &mut Context, stmt: &IfStmtNode) -> Result<IfStatement, CompileError> {
+    let mut else_stmt = if let Some(ref s) = stmt.else_stmt {
+        let body = analyze_block_statement(ctx, &s.body, vec![])?;
         Some(Box::new(Statement::Block(body)))
     } else {
         None
     };
 
-    for else_if in stmt.else_ifs.into_iter().rev() {
-        let body = analyze_block_statement(ctx, else_if.body, vec![])?;
+    for else_if in stmt.else_ifs.iter().rev() {
+        let body = analyze_block_statement(ctx, &else_if.body, vec![])?;
         let else_if_stmt = IfStatement {
-            condition: analyze_expr(ctx, else_if.condition)?,
+            condition: analyze_expr(ctx, &else_if.condition, Some(Type::Bool))?,
             body: Box::new(Statement::Block(body)),
             else_stmt: else_stmt.take(),
         };
         else_stmt = Some(Box::new(Statement::If(else_if_stmt)));
     }
 
-    let body = analyze_block_statement(ctx, stmt.body, vec![])?;
+    let body = analyze_block_statement(ctx, &stmt.body, vec![])?;
     Ok(IfStatement {
-        condition: analyze_expr(ctx, stmt.condition)?,
+        condition: analyze_expr(ctx, &stmt.condition, Some(Type::Bool))?,
         body: Box::new(Statement::Block(body)),
         else_stmt,
     })
@@ -334,24 +342,24 @@ fn analyze_if_statement(ctx: &mut Context, stmt: IfStmtNode) -> Result<IfStateme
 
 fn analyze_while_statement(
     ctx: &mut Context,
-    stmt: WhileStmtNode,
+    stmt: &WhileStmtNode,
 ) -> Result<WhileStatement, CompileError> {
     Ok(WhileStatement {
-        condition: analyze_expr(ctx, stmt.condition)?,
-        body: analyze_block_statement(ctx, stmt.body, vec![])?,
+        condition: analyze_expr(ctx, &stmt.condition, Some(Type::Bool))?,
+        body: analyze_block_statement(ctx, &stmt.body, vec![])?,
     })
 }
 
 fn analyze_assign_statement(
     ctx: &mut Context,
-    stmt: AssignStmtNode,
+    stmt: &AssignStmtNode,
 ) -> Result<AssignStatement, CompileError> {
-    let receiver = analyze_expr(ctx, stmt.receiver)?;
+    let receiver = analyze_expr(ctx, &stmt.receiver, None)?;
     if !receiver.is_assignable {
         return Err(NotAssignable { receiver }.into());
     }
 
-    let value = analyze_expr(ctx, stmt.value)?;
+    let value = analyze_expr(ctx, &stmt.value, Some(receiver.result_type.clone()))?;
     if !is_type_equal(&receiver.result_type, &value.result_type) {
         return Err(TypeMismatch {
             expected: receiver.result_type,
@@ -368,31 +376,220 @@ fn analyze_assign_statement(
 
 fn analyze_call_statement(
     ctx: &mut Context,
-    stmt: CallExprNode,
+    stmt: &CallExprNode,
 ) -> Result<CallStatement, CompileError> {
-    let expr = analyze_call_expr(ctx, stmt)?;
+    let expr = analyze_call_expr(ctx, &stmt, None)?;
+    let ExprKind::Call(expr) = expr.kind else {
+        unreachable!("cannot unwrap expr kind into ExprKind::Call");
+    };
     Ok(CallStatement { expr })
 }
 
-fn analyze_expr(ctx: &mut Context, expr_node: ExprNode) -> Result<Expr, CompileError> {
+fn analyze_expr(
+    ctx: &mut Context,
+    expr_node: &ExprNode,
+    type_hint: Option<Type>,
+) -> Result<Expr, CompileError> {
+    let value = match expr_node {
+        ExprNode::Ident(expr) => analyze_ident_expr(ctx, expr)?,
+        ExprNode::IntegerLit(expr) => analyze_integer_lit_expr(ctx, expr, type_hint)?,
+        ExprNode::RealLit(expr) => analyze_real_lit_expr(ctx, expr, type_hint)?,
+        ExprNode::BooleanLit(expr) => analyze_boolean_lit_expr(ctx, expr, type_hint)?,
+        ExprNode::StringLit(expr) => analyze_string_lit_expr(ctx, expr, type_hint)?,
+        ExprNode::ArrayLit(expr) => analyze_array_lit_expr(ctx, expr, type_hint)?,
+        ExprNode::Binary(expr) => analyze_binary_expr(ctx, expr, type_hint)?,
+        ExprNode::Unary(expr) => analyze_unary_expr(ctx, expr, type_hint)?,
+        ExprNode::Call(expr) => analyze_call_expr(ctx, expr, type_hint)?,
+        ExprNode::Index(expr) => analyze_index_expr(ctx, expr, type_hint)?,
+        ExprNode::Cast(expr) => analyze_cast_expr(ctx, expr, type_hint)?,
+        ExprNode::Grouped(expr) => analyze_grouped_expr(ctx, expr, type_hint)?,
+    };
+    Ok(value)
+}
+
+fn analyze_ident_expr(ctx: &mut Context, token: &Token) -> Result<Expr, CompileError> {
+    let name = token.value.clone();
+    let symbol = ctx
+        .get(name.as_ref())
+        .ok_or(CompileError::UndefinedSymbol(UndefinedSymbol {
+            name: token.clone(),
+        }))?;
+    Ok(Expr {
+        position: token.position.clone(),
+        is_assignable: true,
+        result_type: symbol.get_type().clone(),
+        kind: ExprKind::Ident(IdentExpr { name }),
+    })
+}
+
+fn analyze_integer_lit_expr(
+    ctx: &mut Context,
+    token: &Token,
+    type_hint: Option<Type>,
+) -> Result<Expr, CompileError> {
     todo!();
 }
 
-fn analyze_call_expr(ctx: &mut Context, expr_node: CallExprNode) -> Result<CallExpr, CompileError> {
+fn analyze_real_lit_expr(
+    ctx: &mut Context,
+    token: &Token,
+    type_hint: Option<Type>,
+) -> Result<Expr, CompileError> {
     todo!();
 }
 
-fn analyze_type(ctx: &mut Context, type_node: TypeExprNode) -> Result<Type, CompileError> {
+fn analyze_boolean_lit_expr(
+    ctx: &mut Context,
+    token: &Token,
+    type_hint: Option<Type>,
+) -> Result<Expr, CompileError> {
     todo!();
 }
 
-fn is_type_equal(a: &Type, b: &Type) -> bool {
+fn analyze_string_lit_expr(
+    ctx: &mut Context,
+    token: &Token,
+    type_hint: Option<Type>,
+) -> Result<Expr, CompileError> {
     todo!();
+}
+
+fn analyze_array_lit_expr(
+    ctx: &mut Context,
+    expr_node: &ArrayLitNode,
+    type_hint: Option<Type>,
+) -> Result<Expr, CompileError> {
+    todo!();
+}
+
+fn analyze_binary_expr(
+    ctx: &mut Context,
+    expr_node: &BinaryExprNode,
+    type_hint: Option<Type>,
+) -> Result<Expr, CompileError> {
+    todo!();
+}
+
+fn analyze_unary_expr(
+    ctx: &mut Context,
+    expr_node: &UnaryExprNode,
+    type_hint: Option<Type>,
+) -> Result<Expr, CompileError> {
+    todo!();
+}
+
+fn analyze_call_expr(
+    ctx: &mut Context,
+    expr_node: &CallExprNode,
+    type_hint: Option<Type>,
+) -> Result<Expr, CompileError> {
+    todo!();
+}
+
+fn analyze_index_expr(
+    ctx: &mut Context,
+    expr_node: &IndexExprNode,
+    type_hint: Option<Type>,
+) -> Result<Expr, CompileError> {
+    todo!();
+}
+
+fn analyze_cast_expr(
+    ctx: &mut Context,
+    expr_node: &CastExprNode,
+    type_hint: Option<Type>,
+) -> Result<Expr, CompileError> {
+    todo!();
+}
+
+fn analyze_grouped_expr(
+    ctx: &mut Context,
+    expr_node: &GroupedExprNode,
+    type_hint: Option<Type>,
+) -> Result<Expr, CompileError> {
+    todo!();
+}
+
+fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Type, CompileError> {
+    Ok(match type_node {
+        TypeExprNode::Ident(type_name) => match type_name.value.as_str() {
+            "int32" => Type::Int(Rc::new(IntType {
+                bits: 32,
+                signed: true,
+            })),
+            "int64" => Type::Int(Rc::new(IntType {
+                bits: 64,
+                signed: true,
+            })),
+            "uint32" => Type::Int(Rc::new(IntType {
+                bits: 32,
+                signed: false,
+            })),
+            "uint64" => Type::Int(Rc::new(IntType {
+                bits: 64,
+                signed: false,
+            })),
+            "float32" => Type::Float(Rc::new(FloatType { bits: 32 })),
+            "float64" => Type::Float(Rc::new(FloatType { bits: 64 })),
+            "bool" => Type::Bool,
+            "string" => Type::String,
+            _ => {
+                return Err(UndefinedType {
+                    name: type_name.clone(),
+                }
+                .into())
+            }
+        },
+        TypeExprNode::Array(ref array_type) => {
+            Type::Array(Rc::new(analyze_array_type(ctx, array_type)?))
+        }
+    })
+}
+
+fn analyze_array_type(
+    ctx: &mut Context,
+    array_node: &ArrayTypeNode,
+) -> Result<ArrayType, CompileError> {
+    let length_type = Type::Int(Rc::new(IntType {
+        bits: 32,
+        signed: false,
+    }));
+    let length = analyze_expr(ctx, &array_node.length, Some(length_type.clone()))?;
+    let Type::Int(ref _int_type) = length.result_type else {
+        return Err(TypeMismatch{
+            expected: length_type,
+            got: length,
+        }.into());
+    };
+
+    let element_type = analyze_type(ctx, &array_node.element_type)?;
+    Ok(ArrayType {
+        length,
+        element_type,
+    })
 }
 
 fn analyze_func_type(
     ctx: &mut Context,
     func_node: &FuncNode,
 ) -> Result<FunctionType, CompileError> {
+    let mut parameters = vec![];
+    for param_node in func_node.head.parameters.iter() {
+        parameters.push(analyze_type(ctx, &param_node.typ)?);
+    }
+
+    let return_type = if let Some(ref return_type_node) = func_node.head.return_type {
+        analyze_type(ctx, return_type_node)?
+    } else {
+        Type::Void
+    };
+
+    Ok(FunctionType {
+        parameters,
+        return_type,
+    })
+}
+
+fn is_type_equal(a: &Type, b: &Type) -> bool {
     todo!();
 }

@@ -11,6 +11,8 @@ pub enum CompileError {
     UnexpectedToken(UnexpectedToken),
     NotAssignable(NotAssignable),
     TypeMismatch(TypeMismatch),
+    UndefinedType(UndefinedType),
+    UndefinedSymbol(UndefinedSymbol),
 }
 
 impl CompileError {
@@ -121,5 +123,27 @@ pub struct TypeMismatch {
 impl From<TypeMismatch> for CompileError {
     fn from(e: TypeMismatch) -> Self {
         Self::TypeMismatch(e)
+    }
+}
+
+#[derive(Debug)]
+pub struct UndefinedType {
+    pub name: Token,
+}
+
+impl From<UndefinedType> for CompileError {
+    fn from(e: UndefinedType) -> Self {
+        Self::UndefinedType(e)
+    }
+}
+
+#[derive(Debug)]
+pub struct UndefinedSymbol {
+    pub name: Token,
+}
+
+impl From<UndefinedSymbol> for CompileError {
+    fn from(e: UndefinedSymbol) -> Self {
+        Self::UndefinedSymbol(e)
     }
 }

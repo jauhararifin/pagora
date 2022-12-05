@@ -35,6 +35,7 @@ pub enum Type {
     Int(Rc<IntType>),
     Float(Rc<FloatType>),
     Bool,
+    String,
     Array(Rc<ArrayType>),
     Function(Rc<FunctionType>),
 }
@@ -52,7 +53,7 @@ pub struct FloatType {
 
 #[derive(Debug)]
 pub struct ArrayType {
-    pub length: u32,
+    pub length: Expr,
     pub element_type: Type,
 }
 
@@ -75,12 +76,12 @@ pub enum Const {
 pub struct Expr {
     pub position: Position,
     pub is_assignable: bool,
-    pub result_type:Type,
-    pub value: ExprValue,
+    pub result_type: Type,
+    pub kind: ExprKind,
 }
 
 #[derive(Debug)]
-pub enum ExprValue {
+pub enum ExprKind {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
     Index(IndexExpr),
