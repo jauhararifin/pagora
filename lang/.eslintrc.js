@@ -11,7 +11,7 @@ module.exports = {
     project: './tsconfig.json',
     tsconfigRootDir: __dirname,
   },
-  ignorePatterns: ['dist/*.js'],
+  ignorePatterns: ['dist/*'],
   rules: {
     '@typescript-eslint/no-non-null-assertion': 'off',
     'max-len': ['warn', { code: 120 }],

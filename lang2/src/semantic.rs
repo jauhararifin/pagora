@@ -1,50 +1,68 @@
+use std::rc::Rc;
+
 use crate::tokens::Position;
 
+#[derive(Debug)]
 pub struct Program {
     pub variables: Vec<Variable>,
-    pub functions: Vec<Variable>,
+    pub functions: Vec<Function>,
 }
 
+#[derive(Debug)]
+pub struct Builtin {
+    pub variables: Vec<Variable>,
+    pub functions: Vec<Function>,
+}
+
+#[derive(Debug)]
 pub struct Variable {
-    pub name: String,
+    pub name: Rc<String>,
     pub typ: Type,
     pub value: Option<Expr>,
 }
 
+#[derive(Debug)]
 pub struct Function {
-    pub name: String,
-    pub typ: FunctionType,
-    pub param_names: Vec<String>,
+    pub name: Rc<String>,
+    pub typ: Rc<FunctionType>,
+    pub param_names: Vec<Rc<String>>,
     pub body: Option<BlockStatement>,
 }
 
+#[derive(Clone, Debug)]
 pub enum Type {
     Void,
-    Int(IntType),
-    Float(FloatType),
+    Int(Rc<IntType>),
+    Float(Rc<FloatType>),
     Bool,
-    Array(ArrayType),
+    Array(Rc<ArrayType>),
+    Function(Rc<FunctionType>),
 }
 
+#[derive(Clone, Debug)]
 pub struct IntType {
     pub bits: u8,
     pub signed: bool,
 }
 
+#[derive(Debug)]
 pub struct FloatType {
     pub bits: u8,
 }
 
+#[derive(Debug)]
 pub struct ArrayType {
     pub length: u32,
-    pub element_type: Box<Type>,
+    pub element_type: Type,
 }
 
+#[derive(Debug)]
 pub struct FunctionType {
     pub parameters: Vec<Type>,
     pub return_type: Type,
 }
 
+#[derive(Debug)]
 pub enum Const {
     Void,
     IntConst(u64),
@@ -53,7 +71,16 @@ pub enum Const {
     ArrayConst(Vec<Const>),
 }
 
-pub enum Expr {
+#[derive(Debug)]
+pub struct Expr {
+    pub position: Position,
+    pub is_assignable: bool,
+    pub result_type:Type,
+    pub value: ExprValue,
+}
+
+#[derive(Debug)]
+pub enum ExprValue {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
     Index(IndexExpr),
@@ -63,12 +90,7 @@ pub enum Expr {
     Const(ConstExpr),
 }
 
-pub struct ExprInfo {
-    pub position: Position,
-    pub is_assignable: bool,
-    pub result_type: Box<Type>,
-}
-
+#[derive(Debug)]
 pub enum BinaryOp {
     Or,
     And,
@@ -90,13 +112,14 @@ pub enum BinaryOp {
     Mod,
 }
 
+#[derive(Debug)]
 pub struct BinaryExpr {
     pub a: Box<Expr>,
     pub op: BinaryOp,
     pub b: Box<Expr>,
-    pub info: ExprInfo,
 }
 
+#[derive(Debug)]
 pub enum UnaryOp {
     BitNot,
     Sub,
@@ -104,40 +127,41 @@ pub enum UnaryOp {
     Not,
 }
 
+#[derive(Debug)]
 pub struct UnaryExpr {
     pub op: UnaryOp,
     pub value: Box<Expr>,
-    pub info: ExprInfo,
 }
 
+#[derive(Debug)]
 pub struct IndexExpr {
     pub target: Box<Expr>,
     pub index: Box<Expr>,
-    pub info: ExprInfo,
 }
 
+#[derive(Debug)]
 pub struct CastExpr {
     pub value: Box<Expr>,
     pub target: Type,
-    pub info: ExprInfo,
 }
 
+#[derive(Debug)]
 pub struct CallExpr {
     pub target: Box<Expr>,
     pub arguments: Vec<Expr>,
-    pub info: ExprInfo,
 }
 
+#[derive(Debug)]
 pub struct IdentExpr {
-    pub name: String,
-    pub info: ExprInfo,
+    pub name: Rc<String>,
 }
 
+#[derive(Debug)]
 pub struct ConstExpr {
     pub value: Const,
-    pub info: ExprInfo,
 }
 
+#[derive(Debug)]
 pub enum Statement {
     Block(BlockStatement),
     Var(Variable),
@@ -145,30 +169,36 @@ pub enum Statement {
     While(WhileStatement),
     Assign(AssignStatement),
     Call(CallStatement),
-    Return(Expr),
+    Return(Option<Expr>),
     Break,
     Continue,
 }
 
-pub struct BlockStatement {}
-
-pub struct IfStatement {
-    pub condition: Expr,
-    pub body: BlockStatement,
-    pub else_stmt: Box<IfStatement>,
+#[derive(Debug)]
+pub struct BlockStatement {
+    pub statements: Vec<Statement>,
 }
 
+#[derive(Debug)]
+pub struct IfStatement {
+    pub condition: Expr,
+    pub body: Box<Statement>,
+    pub else_stmt: Option<Box<Statement>>,
+}
+
+#[derive(Debug)]
 pub struct WhileStatement {
     pub condition: Expr,
     pub body: BlockStatement,
 }
 
+#[derive(Debug)]
 pub struct AssignStatement {
     pub receiver: Box<Expr>,
     pub value: Box<Expr>,
 }
 
+#[derive(Debug)]
 pub struct CallStatement {
-    pub target: Box<Expr>,
-    pub arguments: Vec<Expr>,
+    pub expr: CallExpr,
 }

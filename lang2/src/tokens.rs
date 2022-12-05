@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 #[derive(PartialEq, Eq, Debug, Clone, Copy, Default)]
 pub struct Position {
     pub line: i64,
@@ -8,7 +10,7 @@ pub struct Position {
 pub struct Token {
     pub kind: TokenKind,
     pub position: Position,
-    pub value: String,
+    pub value: Rc<String>,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]

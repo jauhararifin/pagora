@@ -1,4 +1,4 @@
-use std::{iter::Peekable, vec::IntoIter};
+use std::{iter::Peekable, rc::Rc, vec::IntoIter};
 
 use crate::{
     ast::{
@@ -40,7 +40,7 @@ impl TokenStream {
             .unwrap_or(&Token {
                 kind: TokenKind::Eof,
                 position: Position::default(),
-                value: "".into(),
+                value: Rc::new(String::new()),
             })
             .clone()
     }
@@ -49,7 +49,7 @@ impl TokenStream {
         self.tokens.next().unwrap_or(Token {
             kind: TokenKind::Eof,
             position: Position::default(),
-            value: "".into(),
+            value: Rc::new(String::new()),
         })
     }
 
@@ -614,32 +614,32 @@ mod test {
                     var: Token {
                         kind: TokenKind::Var,
                         position: Position { line: 2, col: 9 },
-                        value: "var".into(),
+                        value: Rc::new("var".into()),
                     },
                     name: Token {
                         kind: TokenKind::Ident,
                         position: Position { line: 2, col: 13 },
-                        value: "a".into(),
+                        value: Rc::new("a".into()),
                     },
                     colon: Some(Token {
                         kind: TokenKind::Colon,
                         position: Position { line: 2, col: 14 },
-                        value: ":".into(),
+                        value: Rc::new(":".into()),
                     }),
                     typ: Some(TypeExprNode::Ident(Token {
                         kind: TokenKind::Ident,
                         position: Position { line: 2, col: 16 },
-                        value: "int".into(),
+                        value: Rc::new("int".into()),
                     })),
                     assign: Some(Token {
                         kind: TokenKind::Assign,
                         position: Position { line: 2, col: 20 },
-                        value: "=".into(),
+                        value: Rc::new("=".into()),
                     }),
                     value: Some(ExprNode::IntegerLit(Token {
                         kind: TokenKind::IntegerLit,
                         position: Position { line: 2, col: 22 },
-                        value: "10".into(),
+                        value: Rc::new("10".into()),
                     })),
                 }),
                 Item::Func(FuncNode {
@@ -647,70 +647,70 @@ mod test {
                         func: Token {
                             kind: TokenKind::Function,
                             position: Position { line: 3, col: 9 },
-                            value: "func".into(),
+                            value: Rc::new("func".into()),
                         },
                         native: None,
                         name: Token {
                             kind: TokenKind::Ident,
                             position: Position { line: 3, col: 14 },
-                            value: "add".into(),
+                            value: Rc::new("add".into()),
                         },
                         open_brac: Token {
                             kind: TokenKind::OpenBrac,
                             position: Position { line: 3, col: 17 },
-                            value: "(".into(),
+                            value: Rc::new("(".into()),
                         },
                         parameters: vec![],
                         close_brac: Token {
                             kind: TokenKind::CloseBrac,
                             position: Position { line: 3, col: 18 },
-                            value: ")".into(),
+                            value: Rc::new(")".into()),
                         },
                         arrow: Some(Token {
                             kind: TokenKind::Arrow,
                             position: Position { line: 3, col: 20 },
-                            value: "->".into(),
+                            value: Rc::new("->".into()),
                         }),
                         return_type: Some(TypeExprNode::Ident(Token {
                             kind: TokenKind::Ident,
                             position: Position { line: 3, col: 23 },
-                            value: "int".into(),
+                            value: Rc::new("int".into()),
                         })),
                     },
                     body: Some(BlockStmtNode {
                         open_block: Token {
                             kind: TokenKind::OpenBlock,
                             position: Position { line: 3, col: 27 },
-                            value: "{".into(),
+                            value: Rc::new("{".into()),
                         },
                         statements: vec![StmtNode::Return(ReturnStmtNode {
                             return_tok: Token {
                                 kind: TokenKind::Return,
                                 position: Position { line: 4, col: 13 },
-                                value: "return".into(),
+                                value: Rc::new("return".into()),
                             },
                             value: Some(ExprNode::Binary(BinaryExprNode {
                                 a: Box::new(ExprNode::Ident(Token {
                                     kind: TokenKind::Ident,
                                     position: Position { line: 4, col: 20 },
-                                    value: "a".into(),
+                                    value: Rc::new("a".into()),
                                 })),
                                 op: Token {
                                     kind: TokenKind::Add,
                                     position: Position { line: 4, col: 22 },
-                                    value: "+".into(),
+                                    value: Rc::new("+".into()),
                                 },
                                 b: Box::new(ExprNode::Ident(Token {
                                     kind: TokenKind::Ident,
                                     position: Position { line: 4, col: 24 },
-                                    value: "b".into(),
+                                    value: Rc::new("b".into()),
                                 })),
                             })),
                         })],
                         close_block: Token {
                             kind: TokenKind::CloseBlock,
                             position: Position { line: 5, col: 9 },
-                            value: "}".into(),
+                            value: Rc::new("}".into()),
                         },
                     }),
                 }),

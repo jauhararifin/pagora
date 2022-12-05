@@ -2,7 +2,7 @@ use crate::{
     errors::{CompileError, MultiErrors},
     tokens::{Position, Token, TokenKind},
 };
-use std::{iter::Peekable, vec::IntoIter};
+use std::{iter::Peekable, vec::IntoIter, rc::Rc};
 
 pub fn scan(code: &str) -> Result<Vec<Token>, CompileError> {
     let mut scanner = Scanner::new(code);
@@ -127,7 +127,7 @@ impl Scanner {
         ScanResult::Token(Token {
             kind,
             position,
-            value,
+            value: Rc::new(value),
         })
     }
 
@@ -190,7 +190,7 @@ impl Scanner {
             ScanResult::Token(Token {
                 kind: TokenKind::StringLit,
                 position,
-                value,
+                value: Rc::new(value),
             })
         }
     }
@@ -215,14 +215,14 @@ impl Scanner {
             return ScanResult::Token(Token {
                 kind: TokenKind::RealLit,
                 position,
-                value,
+                value: Rc::new(value),
             });
         }
 
         ScanResult::Token(Token {
             kind: TokenKind::IntegerLit,
             position,
-            value,
+            value: Rc::new(value),
         })
     }
 
@@ -292,7 +292,7 @@ impl Scanner {
             ScanResult::Token(Token {
                 kind,
                 position,
-                value,
+                value: Rc::new(value),
             })
         }
     }
@@ -323,7 +323,7 @@ impl Scanner {
         ScanResult::Token(Token {
             kind: TokenKind::Comment,
             position,
-            value,
+            value: Rc::new(value),
         })
     }
 

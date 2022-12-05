@@ -5,6 +5,22 @@ pub struct RootNode {
     pub items: Vec<Item>,
 }
 
+impl RootNode {
+    pub fn functions<'a>(&'a self) -> impl Iterator<Item = &'a FuncNode> {
+        self.items.iter().filter_map(|item| match item {
+            Item::Func(func_node) => Some(func_node),
+            _ => None,
+        })
+    }
+
+    pub fn variables<'a>(&'a self) -> impl Iterator<Item = &'a VarNode> {
+        self.items.iter().filter_map(|item| match item {
+            Item::Var(var_node) => Some(var_node),
+            _ => None,
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Item {
     Var(VarNode),

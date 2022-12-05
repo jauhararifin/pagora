@@ -1,4 +1,7 @@
-use crate::tokens::{Position, Token, TokenKind};
+use crate::{
+    semantic::{Expr, Type},
+    tokens::{Position, Token, TokenKind},
+};
 
 #[derive(Debug)]
 pub enum CompileError {
@@ -6,6 +9,8 @@ pub enum CompileError {
     UnexpectedChar(UnexpectedChar),
     MissingClosingQuote(MissingClosingQuote),
     UnexpectedToken(UnexpectedToken),
+    NotAssignable(NotAssignable),
+    TypeMismatch(TypeMismatch),
 }
 
 impl CompileError {
@@ -93,5 +98,28 @@ pub struct UnexpectedToken {
 impl From<UnexpectedToken> for CompileError {
     fn from(e: UnexpectedToken) -> Self {
         Self::UnexpectedToken(e)
+    }
+}
+
+#[derive(Debug)]
+pub struct NotAssignable {
+    pub receiver: Expr,
+}
+
+impl From<NotAssignable> for CompileError {
+    fn from(e: NotAssignable) -> Self {
+        Self::NotAssignable(e)
+    }
+}
+
+#[derive(Debug)]
+pub struct TypeMismatch {
+    pub expected: Type,
+    pub got: Expr,
+}
+
+impl From<TypeMismatch> for CompileError {
+    fn from(e: TypeMismatch) -> Self {
+        Self::TypeMismatch(e)
     }
 }
