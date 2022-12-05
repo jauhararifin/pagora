@@ -10,6 +10,7 @@ use crate::{
         CastExprNode, ExprNode, FuncNode, GroupedExprNode, IfStmtNode, IndexExprNode, Item,
         ReturnStmtNode, RootNode, StmtNode, TypeExprNode, UnaryExprNode, VarNode, WhileStmtNode,
     },
+    env::{Architecture, Target},
     errors::{
         CompileError, MultiErrors, NotAssignable, TypeMismatch, UndefinedSymbol, UndefinedType,
     },
@@ -21,8 +22,8 @@ use crate::{
     tokens::{Token, TokenKind},
 };
 
-pub fn analyze(root: RootNode, builtin: Builtin) -> Result<Program, CompileError> {
-    let mut ctx = Context::new();
+pub fn analyze(root: RootNode, target: Target, builtin: Builtin) -> Result<Program, CompileError> {
+    let mut ctx = Context::new(target);
     ctx.add_scope();
 
     let mut errors = MultiErrors::new();
@@ -102,58 +103,58 @@ fn populate_builtin_types(ctx: &mut Context) {
     };
     ctx.add_builtin_symbol(
         Rc::new(INT_TYPE.into()),
-        Type::Type(Rc::new(Type::Int(Rc::new(IntType {
+        Type::Type(Box::new(Type::Int(Rc::new(IntType {
             bits: arch_bit,
             signed: true,
         })))),
     );
     ctx.add_builtin_symbol(
         Rc::new(INT32_TYPE.into()),
-        Type::Type(Rc::new(Type::Int(Rc::new(IntType {
+        Type::Type(Box::new(Type::Int(Rc::new(IntType {
             bits: 32,
             signed: true,
         })))),
     );
     ctx.add_builtin_symbol(
         Rc::new(INT64_TYPE.into()),
-        Type::Type(Rc::new(Type::Int(Rc::new(IntType {
+        Type::Type(Box::new(Type::Int(Rc::new(IntType {
             bits: 64,
             signed: true,
         })))),
     );
     ctx.add_builtin_symbol(
         Rc::new(UINT_TYPE.into()),
-        Type::Type(Rc::new(Type::Int(Rc::new(IntType {
+        Type::Type(Box::new(Type::Int(Rc::new(IntType {
             bits: arch_bit,
             signed: false,
         })))),
     );
     ctx.add_builtin_symbol(
         Rc::new(UINT32_TYPE.into()),
-        Type::Type(Rc::new(Type::Int(Rc::new(IntType {
+        Type::Type(Box::new(Type::Int(Rc::new(IntType {
             bits: 32,
             signed: false,
         })))),
     );
     ctx.add_builtin_symbol(
         Rc::new(UINT64_TYPE.into()),
-        Type::Type(Rc::new(Type::Int(Rc::new(IntType {
+        Type::Type(Box::new(Type::Int(Rc::new(IntType {
             bits: 64,
             signed: false,
         })))),
     );
     ctx.add_builtin_symbol(
         Rc::new(FLOAT32_TYPE.into()),
-        Type::Type(Rc::new(Type::Float(Rc::new(FloatType { bits: 32 })))),
+        Type::Type(Box::new(Type::Float(Rc::new(FloatType { bits: 32 })))),
     );
     ctx.add_builtin_symbol(
         Rc::new(FLOAT64_TYPE.into()),
-        Type::Type(Rc::new(Type::Float(Rc::new(FloatType { bits: 64 })))),
+        Type::Type(Box::new(Type::Float(Rc::new(FloatType { bits: 64 })))),
     );
-    ctx.add_builtin_symbol(Rc::new(BOOL_TYPE.into()), Type::Type(Rc::new(Type::Bool)));
+    ctx.add_builtin_symbol(Rc::new(BOOL_TYPE.into()), Type::Type(Box::new(Type::Bool)));
     ctx.add_builtin_symbol(
         Rc::new(STRING_TYPE.into()),
-        Type::Type(Rc::new(Type::String)),
+        Type::Type(Box::new(Type::String)),
     );
 }
 
@@ -331,10 +332,13 @@ fn analyze_while_statement(
     ctx: &mut Context,
     stmt: &WhileStmtNode,
 ) -> Result<WhileStatement, CompileError> {
-    Ok(WhileStatement {
-        condition: analyze_expr(ctx, &stmt.condition, Some(Type::Bool))?,
-        body: analyze_block_statement(ctx, &stmt.body, vec![])?,
-    })
+    let condition = analyze_expr(ctx, &stmt.condition, Some(Type::Bool))?;
+
+    ctx.add_loop();
+    let body = analyze_block_statement(ctx, &stmt.body, vec![])?;
+    ctx.pop_loop();
+
+    Ok(WhileStatement { condition, body })
 }
 
 fn analyze_assign_statement(
@@ -676,6 +680,20 @@ fn is_type_equal(a: &Type, b: &Type) -> bool {
     todo!();
 }
 
+enum Symbol {
+    Builtin { name: Rc<String>, typ: Type },
+    User { token: Token, typ: Type },
+}
+
+impl Symbol {
+    fn get_type(&self) -> &Type {
+        match self {
+            Symbol::User { token: _, typ } => typ,
+            Symbol::Builtin { name: _, typ } => typ,
+        }
+    }
+}
+
 struct Context {
     symbol_table: HashMap<Rc<String>, Vec<Symbol>>,
     scopes: Vec<HashSet<Rc<String>>>,
@@ -685,46 +703,19 @@ struct Context {
     arch: Architecture,
 }
 
-enum Architecture {
-    IA32,
-    IA64,
-}
-
-enum Symbol {
-    Builtin { name: Rc<String>, typ: Type },
-    User { token: Token, typ: Type },
-}
-
-impl Symbol {
-    fn get_type(&self) -> &Type {
-        match self {
-            Symbol::User { token, typ } => typ,
-            Symbol::Builtin { name, typ } => typ,
-        }
-    }
-}
-
 impl Context {
-    fn new() -> Self {
+    fn new(target: Target) -> Self {
         Self {
             symbol_table: HashMap::new(),
             scopes: vec![],
             loop_depth: 0,
             current_return_type: Type::Void,
-            arch: Architecture::IA32,
+            arch: target.architecture,
         }
     }
 
     fn get(&self, name: &String) -> Option<&Symbol> {
         self.symbol_table.get(name)?.last()
-    }
-
-    fn get_in_scope(&self, name: &String) -> Option<&Symbol> {
-        if !self.scopes.last()?.contains(name) {
-            None
-        } else {
-            self.get(name)
-        }
     }
 
     fn add_user_symbol(&mut self, token: &Token, typ: Type) {
@@ -755,6 +746,14 @@ impl Context {
                 name: name.clone(),
                 typ,
             });
+    }
+
+    fn add_loop(&mut self) {
+        self.loop_depth += 1;
+    }
+
+    fn pop_loop(&mut self) {
+        self.loop_depth -= 1;
     }
 
     fn add_scope(&mut self) {

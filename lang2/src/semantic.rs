@@ -38,7 +38,7 @@ pub enum Type {
     String,
     Array(Rc<ArrayType>),
     Function(Rc<FunctionType>),
-    Type(Rc<Type>),
+    Type(Box<Type>),
 }
 
 #[derive(Clone, Debug)]
