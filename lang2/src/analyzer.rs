@@ -14,9 +14,9 @@ use crate::{
         CompileError, MultiErrors, NotAssignable, TypeMismatch, UndefinedSymbol, UndefinedType,
     },
     semantic::{
-        ArrayType, AssignStatement, BlockStatement, Builtin, CallStatement, Expr, ExprKind,
-        FloatType, Function, FunctionType, IdentExpr, IfStatement, IntType, Program, Statement,
-        Type, Variable, WhileStatement,
+        ArrayType, AssignStatement, BlockStatement, Builtin, CallStatement, Const, ConstExpr, Expr,
+        ExprKind, FloatType, Function, FunctionType, IdentExpr, IfStatement, IntType, Program,
+        Statement, Type, Variable, WhileStatement,
     },
     tokens::{Token, TokenKind},
 };
@@ -27,6 +27,7 @@ pub fn analyze(root: RootNode, builtin: Builtin) -> Result<Program, CompileError
 
     let mut errors = MultiErrors::new();
 
+    populate_builtin_types(&mut ctx);
     for func in builtin.functions {
         ctx.add_builtin_symbol(func.name, Type::Function(func.typ));
     }
@@ -83,91 +84,77 @@ pub fn analyze(root: RootNode, builtin: Builtin) -> Result<Program, CompileError
     })
 }
 
-struct Context {
-    symbol_table: HashMap<Rc<String>, Vec<Symbol>>,
-    scopes: Vec<HashSet<Rc<String>>>,
-    loop_depth: i32,
-    current_return_type: Type,
-}
+const INT_TYPE: &'static str = "int";
+const INT32_TYPE: &'static str = "int32";
+const INT64_TYPE: &'static str = "int64";
+const UINT_TYPE: &'static str = "uint";
+const UINT32_TYPE: &'static str = "uint32";
+const UINT64_TYPE: &'static str = "uint64";
+const FLOAT32_TYPE: &'static str = "float32";
+const FLOAT64_TYPE: &'static str = "float64";
+const BOOL_TYPE: &'static str = "bool";
+const STRING_TYPE: &'static str = "string";
 
-enum Symbol {
-    Builtin { name: Rc<String>, typ: Type },
-    User { token: Token, typ: Type },
-}
-
-impl Symbol {
-    fn get_type(&self) -> &Type {
-        match self {
-            Symbol::User { token, typ } => typ,
-            Symbol::Builtin { name, typ } => typ,
-        }
-    }
-}
-
-impl Context {
-    fn new() -> Self {
-        Self {
-            symbol_table: HashMap::new(),
-            scopes: vec![],
-            loop_depth: 0,
-            current_return_type: Type::Void,
-        }
-    }
-
-    fn get(&self, name: &String) -> Option<&Symbol> {
-        self.symbol_table.get(name)?.last()
-    }
-
-    fn get_in_scope(&self, name: &String) -> Option<&Symbol> {
-        if !self.scopes.last()?.contains(name) {
-            None
-        } else {
-            self.get(name)
-        }
-    }
-
-    fn add_user_symbol(&mut self, token: &Token, typ: Type) {
-        let scope = self.scopes.last_mut().unwrap();
-        if scope.contains(&token.value) {
-            unreachable!("cannot redeclare symbol with the same name");
-        }
-        scope.insert(token.value.clone());
-        self.symbol_table
-            .entry(token.value.clone())
-            .or_insert(vec![])
-            .push(Symbol::User {
-                token: token.clone(),
-                typ: typ.clone(),
-            });
-    }
-
-    fn add_builtin_symbol(&mut self, name: Rc<String>, typ: Type) {
-        let scope = self.scopes.last_mut().unwrap();
-        if scope.contains(&name) {
-            unreachable!("cannot redeclare builtin with the same name");
-        }
-        scope.insert(name.clone());
-        self.symbol_table
-            .entry(name.clone())
-            .or_insert(vec![])
-            .push(Symbol::Builtin {
-                name: name.clone(),
-                typ,
-            });
-    }
-
-    fn add_scope(&mut self) {
-        self.scopes.push(HashSet::new());
-    }
-
-    fn pop_scope(&mut self) {
-        let Some(names) = self.scopes.pop() else {
-            return;
-        };
-        for name in names.iter() {
-            self.symbol_table.get_mut(name).map(|scopes| scopes.pop());
-        }
-    }
+fn populate_builtin_types(ctx: &mut Context) {
+    let arch_bit = match ctx.arch {
+        Architecture::IA32 => 32,
+        Architecture::IA64 => 64,
+    };
+    ctx.add_builtin_symbol(
+        Rc::new(INT_TYPE.into()),
+        Type::Type(Rc::new(Type::Int(Rc::new(IntType {
+            bits: arch_bit,
+            signed: true,
+        })))),
+    );
+    ctx.add_builtin_symbol(
+        Rc::new(INT32_TYPE.into()),
+        Type::Type(Rc::new(Type::Int(Rc::new(IntType {
+            bits: 32,
+            signed: true,
+        })))),
+    );
+    ctx.add_builtin_symbol(
+        Rc::new(INT64_TYPE.into()),
+        Type::Type(Rc::new(Type::Int(Rc::new(IntType {
+            bits: 64,
+            signed: true,
+        })))),
+    );
+    ctx.add_builtin_symbol(
+        Rc::new(UINT_TYPE.into()),
+        Type::Type(Rc::new(Type::Int(Rc::new(IntType {
+            bits: arch_bit,
+            signed: false,
+        })))),
+    );
+    ctx.add_builtin_symbol(
+        Rc::new(UINT32_TYPE.into()),
+        Type::Type(Rc::new(Type::Int(Rc::new(IntType {
+            bits: 32,
+            signed: false,
+        })))),
+    );
+    ctx.add_builtin_symbol(
+        Rc::new(UINT64_TYPE.into()),
+        Type::Type(Rc::new(Type::Int(Rc::new(IntType {
+            bits: 64,
+            signed: false,
+        })))),
+    );
+    ctx.add_builtin_symbol(
+        Rc::new(FLOAT32_TYPE.into()),
+        Type::Type(Rc::new(Type::Float(Rc::new(FloatType { bits: 32 })))),
+    );
+    ctx.add_builtin_symbol(
+        Rc::new(FLOAT64_TYPE.into()),
+        Type::Type(Rc::new(Type::Float(Rc::new(FloatType { bits: 64 })))),
+    );
+    ctx.add_builtin_symbol(Rc::new(BOOL_TYPE.into()), Type::Type(Rc::new(Type::Bool)));
+    ctx.add_builtin_symbol(
+        Rc::new(STRING_TYPE.into()),
+        Type::Type(Rc::new(Type::String)),
+    );
 }
 
 fn analyze_variable(ctx: &mut Context, var_node: &VarNode) -> Result<Variable, CompileError> {
@@ -427,7 +414,25 @@ fn analyze_integer_lit_expr(
     token: &Token,
     type_hint: Option<Type>,
 ) -> Result<Expr, CompileError> {
-    todo!();
+    let result_type = if let Some(hint) = type_hint {
+        match hint {
+            Type::Int(t) => Type::Int(t),
+            _ => get_builtin_type(ctx, INT_TYPE).unwrap(),
+        }
+    } else {
+        get_builtin_type(ctx, INT_TYPE).unwrap()
+    };
+
+    let value = token.value.parse::<u64>().expect("invalid integer literal");
+
+    Ok(Expr {
+        position: token.position.clone(),
+        is_assignable: false,
+        result_type,
+        kind: ExprKind::Const(ConstExpr {
+            value: Const::IntConst(value),
+        }),
+    })
 }
 
 fn analyze_real_lit_expr(
@@ -435,23 +440,71 @@ fn analyze_real_lit_expr(
     token: &Token,
     type_hint: Option<Type>,
 ) -> Result<Expr, CompileError> {
-    todo!();
+    let result_type = if let Some(hint) = type_hint {
+        match hint {
+            Type::Float(t) => Type::Float(t),
+            _ => get_builtin_type(ctx, FLOAT32_TYPE).unwrap(),
+        }
+    } else {
+        get_builtin_type(ctx, FLOAT32_TYPE).unwrap()
+    };
+
+    let value = token.value.parse::<f64>().expect("invalid float literal");
+
+    Ok(Expr {
+        position: token.position.clone(),
+        is_assignable: false,
+        result_type,
+        kind: ExprKind::Const(ConstExpr {
+            value: Const::FloatConst(value),
+        }),
+    })
 }
 
 fn analyze_boolean_lit_expr(
     ctx: &mut Context,
     token: &Token,
-    type_hint: Option<Type>,
+    _: Option<Type>,
 ) -> Result<Expr, CompileError> {
-    todo!();
+    let value = match token.kind {
+        TokenKind::True => true,
+        TokenKind::False => false,
+        _ => unreachable!("boolean expression should be either true or false"),
+    };
+
+    let result_type = get_builtin_type(ctx, BOOL_TYPE).expect("bool type should be defined");
+
+    Ok(Expr {
+        position: token.position.clone(),
+        is_assignable: false,
+        result_type,
+        kind: ExprKind::Const(ConstExpr {
+            value: Const::BoolConst(value),
+        }),
+    })
 }
 
 fn analyze_string_lit_expr(
     ctx: &mut Context,
     token: &Token,
-    type_hint: Option<Type>,
+    _: Option<Type>,
 ) -> Result<Expr, CompileError> {
-    todo!();
+    let value: String = token
+        .value
+        .trim_start_matches('"')
+        .trim_end_matches('"')
+        .into();
+
+    let result_type = get_builtin_type(ctx, STRING_TYPE).expect("string type should be defined");
+
+    Ok(Expr {
+        position: token.position.clone(),
+        is_assignable: false,
+        result_type,
+        kind: ExprKind::Const(ConstExpr {
+            value: Const::StringConst(value),
+        }),
+    })
 }
 
 fn analyze_array_lit_expr(
@@ -512,37 +565,66 @@ fn analyze_grouped_expr(
 
 fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Type, CompileError> {
     Ok(match type_node {
-        TypeExprNode::Ident(type_name) => match type_name.value.as_str() {
-            "int32" => Type::Int(Rc::new(IntType {
-                bits: 32,
-                signed: true,
-            })),
-            "int64" => Type::Int(Rc::new(IntType {
-                bits: 64,
-                signed: true,
-            })),
-            "uint32" => Type::Int(Rc::new(IntType {
-                bits: 32,
-                signed: false,
-            })),
-            "uint64" => Type::Int(Rc::new(IntType {
-                bits: 64,
-                signed: false,
-            })),
-            "float32" => Type::Float(Rc::new(FloatType { bits: 32 })),
-            "float64" => Type::Float(Rc::new(FloatType { bits: 64 })),
-            "bool" => Type::Bool,
-            "string" => Type::String,
-            _ => {
-                return Err(UndefinedType {
-                    name: type_name.clone(),
+        TypeExprNode::Ident(type_name) => {
+            if let Some(symbol_type) = ctx.get(&type_name.value).map(|s| s.get_type()) {
+                if let Type::Type(t) = symbol_type {
+                    return Ok((**t).clone());
                 }
-                .into())
             }
-        },
+            return Err(UndefinedType {
+                name: type_name.clone(),
+            }
+            .into());
+        }
         TypeExprNode::Array(ref array_type) => {
             Type::Array(Rc::new(analyze_array_type(ctx, array_type)?))
         }
+    })
+}
+
+fn get_builtin_type(ctx: &mut Context, name: &str) -> Option<Type> {
+    Some(match name {
+        "int" => match ctx.arch {
+            Architecture::IA32 => Type::Int(Rc::new(IntType {
+                bits: 32,
+                signed: true,
+            })),
+            Architecture::IA64 => Type::Int(Rc::new(IntType {
+                bits: 64,
+                signed: true,
+            })),
+        },
+        "int32" => Type::Int(Rc::new(IntType {
+            bits: 32,
+            signed: true,
+        })),
+        "int64" => Type::Int(Rc::new(IntType {
+            bits: 64,
+            signed: true,
+        })),
+        "uint" => match ctx.arch {
+            Architecture::IA32 => Type::Int(Rc::new(IntType {
+                bits: 32,
+                signed: false,
+            })),
+            Architecture::IA64 => Type::Int(Rc::new(IntType {
+                bits: 64,
+                signed: false,
+            })),
+        },
+        "uint32" => Type::Int(Rc::new(IntType {
+            bits: 32,
+            signed: false,
+        })),
+        "uint64" => Type::Int(Rc::new(IntType {
+            bits: 64,
+            signed: false,
+        })),
+        "float32" => Type::Float(Rc::new(FloatType { bits: 32 })),
+        "float64" => Type::Float(Rc::new(FloatType { bits: 64 })),
+        "bool" => Type::Bool,
+        "string" => Type::String,
+        _ => return None,
     })
 }
 
@@ -592,4 +674,99 @@ fn analyze_func_type(
 
 fn is_type_equal(a: &Type, b: &Type) -> bool {
     todo!();
+}
+
+struct Context {
+    symbol_table: HashMap<Rc<String>, Vec<Symbol>>,
+    scopes: Vec<HashSet<Rc<String>>>,
+    loop_depth: i32,
+    current_return_type: Type,
+
+    arch: Architecture,
+}
+
+enum Architecture {
+    IA32,
+    IA64,
+}
+
+enum Symbol {
+    Builtin { name: Rc<String>, typ: Type },
+    User { token: Token, typ: Type },
+}
+
+impl Symbol {
+    fn get_type(&self) -> &Type {
+        match self {
+            Symbol::User { token, typ } => typ,
+            Symbol::Builtin { name, typ } => typ,
+        }
+    }
+}
+
+impl Context {
+    fn new() -> Self {
+        Self {
+            symbol_table: HashMap::new(),
+            scopes: vec![],
+            loop_depth: 0,
+            current_return_type: Type::Void,
+            arch: Architecture::IA32,
+        }
+    }
+
+    fn get(&self, name: &String) -> Option<&Symbol> {
+        self.symbol_table.get(name)?.last()
+    }
+
+    fn get_in_scope(&self, name: &String) -> Option<&Symbol> {
+        if !self.scopes.last()?.contains(name) {
+            None
+        } else {
+            self.get(name)
+        }
+    }
+
+    fn add_user_symbol(&mut self, token: &Token, typ: Type) {
+        let scope = self.scopes.last_mut().unwrap();
+        if scope.contains(&token.value) {
+            unreachable!("cannot redeclare symbol with the same name");
+        }
+        scope.insert(token.value.clone());
+        self.symbol_table
+            .entry(token.value.clone())
+            .or_insert(vec![])
+            .push(Symbol::User {
+                token: token.clone(),
+                typ: typ.clone(),
+            });
+    }
+
+    fn add_builtin_symbol(&mut self, name: Rc<String>, typ: Type) {
+        let scope = self.scopes.last_mut().unwrap();
+        if scope.contains(&name) {
+            unreachable!("cannot redeclare builtin with the same name");
+        }
+        scope.insert(name.clone());
+        self.symbol_table
+            .entry(name.clone())
+            .or_insert(vec![])
+            .push(Symbol::Builtin {
+                name: name.clone(),
+                typ,
+            });
+    }
+
+    fn add_scope(&mut self) {
+        self.scopes.push(HashSet::new());
+    }
+
+    fn pop_scope(&mut self) {
+        let Some(names) = self.scopes.pop() else {
+            return;
+        };
+        for name in names.iter() {
+            self.symbol_table.get_mut(name).map(|scopes| scopes.pop());
+        }
+    }
 }

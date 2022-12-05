@@ -38,6 +38,7 @@ pub enum Type {
     String,
     Array(Rc<ArrayType>),
     Function(Rc<FunctionType>),
+    Type(Rc<Type>),
 }
 
 #[derive(Clone, Debug)]
@@ -70,8 +71,10 @@ pub enum Const {
     FloatConst(f64),
     BoolConst(bool),
     ArrayConst(Vec<Const>),
+    StringConst(String),
 }
 
+// TODO: don't put box in the expr, but put it in the exprkind instead.
 #[derive(Debug)]
 pub struct Expr {
     pub position: Position,
