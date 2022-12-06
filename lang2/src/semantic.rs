@@ -17,51 +17,108 @@ pub struct Builtin {
 #[derive(Debug)]
 pub struct Variable {
     pub name: Rc<String>,
-    pub typ: Type,
+    pub typ: Rc<Type>,
     pub value: Option<Expr>,
 }
 
 #[derive(Debug)]
 pub struct Function {
     pub name: Rc<String>,
-    pub typ: Rc<FunctionType>,
+    pub typ: FunctionType,
     pub param_names: Vec<Rc<String>>,
     pub body: Option<BlockStatement>,
 }
 
-#[derive(Clone, Debug)]
-pub enum Type {
-    Void,
-    Int(Rc<IntType>),
-    Float(Rc<FloatType>),
-    Bool,
-    String,
-    Array(Rc<ArrayType>),
-    Function(Rc<FunctionType>),
-    Type(Box<Type>),
+#[derive(Clone, Debug, PartialEq)]
+pub struct Type {
+    pub name: Option<String>, // TODO: this should be qual
+    // None name means anonymous type
+    pub internal: TypeInternal,
 }
 
-#[derive(Clone, Debug)]
+impl Type {
+    pub fn tuple(items: Vec<Rc<Type>>) -> Rc<Self> {
+        Rc::new(Self {
+            name: None,
+            internal: TypeInternal::Tuple(TupleType { items }),
+        })
+    }
+
+    pub fn int(name: String, bits: u8, signed: bool) -> Rc<Self> {
+        Rc::new(Self {
+            name: Some(name),
+            internal: TypeInternal::Int(IntType { bits, signed }),
+        })
+    }
+
+    pub fn float(name: String, bits: u8) -> Rc<Self> {
+        Rc::new(Self {
+            name: Some(name),
+            internal: TypeInternal::Float(FloatType { bits }),
+        })
+    }
+
+    pub fn bool(name: String) -> Rc<Self> {
+        Rc::new(Self {
+            name: Some(name),
+            internal: TypeInternal::Bool,
+        })
+    }
+
+    pub fn string(name: String) -> Rc<Self> {
+        Rc::new(Self {
+            name: Some(name),
+            internal: TypeInternal::String,
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum TypeInternal {
+    Tuple(TupleType),
+    Int(IntType),
+    Float(FloatType),
+    Bool,
+    String,
+    Array(ArrayType),
+    Function(FunctionType),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TupleType {
+    pub items: Vec<Rc<Type>>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct IntType {
     pub bits: u8,
     pub signed: bool,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FloatType {
     pub bits: u8,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ArrayType {
-    pub length: Expr,
-    pub element_type: Type,
+    pub element_type: Rc<Type>,
 }
 
-#[derive(Debug)]
+impl PartialEq for ArrayType {
+    fn eq(&self, other: &Self) -> bool {
+        self.element_type == other.element_type
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        self.element_type != other.element_type
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct FunctionType {
-    pub parameters: Vec<Type>,
-    pub return_type: Type,
+    pub parameters: Vec<Rc<Type>>,
+    pub return_type: Rc<Type>,
 }
 
 #[derive(Debug)]
@@ -79,7 +136,7 @@ pub enum Const {
 pub struct Expr {
     pub position: Position,
     pub is_assignable: bool,
-    pub result_type: Type,
+    pub result_type: Rc<Type>,
     pub kind: ExprKind,
 }
 
@@ -146,7 +203,7 @@ pub struct IndexExpr {
 #[derive(Debug)]
 pub struct CastExpr {
     pub value: Box<Expr>,
-    pub target: Type,
+    pub target: Rc<Type>,
 }
 
 #[derive(Debug)]

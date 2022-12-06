@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     semantic::{Expr, Type},
     tokens::{Position, Token, TokenKind},
@@ -116,7 +118,7 @@ impl From<NotAssignable> for CompileError {
 
 #[derive(Debug)]
 pub struct TypeMismatch {
-    pub expected: Type,
+    pub expected: Rc<Type>,
     pub got: Expr,
 }
 

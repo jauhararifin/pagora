@@ -257,12 +257,10 @@ fn parse_type_expr(tokens: &mut TokenStream) -> Result<TypeExprNode, CompileErro
     let typ = TypeExprNode::Ident(ident);
 
     if let Some(open_square) = tokens.take_if(TokenKind::OpenSquare) {
-        let length = parse_expr(tokens)?;
         let close_square = tokens.take(TokenKind::CloseSquare)?;
         return Ok(TypeExprNode::Array(ArrayTypeNode {
             element_type: Box::new(typ),
             open_square,
-            length,
             close_square,
         }));
     }

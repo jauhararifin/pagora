@@ -70,10 +70,9 @@ pub enum TypeExprNode {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ArrayTypeNode {
-    pub element_type: Box<TypeExprNode>,
     pub open_square: Token,
-    pub length: ExprNode,
     pub close_square: Token,
+    pub element_type: Box<TypeExprNode>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
