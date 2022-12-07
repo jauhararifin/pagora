@@ -1,9 +1,3 @@
-use std::{
-    collections::{HashMap, HashSet},
-    iter::zip,
-    rc::Rc,
-};
-
 use crate::{
     ast::{
         ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
@@ -12,14 +6,22 @@ use crate::{
     },
     env::{Architecture, Target},
     errors::{
-        CompileError, MultiErrors, NotAssignable, TypeMismatch, UndefinedSymbol, UndefinedType,
+        CannotInferType, CompileError, InvalidBinaryOp, InvalidNumberOfArguments, InvalidUnaryOp,
+        MultiErrors, NotAFunction, NotAssignable, TypeMismatch, UndefinedSymbol, UndefinedType,
     },
     semantic::{
-        ArrayType, AssignStatement, BlockStatement, Builtin, CallStatement, Const, ConstExpr, Expr,
-        ExprKind, Function, FunctionType, IdentExpr, IfStatement, Program, Statement, Type,
-        TypeInternal, Variable, WhileStatement,
+        ArrayType, AssignStatement, BinaryExpr, BinaryOp, BlockStatement, Builtin, CallExpr,
+        CallStatement, Const, ConstExpr, Expr, ExprKind, Function, FunctionType, IdentExpr,
+        IfStatement, Program, Statement, Type, TypeInternal, UnaryExpr, UnaryOp, Variable,
+        WhileStatement,
     },
     tokens::{Token, TokenKind},
+};
+use lazy_static::lazy_static;
+use std::{
+    collections::{HashMap, HashSet},
+    iter::zip,
+    rc::Rc,
 };
 
 pub fn analyze(root: RootNode, target: Target, builtin: Builtin) -> Result<Program, CompileError> {
@@ -511,7 +513,83 @@ fn analyze_array_lit_expr(
     expr_node: &ArrayLitNode,
     type_hint: Option<Rc<Type>>,
 ) -> Result<Expr, CompileError> {
-    todo!();
+    let element_type_hint = type_hint.map_or(None, |t| match t.internal {
+        TypeInternal::Array(ref array_type) => Some(array_type.element_type.clone()),
+        _ => None,
+    });
+
+    let mut values = vec![];
+    for value_node in expr_node.elements.iter() {
+        values.push(analyze_expr(ctx, value_node, element_type_hint.clone())?);
+    }
+
+    let element_type = if let Some(t) = values.first() {
+        t.result_type.clone()
+    } else if let Some(t) = element_type_hint {
+        t.clone()
+    } else {
+        return Err(CompileError::CannotInferType(
+            CannotInferType {
+                position: expr_node.open_square.position.clone(),
+            }
+            .into(),
+        ));
+    };
+
+    Ok(Expr {
+        position: expr_node.open_square.position,
+        is_assignable: false,
+        result_type: Type::array(None, element_type),
+        kind: ExprKind::Const(ConstExpr {
+            value: Const::ArrayConst(values),
+        }),
+    })
+}
+
+lazy_static! {
+    static ref INTEGER_BIN_OP: HashSet<BinaryOp> = HashSet::from([
+        BinaryOp::Add,
+        BinaryOp::Sub,
+        BinaryOp::Mul,
+        BinaryOp::Div,
+        BinaryOp::Mod,
+        BinaryOp::ShiftLeft,
+        BinaryOp::ShiftRight,
+        BinaryOp::BitAnd,
+        BinaryOp::BitOr,
+        BinaryOp::BitXor,
+    ]);
+    static ref REAL_BIN_OP: HashSet<BinaryOp> =
+        HashSet::from([BinaryOp::Add, BinaryOp::Sub, BinaryOp::Mul, BinaryOp::Div,]);
+    static ref COMP_BIN_OP: HashSet<BinaryOp> = HashSet::from([
+        BinaryOp::Gt,
+        BinaryOp::GEq,
+        BinaryOp::Lt,
+        BinaryOp::LEq,
+        BinaryOp::Eq,
+        BinaryOp::NEq,
+    ]);
+    static ref BOOL_BIN_OP: HashSet<BinaryOp> = HashSet::from([BinaryOp::And, BinaryOp::Or]);
+    static ref BINARY_OP_MAP: HashMap<TokenKind, BinaryOp> = HashMap::from([
+        (TokenKind::Add, BinaryOp::Add),
+        (TokenKind::Sub, BinaryOp::Sub),
+        (TokenKind::Div, BinaryOp::Div),
+        (TokenKind::Mul, BinaryOp::Mul),
+        (TokenKind::Mod, BinaryOp::Mod),
+        (TokenKind::And, BinaryOp::And),
+        (TokenKind::Or, BinaryOp::Or),
+        (TokenKind::BitAnd, BinaryOp::BitAnd),
+        (TokenKind::BitOr, BinaryOp::BitOr),
+        (TokenKind::BitXor, BinaryOp::BitXor),
+        (TokenKind::Eq, BinaryOp::Eq),
+        (TokenKind::NEq, BinaryOp::NEq),
+        (TokenKind::Gt, BinaryOp::Gt),
+        (TokenKind::GEq, BinaryOp::GEq),
+        (TokenKind::Lt, BinaryOp::Lt),
+        (TokenKind::LEq, BinaryOp::LEq),
+        (TokenKind::ShiftLeft, BinaryOp::ShiftLeft),
+        (TokenKind::ShiftRight, BinaryOp::ShiftRight),
+    ]);
 }
 
 fn analyze_binary_expr(
@@ -519,7 +597,61 @@ fn analyze_binary_expr(
     expr_node: &BinaryExprNode,
     type_hint: Option<Rc<Type>>,
 ) -> Result<Expr, CompileError> {
-    todo!();
+    // TODO: improve the type_hint based on the op token.
+    let a = analyze_expr(ctx, &expr_node.a, type_hint.clone())?;
+    let b = analyze_expr(ctx, &expr_node.b, Some(a.result_type.clone()))?;
+    let op = BINARY_OP_MAP
+        .get(&expr_node.op.kind)
+        .expect("invalid binary operator");
+
+    if !is_type_equal(&a.result_type, &b.result_type) {
+        return Err(CompileError::InvalidBinaryOp(InvalidBinaryOp {
+            a,
+            op: op.clone(),
+            b,
+        }));
+    }
+
+    let typ = a.result_type.clone();
+    let result_type = if INTEGER_BIN_OP.contains(op) && typ.is_int() {
+        typ
+    } else if REAL_BIN_OP.contains(op) && typ.is_float() {
+        typ
+    } else if COMP_BIN_OP.contains(op) && (typ.is_int() || typ.is_float() || typ.is_string()) {
+        get_builtin_type(ctx, BOOL_TYPE).unwrap()
+    } else if BOOL_BIN_OP.contains(op) && typ.is_bool() {
+        get_builtin_type(ctx, BOOL_TYPE).unwrap()
+    } else {
+        return Err(CompileError::InvalidBinaryOp(InvalidBinaryOp {
+            a,
+            op: op.clone(),
+            b,
+        }));
+    };
+
+    Ok(Expr {
+        position: a.position.clone(),
+        is_assignable: false,
+        result_type,
+        kind: ExprKind::Binary(BinaryExpr {
+            a: Box::new(a),
+            op: op.clone(),
+            b: Box::new(b),
+        }),
+    })
+}
+
+lazy_static! {
+    static ref INTEGER_UNARY_OP: HashSet<UnaryOp> =
+        HashSet::from([UnaryOp::Add, UnaryOp::Sub, UnaryOp::BitNot]);
+    static ref REAL_UNARY_OP: HashSet<UnaryOp> = HashSet::from([UnaryOp::Add, UnaryOp::Sub]);
+    static ref BOOL_UNARY_OP: HashSet<UnaryOp> = HashSet::from([UnaryOp::Not]);
+    static ref UNARY_OP_MAP: HashMap<TokenKind, UnaryOp> = HashMap::from([
+        (TokenKind::Add, UnaryOp::Add),
+        (TokenKind::Sub, UnaryOp::Sub),
+        (TokenKind::Not, UnaryOp::Not),
+        (TokenKind::BitNot, UnaryOp::BitNot),
+    ]);
 }
 
 fn analyze_unary_expr(
@@ -527,15 +659,80 @@ fn analyze_unary_expr(
     expr_node: &UnaryExprNode,
     type_hint: Option<Rc<Type>>,
 ) -> Result<Expr, CompileError> {
-    todo!();
+    // TODO: improve the type_hint based on the op token.
+    let value = analyze_expr(ctx, &expr_node.value, type_hint)?;
+    let op = UNARY_OP_MAP
+        .get(&expr_node.op.kind)
+        .expect("invalid unary operator");
+
+    let result_type = if INTEGER_UNARY_OP.contains(op) && value.result_type.is_int() {
+        value.result_type.clone()
+    } else if REAL_UNARY_OP.contains(op) && value.result_type.is_float() {
+        value.result_type.clone()
+    } else if BOOL_UNARY_OP.contains(op) && value.result_type.is_bool() {
+        value.result_type.clone()
+    } else {
+        return Err(InvalidUnaryOp {
+            op: op.clone(),
+            value,
+        }
+        .into());
+    };
+
+    Ok(Expr {
+        position: value.position.clone(),
+        is_assignable: false,
+        result_type,
+        kind: ExprKind::Unary(UnaryExpr {
+            op: op.clone(),
+            value: Box::new(value),
+        }),
+    })
 }
 
 fn analyze_call_expr(
     ctx: &mut Context,
     expr_node: &CallExprNode,
-    type_hint: Option<Rc<Type>>,
+    _: Option<Rc<Type>>,
 ) -> Result<Expr, CompileError> {
-    todo!();
+    let callee = analyze_expr(ctx, &expr_node.target, None)?;
+
+    let func_type = match callee.result_type.internal {
+        TypeInternal::Function(ref func_type) => func_type,
+        _ => return Err(NotAFunction { value: callee }.into()),
+    };
+
+    if func_type.parameters.len() != expr_node.arguments.len() {
+        return Err(InvalidNumberOfArguments {
+            position: callee.position.clone(),
+            expected: func_type.parameters.len(),
+            got: expr_node.arguments.len(),
+        }
+        .into());
+    }
+
+    let mut arguments = vec![];
+    for (param, arg) in zip(func_type.parameters.iter(), expr_node.arguments.iter()) {
+        let arg_expr = analyze_expr(ctx, &arg, Some(param.clone()))?;
+        if !is_type_equal(&arg_expr.result_type, &param) {
+            return Err(TypeMismatch {
+                expected: param.clone(),
+                got: arg_expr,
+            }
+            .into());
+        }
+        arguments.push(arg_expr);
+    }
+
+    Ok(Expr {
+        position: callee.position.clone(),
+        is_assignable: false,
+        result_type: func_type.return_type.clone(),
+        kind: ExprKind::Call(CallExpr {
+            target: Box::new(callee),
+            arguments,
+        }),
+    })
 }
 
 fn analyze_index_expr(

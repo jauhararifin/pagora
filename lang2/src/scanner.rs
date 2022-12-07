@@ -2,7 +2,7 @@ use crate::{
     errors::{CompileError, MultiErrors},
     tokens::{Position, Token, TokenKind},
 };
-use std::{iter::Peekable, vec::IntoIter, rc::Rc};
+use std::{iter::Peekable, rc::Rc, vec::IntoIter};
 
 pub fn scan(code: &str) -> Result<Vec<Token>, CompileError> {
     let mut scanner = Scanner::new(code);
@@ -113,6 +113,8 @@ impl Scanner {
             "as" => TokenKind::As,
             "func" => TokenKind::Function,
             "native" => TokenKind::Native,
+            "type" => TokenKind::Type,
+            "this" => TokenKind::This,
             "true" => TokenKind::True,
             "false" => TokenKind::False,
             "if" => TokenKind::If,
@@ -228,6 +230,7 @@ impl Scanner {
 
     fn scan_symbol(&mut self) -> ScanResult {
         let symbols = vec![
+            (".", TokenKind::Dot),
             ("!=", TokenKind::NEq),
             ("!", TokenKind::Not),
             ("==", TokenKind::Eq),

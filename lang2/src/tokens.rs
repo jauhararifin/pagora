@@ -13,7 +13,7 @@ pub struct Token {
     pub value: Rc<String>,
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
 pub enum TokenKind {
     Invalid,
     Eof,
@@ -27,6 +27,9 @@ pub enum TokenKind {
     Colon,
     Arrow,
     Semicolon,
+    Dot,
+    Type,
+    This,
 
     OpenBlock,
     CloseBlock,

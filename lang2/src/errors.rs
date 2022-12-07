@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
-    semantic::{Expr, Type},
+    semantic::{BinaryOp, Expr, Type, UnaryOp},
     tokens::{Position, Token, TokenKind},
 };
 
@@ -15,6 +15,11 @@ pub enum CompileError {
     TypeMismatch(TypeMismatch),
     UndefinedType(UndefinedType),
     UndefinedSymbol(UndefinedSymbol),
+    CannotInferType(CannotInferType),
+    InvalidBinaryOp(InvalidBinaryOp),
+    InvalidUnaryOp(InvalidUnaryOp),
+    NotAFunction(NotAFunction),
+    InvalidNumberOfArguments(InvalidNumberOfArguments),
 }
 
 impl CompileError {
@@ -147,5 +152,65 @@ pub struct UndefinedSymbol {
 impl From<UndefinedSymbol> for CompileError {
     fn from(e: UndefinedSymbol) -> Self {
         Self::UndefinedSymbol(e)
+    }
+}
+
+#[derive(Debug)]
+pub struct CannotInferType {
+    pub position: Position,
+}
+
+impl From<CannotInferType> for CompileError {
+    fn from(e: CannotInferType) -> Self {
+        Self::CannotInferType(e)
+    }
+}
+
+#[derive(Debug)]
+pub struct InvalidBinaryOp {
+    pub a: Expr,
+    pub op: BinaryOp,
+    pub b: Expr,
+}
+
+impl From<InvalidBinaryOp> for CompileError {
+    fn from(e: InvalidBinaryOp) -> Self {
+        Self::InvalidBinaryOp(e)
+    }
+}
+
+#[derive(Debug)]
+pub struct InvalidUnaryOp {
+    pub op: UnaryOp,
+    pub value: Expr,
+}
+
+impl From<InvalidUnaryOp> for CompileError {
+    fn from(e: InvalidUnaryOp) -> Self {
+        Self::InvalidUnaryOp(e)
+    }
+}
+
+#[derive(Debug)]
+pub struct NotAFunction {
+    pub value: Expr,
+}
+
+impl From<NotAFunction> for CompileError {
+    fn from(e: NotAFunction) -> Self {
+        Self::NotAFunction(e)
+    }
+}
+
+#[derive(Debug)]
+pub struct InvalidNumberOfArguments {
+    pub position: Position,
+    pub expected: usize,
+    pub got: usize,
+}
+
+impl From<InvalidNumberOfArguments> for CompileError {
+    fn from(e: InvalidNumberOfArguments) -> Self {
+        Self::InvalidNumberOfArguments(e)
     }
 }

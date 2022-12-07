@@ -51,11 +51,25 @@ impl Type {
         })
     }
 
+    pub fn is_int(&self) -> bool {
+        match self.internal {
+            TypeInternal::Int(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn float(name: String, bits: u8) -> Rc<Self> {
         Rc::new(Self {
             name: Some(name),
             internal: TypeInternal::Float(FloatType { bits }),
         })
+    }
+
+    pub fn is_float(&self) -> bool {
+        match self.internal {
+            TypeInternal::Float(_) => true,
+            _ => false,
+        }
     }
 
     pub fn bool(name: String) -> Rc<Self> {
@@ -65,11 +79,39 @@ impl Type {
         })
     }
 
+    pub fn is_bool(&self) -> bool {
+        match self.internal {
+            TypeInternal::Bool => true,
+            _ => false,
+        }
+    }
+
     pub fn string(name: String) -> Rc<Self> {
         Rc::new(Self {
             name: Some(name),
             internal: TypeInternal::String,
         })
+    }
+
+    pub fn is_string(&self) -> bool {
+        match self.internal {
+            TypeInternal::String => true,
+            _ => false,
+        }
+    }
+
+    pub fn array(name: Option<String>, element_type: Rc<Type>) -> Rc<Self> {
+        Rc::new(Self {
+            name,
+            internal: TypeInternal::Array(ArrayType { element_type }),
+        })
+    }
+
+    pub fn is_func(&self) -> bool {
+        match self.internal {
+            TypeInternal::Function(_) => true,
+            _ => false,
+        }
     }
 }
 
@@ -127,7 +169,7 @@ pub enum Const {
     IntConst(u64),
     FloatConst(f64),
     BoolConst(bool),
-    ArrayConst(Vec<Const>),
+    ArrayConst(Vec<Expr>),
     StringConst(String),
 }
 
@@ -151,7 +193,7 @@ pub enum ExprKind {
     Const(ConstExpr),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
 pub enum BinaryOp {
     Or,
     And,
@@ -180,7 +222,7 @@ pub struct BinaryExpr {
     pub b: Box<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub enum UnaryOp {
     BitNot,
     Sub,
