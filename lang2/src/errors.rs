@@ -19,7 +19,9 @@ pub enum CompileError {
     InvalidBinaryOp(InvalidBinaryOp),
     InvalidUnaryOp(InvalidUnaryOp),
     NotAFunction(NotAFunction),
+    NotAnArray(NotAnArray),
     InvalidNumberOfArguments(InvalidNumberOfArguments),
+    CannotCast(CannotCast),
 }
 
 impl CompileError {
@@ -203,6 +205,17 @@ impl From<NotAFunction> for CompileError {
 }
 
 #[derive(Debug)]
+pub struct NotAnArray {
+    pub value: Expr,
+}
+
+impl From<NotAnArray> for CompileError {
+    fn from(e: NotAnArray) -> Self {
+        Self::NotAnArray(e)
+    }
+}
+
+#[derive(Debug)]
 pub struct InvalidNumberOfArguments {
     pub position: Position,
     pub expected: usize,
@@ -212,5 +225,17 @@ pub struct InvalidNumberOfArguments {
 impl From<InvalidNumberOfArguments> for CompileError {
     fn from(e: InvalidNumberOfArguments) -> Self {
         Self::InvalidNumberOfArguments(e)
+    }
+}
+
+#[derive(Debug)]
+pub struct CannotCast {
+    pub from: Rc<Type>,
+    pub into: Rc<Type>,
+}
+
+impl From<CannotCast> for CompileError {
+    fn from(e: CannotCast) -> Self {
+        Self::CannotCast(e)
     }
 }

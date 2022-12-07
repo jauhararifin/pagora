@@ -6,14 +6,15 @@ use crate::{
     },
     env::{Architecture, Target},
     errors::{
-        CannotInferType, CompileError, InvalidBinaryOp, InvalidNumberOfArguments, InvalidUnaryOp,
-        MultiErrors, NotAFunction, NotAssignable, TypeMismatch, UndefinedSymbol, UndefinedType,
+        CannotCast, CannotInferType, CompileError, InvalidBinaryOp, InvalidNumberOfArguments,
+        InvalidUnaryOp, MultiErrors, NotAFunction, NotAnArray, NotAssignable, TypeMismatch,
+        UndefinedSymbol, UndefinedType,
     },
     semantic::{
         ArrayType, AssignStatement, BinaryExpr, BinaryOp, BlockStatement, Builtin, CallExpr,
-        CallStatement, Const, ConstExpr, Expr, ExprKind, Function, FunctionType, IdentExpr,
-        IfStatement, Program, Statement, Type, TypeInternal, UnaryExpr, UnaryOp, Variable,
-        WhileStatement,
+        CallStatement, CastExpr, Const, ConstExpr, Expr, ExprKind, Function, FunctionType,
+        IdentExpr, IfStatement, IndexExpr, Program, Statement, Type, TypeInternal, UnaryExpr,
+        UnaryOp, Variable, WhileStatement,
     },
     tokens::{Token, TokenKind},
 };
@@ -738,17 +739,64 @@ fn analyze_call_expr(
 fn analyze_index_expr(
     ctx: &mut Context,
     expr_node: &IndexExprNode,
-    type_hint: Option<Rc<Type>>,
+    _: Option<Rc<Type>>,
 ) -> Result<Expr, CompileError> {
-    todo!();
+    let target = analyze_expr(ctx, &expr_node.target, None)?;
+
+    let array_type = match target.result_type.internal {
+        TypeInternal::Array(ref array_type) => array_type,
+        _ => return Err(NotAnArray { value: target }.into()),
+    };
+
+    let int_type = get_builtin_type(ctx, INT_TYPE);
+    let index = analyze_expr(ctx, &expr_node.index, int_type)?;
+    if !index.result_type.is_int() {
+        return Err(TypeMismatch {
+            expected: get_builtin_type(ctx, INT_TYPE).unwrap(),
+            got: index,
+        }
+        .into());
+    }
+
+    Ok(Expr {
+        position: target.position.clone(),
+        is_assignable: false,
+        result_type: array_type.element_type.clone(),
+        kind: ExprKind::Index(IndexExpr {
+            target: Box::new(target),
+            index: Box::new(index),
+        }),
+    })
 }
 
 fn analyze_cast_expr(
     ctx: &mut Context,
     expr_node: &CastExprNode,
-    type_hint: Option<Rc<Type>>,
+    _: Option<Rc<Type>>,
 ) -> Result<Expr, CompileError> {
-    todo!();
+    let value = analyze_expr(ctx, &expr_node.value, None)?;
+    let target = analyze_type(ctx, &expr_node.target)?;
+
+    let castable = (value.result_type.is_int() || value.result_type.is_float())
+        && (target.is_int() || target.is_float());
+    if !castable {
+        // TODO: improve the error message.
+        return Err(CannotCast {
+            from: value.result_type.clone(),
+            into: target.clone(),
+        }
+        .into());
+    }
+
+    Ok(Expr {
+        position: value.position.clone(),
+        is_assignable: false,
+        result_type: target.clone(),
+        kind: ExprKind::Cast(CastExpr {
+            value: Box::new(value),
+            target: target.clone(),
+        }),
+    })
 }
 
 fn analyze_grouped_expr(
