@@ -1,5 +1,3 @@
-use std::{iter::Peekable, rc::Rc, vec::IntoIter};
-
 use crate::{
     ast::{
         ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
@@ -10,6 +8,7 @@ use crate::{
     errors::{CompileError, MultiErrors, UnexpectedToken},
     tokens::{Position, Token, TokenKind},
 };
+use std::{iter::Peekable, rc::Rc, vec::IntoIter};
 
 pub fn parse(tokens: Vec<Token>) -> Result<RootNode, CompileError> {
     let mut token_stream = TokenStream::new(tokens);

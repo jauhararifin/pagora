@@ -1,19 +1,20 @@
+use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Default)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct Position {
     pub line: i64,
     pub col: i64,
 }
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 pub struct Token {
     pub kind: TokenKind,
     pub position: Position,
     pub value: Rc<String>,
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash, Serialize, Deserialize)]
 pub enum TokenKind {
     Invalid,
     Eof,

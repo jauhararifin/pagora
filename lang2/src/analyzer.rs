@@ -4,6 +4,7 @@ use crate::{
         CastExprNode, ExprNode, FuncNode, GroupedExprNode, IfStmtNode, IndexExprNode, Item,
         ReturnStmtNode, RootNode, StmtNode, TypeExprNode, UnaryExprNode, VarNode, WhileStmtNode,
     },
+    builtin::get_builtin,
     env::{Architecture, Target},
     errors::{
         CannotCast, CannotInferType, CompileError, InvalidBinaryOp, InvalidNumberOfArguments,
@@ -11,7 +12,7 @@ use crate::{
         UndefinedSymbol, UndefinedType,
     },
     semantic::{
-        ArrayType, AssignStatement, BinaryExpr, BinaryOp, BlockStatement, Builtin, CallExpr,
+        ArrayType, AssignStatement, BinaryExpr, BinaryOp, BlockStatement, CallExpr,
         CallStatement, CastExpr, Const, ConstExpr, Expr, ExprKind, Function, FunctionType,
         IdentExpr, IfStatement, IndexExpr, Program, Statement, Type, TypeInternal, UnaryExpr,
         UnaryOp, Variable, WhileStatement,
@@ -25,7 +26,8 @@ use std::{
     rc::Rc,
 };
 
-pub fn analyze(root: RootNode, target: Target, builtin: Builtin) -> Result<Program, CompileError> {
+pub fn analyze(root: RootNode, target: Target) -> Result<Program, CompileError> {
+    let builtin = get_builtin();
     let mut ctx = Context::new(target);
     ctx.add_scope();
 

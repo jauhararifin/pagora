@@ -1,27 +1,22 @@
+use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
 use crate::tokens::Position;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Program {
     pub variables: Vec<Variable>,
     pub functions: Vec<Function>,
 }
 
-#[derive(Debug)]
-pub struct Builtin {
-    pub variables: Vec<Variable>,
-    pub functions: Vec<Function>,
-}
-
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Variable {
     pub name: Rc<String>,
     pub typ: Rc<Type>,
     pub value: Option<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Function {
     pub name: Rc<String>,
     pub typ: FunctionType,
@@ -29,7 +24,7 @@ pub struct Function {
     pub body: Option<BlockStatement>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Type {
     pub name: Option<String>, // TODO: this should be qual
     // None name means anonymous type
@@ -115,7 +110,7 @@ impl Type {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TypeInternal {
     Tuple(TupleType),
     Int(IntType),
@@ -126,23 +121,23 @@ pub enum TypeInternal {
     Function(FunctionType),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TupleType {
     pub items: Vec<Rc<Type>>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct IntType {
     pub bits: u8,
     pub signed: bool,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct FloatType {
     pub bits: u8,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize)]
 pub struct ArrayType {
     pub element_type: Rc<Type>,
 }
@@ -157,13 +152,13 @@ impl PartialEq for ArrayType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct FunctionType {
     pub parameters: Vec<Rc<Type>>,
     pub return_type: Rc<Type>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Const {
     Void,
     IntConst(u64),
@@ -174,7 +169,7 @@ pub enum Const {
 }
 
 // TODO: don't put box in the expr, but put it in the exprkind instead.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Expr {
     pub position: Position,
     pub is_assignable: bool,
@@ -182,7 +177,7 @@ pub struct Expr {
     pub kind: ExprKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum ExprKind {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
@@ -193,7 +188,7 @@ pub enum ExprKind {
     Const(ConstExpr),
 }
 
-#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
+#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum BinaryOp {
     Or,
     And,
@@ -215,14 +210,14 @@ pub enum BinaryOp {
     Mod,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct BinaryExpr {
     pub a: Box<Expr>,
     pub op: BinaryOp,
     pub b: Box<Expr>,
 }
 
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
 pub enum UnaryOp {
     BitNot,
     Sub,
@@ -230,41 +225,41 @@ pub enum UnaryOp {
     Not,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct UnaryExpr {
     pub op: UnaryOp,
     pub value: Box<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct IndexExpr {
     pub target: Box<Expr>,
     pub index: Box<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct CastExpr {
     pub value: Box<Expr>,
     pub target: Rc<Type>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct CallExpr {
     pub target: Box<Expr>,
     pub arguments: Vec<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct IdentExpr {
     pub name: Rc<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct ConstExpr {
     pub value: Const,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Statement {
     Block(BlockStatement),
     Var(Variable),
@@ -277,31 +272,31 @@ pub enum Statement {
     Continue,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct BlockStatement {
     pub statements: Vec<Statement>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct IfStatement {
     pub condition: Expr,
     pub body: Box<Statement>,
     pub else_stmt: Option<Box<Statement>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct WhileStatement {
     pub condition: Expr,
     pub body: BlockStatement,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct AssignStatement {
     pub receiver: Box<Expr>,
     pub value: Box<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct CallStatement {
     pub expr: CallExpr,
 }
