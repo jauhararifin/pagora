@@ -118,11 +118,10 @@ where
                 Ok(item) => items.push(item),
                 Err(err) => {
                     errors.push(err);
+                    tokens.skip_until(&sync_tokens);
                 }
             }
         }
-
-        tokens.skip_until(&sync_tokens);
     }
 
     if !errors.is_empty() {
@@ -141,7 +140,7 @@ fn parse_item(tokens: &mut TokenStream) -> Result<Item, CompileError> {
                 expected: vec![TokenKind::Var, TokenKind::Function],
                 token: tokens.token(),
             }
-            .into())
+            .into());
         }
     })
 }
@@ -163,6 +162,8 @@ fn parse_variable(tokens: &mut TokenStream) -> Result<VarNode, CompileError> {
     } else {
         Some(parse_expr(tokens)?)
     };
+
+    tokens.take(TokenKind::Semicolon)?;
 
     Ok(VarNode {
         var,
@@ -299,7 +300,7 @@ fn parse_block_stmt(tokens: &mut TokenStream) -> Result<BlockStmtNode, CompileEr
         tokens,
         STMT_SYNC_TOKEN,
         &[TokenKind::Semicolon],
-        &[TokenKind::CloseBlock],
+        &[TokenKind::CloseBlock, TokenKind::Eof],
         parse_stmt,
     )?;
     let close_block = tokens.take(TokenKind::CloseBlock)?;
@@ -317,6 +318,7 @@ fn parse_return_stmt(tokens: &mut TokenStream) -> Result<ReturnStmtNode, Compile
     } else {
         None
     };
+    tokens.take(TokenKind::Semicolon)?;
     Ok(ReturnStmtNode { return_tok, value })
 }
 
@@ -324,7 +326,9 @@ const KEYWORD_TOKENS: &'static [TokenKind] = &[TokenKind::Break, TokenKind::Cont
 
 fn parse_keyword_stmt(tokens: &mut TokenStream) -> Result<Token, CompileError> {
     if KEYWORD_TOKENS.contains(&tokens.kind()) {
-        Ok(tokens.next())
+        let keyword = tokens.next();
+        tokens.take(TokenKind::Semicolon)?;
+        Ok(keyword)
     } else {
         Err(CompileError::unexpected_token(
             Vec::from(KEYWORD_TOKENS),
@@ -386,29 +390,26 @@ fn parse_assign_or_call_stmt(tokens: &mut TokenStream) -> Result<StmtNode, Compi
         TokenKind::Assign => {
             let assign = tokens.take(TokenKind::Assign)?;
             let value = parse_expr(tokens)?;
+            tokens.take(TokenKind::Semicolon)?;
             Ok(StmtNode::Assign(AssignStmtNode {
                 receiver: expr,
                 assign,
                 value,
             }))
         }
-        TokenKind::OpenBrac => {
-            let (open_brac, arguments, close_brac) = parse_sequence(
-                tokens,
-                TokenKind::OpenBrac,
-                TokenKind::Comma,
-                TokenKind::CloseBrac,
-                parse_expr,
-            )?;
-            Ok(StmtNode::Call(CallExprNode {
-                target: Box::new(expr),
-                open_brac,
-                arguments,
-                close_brac,
-            }))
+        TokenKind::Semicolon => {
+            tokens.take(TokenKind::Semicolon)?;
+            match expr {
+                ExprNode::Call(call_expr) => Ok(StmtNode::Call(call_expr)),
+                // TODO: fix this, should be: expected statement found expr.
+                _ => Err(CompileError::unexpected_token(
+                    vec![TokenKind::Assign, TokenKind::Semicolon],
+                    tokens.next(),
+                )),
+            }
         }
         _ => Err(CompileError::unexpected_token(
-            vec![TokenKind::Assign, TokenKind::OpenBrac],
+            vec![TokenKind::Assign, TokenKind::Semicolon],
             tokens.next(),
         )),
     }

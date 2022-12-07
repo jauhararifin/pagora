@@ -1,14 +1,10 @@
+use lang2::{
+    env::{Architecture, Target},
+    translate::translate,
+};
 use std::{
     fs::{read_dir, read_to_string},
     path::Path,
-};
-
-use lang2::{
-    analyzer::analyze,
-    env::{Architecture, Target},
-    parser::parse,
-    scanner::scan,
-    semantic::Builtin,
 };
 
 #[test]
@@ -17,22 +13,18 @@ fn test_compile() {
     let files = read_dir(path).unwrap();
 
     for file in files {
-        let source_code = read_to_string(file.unwrap().path()).unwrap();
-        let tokens = scan(&source_code).unwrap();
-        let root_ast = parse(tokens).unwrap();
-        let program = analyze(
-            root_ast,
+        let file = file.unwrap();
+        let name = file.file_name();
+        let source_code = read_to_string(file.path()).unwrap();
+        let program = translate(
+            source_code,
             Target {
                 architecture: Architecture::IA32,
             },
-            Builtin {
-                variables: vec![],
-                functions: vec![],
-            },
         )
-        .unwrap();
-
+        .expect(format!("cannot translate source code {:?}", name).as_str());
         println!("{:?}", program);
     }
+
     panic!();
 }

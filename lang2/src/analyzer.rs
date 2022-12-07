@@ -72,21 +72,23 @@ pub fn analyze(root: RootNode, target: Target, builtin: Builtin) -> Result<Progr
 
     let mut variables = Vec::<Variable>::new();
     for var_node in var_nodes.iter() {
-        let name_tok = var_node.name.clone();
         match analyze_variable(&mut ctx, var_node) {
-            Ok(variable) => {
-                ctx.add_user_symbol(&name_tok, SymbolKind::Variable, variable.typ.clone());
-                variables.push(variable);
-            }
-            Err(err) => {
-                errors.push(err);
-            }
+            Ok(variable) => variables.push(variable),
+            Err(err) => errors.push(err),
         }
     }
 
     let mut functions = Vec::<Function>::new();
     for func_node in func_nodes {
-        match analyze_function(&mut ctx, func_node) {
+        let Some(func_type) = &ctx.get_val(func_node.head.name.value.as_ref()) else {
+            continue;
+        };
+        let func_type = match func_type.typ.internal {
+            TypeInternal::Function(ref func_type) => func_type.clone(),
+            _ => continue,
+        };
+
+        match analyze_function(&mut ctx, func_node, func_type) {
             Ok(func) => {
                 functions.push(func);
             }
@@ -96,10 +98,14 @@ pub fn analyze(root: RootNode, target: Target, builtin: Builtin) -> Result<Progr
         }
     }
 
-    Ok(Program {
-        variables,
-        functions,
-    })
+    if !errors.is_empty() {
+        Err(CompileError::MultiErrors(errors))
+    } else {
+        Ok(Program {
+            variables,
+            functions,
+        })
+    }
 }
 
 const INT_TYPE: &'static str = "int";
@@ -187,21 +193,16 @@ fn analyze_variable(ctx: &mut Context, var_node: &VarNode) -> Result<Variable, C
         unreachable!("a variable should has type or value");
     };
 
+    ctx.add_user_symbol(&var_node.name, SymbolKind::Variable, typ.clone());
     Ok(Variable { name, typ, value })
 }
 
-fn analyze_function(ctx: &mut Context, func_node: FuncNode) -> Result<Function, CompileError> {
+fn analyze_function(
+    ctx: &mut Context,
+    func_node: FuncNode,
+    func_type: FunctionType,
+) -> Result<Function, CompileError> {
     let name = func_node.head.name.value.clone();
-
-    let func_type = &ctx
-        .get_val(name.as_ref())
-        .unwrap_or_else(|| panic!("function type for {} is not found", name))
-        .typ;
-    let func_type = match func_type.internal {
-        TypeInternal::Function(ref func_type) => func_type.clone(),
-        _ => unreachable!("symbol {} is not a function", name),
-    };
-
     ctx.current_return_type = func_type.return_type.clone();
 
     assert_eq!(
@@ -825,7 +826,7 @@ fn analyze_grouped_expr(
 fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>, CompileError> {
     Ok(match type_node {
         TypeExprNode::Ident(type_name) => {
-            if let Some(symbol) = ctx.get_val(&type_name.value) {
+            if let Some(symbol) = ctx.get_type(&type_name.value) {
                 if let SymbolKind::Type = symbol.kind {
                     return Ok(symbol.typ.clone());
                 }
@@ -881,12 +882,14 @@ fn is_type_equal(a: &Type, b: &Type) -> bool {
     a == b
 }
 
+#[derive(Debug)]
 struct Symbol {
     token: Option<Token>,
     kind: SymbolKind,
     typ: Rc<Type>,
 }
 
+#[derive(Debug)]
 enum SymbolKind {
     Variable,
     Type,
