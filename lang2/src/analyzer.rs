@@ -35,6 +35,7 @@ pub fn analyze(root: RootNode, target: Target, builtin: Builtin) -> Result<Progr
     for func in builtin.functions {
         ctx.add_builtin_symbol(
             func.name,
+            SymbolKind::Variable,
             Rc::new(Type {
                 name: None,
                 internal: TypeInternal::Function(func.typ),
@@ -56,6 +57,7 @@ pub fn analyze(root: RootNode, target: Target, builtin: Builtin) -> Result<Progr
             Ok(func_type) => {
                 ctx.add_user_symbol(
                     &func_node.head.name,
+                    SymbolKind::Variable,
                     Rc::new(Type {
                         name: None,
                         internal: TypeInternal::Function(func_type),
@@ -73,7 +75,7 @@ pub fn analyze(root: RootNode, target: Target, builtin: Builtin) -> Result<Progr
         let name_tok = var_node.name.clone();
         match analyze_variable(&mut ctx, var_node) {
             Ok(variable) => {
-                ctx.add_user_symbol(&name_tok, variable.typ.clone());
+                ctx.add_user_symbol(&name_tok, SymbolKind::Variable, variable.typ.clone());
                 variables.push(variable);
             }
             Err(err) => {
@@ -118,39 +120,52 @@ fn populate_builtin_types(ctx: &mut Context) {
     };
     ctx.add_builtin_symbol(
         Rc::new(INT_TYPE.into()),
+        SymbolKind::Type,
         Type::int(INT_TYPE.into(), arch_bit, true),
     );
     ctx.add_builtin_symbol(
         Rc::new(INT32_TYPE.into()),
+        SymbolKind::Type,
         Type::int(INT32_TYPE.into(), 32, true),
     );
     ctx.add_builtin_symbol(
         Rc::new(INT64_TYPE.into()),
+        SymbolKind::Type,
         Type::int(INT64_TYPE.into(), 64, true),
     );
     ctx.add_builtin_symbol(
         Rc::new(UINT_TYPE.into()),
+        SymbolKind::Type,
         Type::int(UINT_TYPE.into(), 32, false),
     );
     ctx.add_builtin_symbol(
         Rc::new(UINT32_TYPE.into()),
+        SymbolKind::Type,
         Type::int(UINT32_TYPE.into(), 32, false),
     );
     ctx.add_builtin_symbol(
         Rc::new(UINT64_TYPE.into()),
+        SymbolKind::Type,
         Type::int(UINT64_TYPE.into(), 64, false),
     );
     ctx.add_builtin_symbol(
         Rc::new(FLOAT32_TYPE.into()),
+        SymbolKind::Type,
         Type::float(FLOAT32_TYPE.into(), 32),
     );
     ctx.add_builtin_symbol(
         Rc::new(FLOAT64_TYPE.into()),
+        SymbolKind::Type,
         Type::float(FLOAT64_TYPE.into(), 64),
     );
-    ctx.add_builtin_symbol(Rc::new(BOOL_TYPE.into()), Type::bool(BOOL_TYPE.into()));
+    ctx.add_builtin_symbol(
+        Rc::new(BOOL_TYPE.into()),
+        SymbolKind::Type,
+        Type::bool(BOOL_TYPE.into()),
+    );
     ctx.add_builtin_symbol(
         Rc::new(STRING_TYPE.into()),
+        SymbolKind::Type,
         Type::string(STRING_TYPE.into()),
     );
 }
@@ -179,7 +194,7 @@ fn analyze_function(ctx: &mut Context, func_node: FuncNode) -> Result<Function, 
     let name = func_node.head.name.value.clone();
 
     let func_type = &ctx
-        .get(name.as_ref())
+        .get_val(name.as_ref())
         .unwrap_or_else(|| panic!("function type for {} is not found", name))
         .typ;
     let func_type = match func_type.internal {
@@ -249,7 +264,7 @@ fn analyze_block_statement(
 
     for symbol in additional_symbols {
         if let Some(ref token) = symbol.token {
-            ctx.add_user_symbol(token, symbol.typ);
+            ctx.add_user_symbol(token, SymbolKind::Variable, symbol.typ);
         }
     }
 
@@ -399,7 +414,7 @@ fn analyze_expr(
 fn analyze_ident_expr(ctx: &mut Context, token: &Token) -> Result<Expr, CompileError> {
     let name = token.value.clone();
     let symbol = ctx
-        .get(name.as_ref())
+        .get_val(name.as_ref())
         .ok_or(CompileError::UndefinedSymbol(UndefinedSymbol {
             name: token.clone(),
         }))?;
@@ -810,7 +825,7 @@ fn analyze_grouped_expr(
 fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>, CompileError> {
     Ok(match type_node {
         TypeExprNode::Ident(type_name) => {
-            if let Some(symbol) = ctx.get(&type_name.value) {
+            if let Some(symbol) = ctx.get_val(&type_name.value) {
                 if let SymbolKind::Type = symbol.kind {
                     return Ok(symbol.typ.clone());
                 }
@@ -829,7 +844,7 @@ fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>,
 
 // TODO: consider using lazy static instead of calling method like this.
 fn get_builtin_type(ctx: &mut Context, name: &str) -> Option<Rc<Type>> {
-    ctx.get(&String::from(name))
+    ctx.get_type(&String::from(name))
         .map(|symbol| symbol.typ.clone())
 }
 
@@ -897,11 +912,27 @@ impl Context {
         }
     }
 
-    fn get(&self, name: &String) -> Option<&Symbol> {
-        self.symbol_table.get(name)?.last()
+    fn get_type(&self, name: &String) -> Option<&Symbol> {
+        self.symbol_table
+            .get(name)?
+            .last()
+            .map_or(None, |sym| match sym.kind {
+                SymbolKind::Type => Some(sym),
+                _ => None,
+            })
     }
 
-    fn add_user_symbol(&mut self, token: &Token, typ: Rc<Type>) {
+    fn get_val(&self, name: &String) -> Option<&Symbol> {
+        self.symbol_table
+            .get(name)?
+            .last()
+            .map_or(None, |sym| match sym.kind {
+                SymbolKind::Variable => Some(sym),
+                _ => None,
+            })
+    }
+
+    fn add_user_symbol(&mut self, token: &Token, kind: SymbolKind, typ: Rc<Type>) {
         let scope = self.scopes.last_mut().unwrap();
         if scope.contains(&token.value) {
             unreachable!("cannot redeclare symbol with the same name");
@@ -912,12 +943,12 @@ impl Context {
             .or_insert(vec![])
             .push(Symbol {
                 token: Some(token.clone()),
-                kind: SymbolKind::Variable,
+                kind,
                 typ: typ.clone(),
             });
     }
 
-    fn add_builtin_symbol(&mut self, name: Rc<String>, typ: Rc<Type>) {
+    fn add_builtin_symbol(&mut self, name: Rc<String>, kind: SymbolKind, typ: Rc<Type>) {
         let scope = self.scopes.last_mut().unwrap();
         if scope.contains(&name) {
             unreachable!("cannot redeclare builtin with the same name");
@@ -928,7 +959,7 @@ impl Context {
             .or_insert(vec![])
             .push(Symbol {
                 token: None,
-                kind: SymbolKind::Variable,
+                kind,
                 typ: typ.clone(),
             });
     }
