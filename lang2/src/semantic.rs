@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::rc::Rc;
+use std::{fmt::Display, rc::Rc};
 
 use crate::tokens::Position;
 
@@ -26,9 +26,18 @@ pub struct Function {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Type {
-    pub name: Option<String>, // TODO: this should be qual
-    // None name means anonymous type
+    pub name: Option<String>,
     pub internal: TypeInternal,
+}
+
+impl Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(ref name) = self.name {
+            write!(f, "{}", &name)
+        } else {
+            write!(f, "{}", &self.internal)
+        }
+    }
 }
 
 impl Type {
@@ -39,9 +48,9 @@ impl Type {
         })
     }
 
-    pub fn int(name: String, bits: u8, signed: bool) -> Rc<Self> {
+    pub fn int(name: &str, bits: u8, signed: bool) -> Rc<Self> {
         Rc::new(Self {
-            name: Some(name),
+            name: Some(String::from(name)),
             internal: TypeInternal::Int(IntType { bits, signed }),
         })
     }
@@ -53,9 +62,9 @@ impl Type {
         }
     }
 
-    pub fn float(name: String, bits: u8) -> Rc<Self> {
+    pub fn float(name: &str, bits: u8) -> Rc<Self> {
         Rc::new(Self {
-            name: Some(name),
+            name: Some(String::from(name)),
             internal: TypeInternal::Float(FloatType { bits }),
         })
     }
@@ -67,9 +76,9 @@ impl Type {
         }
     }
 
-    pub fn bool(name: String) -> Rc<Self> {
+    pub fn bool(name: &str) -> Rc<Self> {
         Rc::new(Self {
-            name: Some(name),
+            name: Some(String::from(name)),
             internal: TypeInternal::Bool,
         })
     }
@@ -81,9 +90,9 @@ impl Type {
         }
     }
 
-    pub fn string(name: String) -> Rc<Self> {
+    pub fn string(name: &str) -> Rc<Self> {
         Rc::new(Self {
-            name: Some(name),
+            name: Some(String::from(name)),
             internal: TypeInternal::String,
         })
     }
@@ -121,9 +130,33 @@ pub enum TypeInternal {
     Function(FunctionType),
 }
 
+impl Display for TypeInternal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::Tuple(t) => t.fmt(f),
+            Self::Int(t) => t.fmt(f),
+            Self::Float(t) => t.fmt(f),
+            Self::Bool => write!(f, "bool"),
+            Self::String => write!(f, "string"),
+            Self::Array(t) => t.fmt(f),
+            Self::Function(t) => t.fmt(f),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TupleType {
     pub items: Vec<Rc<Type>>,
+}
+
+impl Display for TupleType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut f = f.debug_tuple("");
+        for item in self.items.iter() {
+            f.field(item.as_ref());
+        }
+        f.finish()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -132,9 +165,21 @@ pub struct IntType {
     pub signed: bool,
 }
 
+impl Display for IntType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} bit signed integer", self.bits)
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct FloatType {
     pub bits: u8,
+}
+
+impl Display for FloatType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} bit float", self.bits)
+    }
 }
 
 #[derive(Clone, Debug, Eq, Serialize, Deserialize)]
@@ -152,10 +197,27 @@ impl PartialEq for ArrayType {
     }
 }
 
+impl Display for ArrayType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[]{}", self.element_type)
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct FunctionType {
     pub parameters: Vec<Rc<Type>>,
     pub return_type: Rc<Type>,
+}
+
+impl Display for FunctionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut arg_formatter = f.debug_tuple("func");
+        for param in self.parameters.iter() {
+            arg_formatter.field(param);
+        }
+        arg_formatter.finish()?;
+        write!(f, " -> {}", self.return_type)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]

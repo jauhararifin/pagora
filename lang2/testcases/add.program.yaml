@@ -1,0 +1,60 @@
+!Ok
+variables: []
+functions:
+- name: add
+  typ:
+    parameters:
+    - name: int32
+      internal: !Int
+        bits: 32
+        signed: true
+    - name: int32
+      internal: !Int
+        bits: 32
+        signed: true
+    return_type:
+      name: int32
+      internal: !Int
+        bits: 32
+        signed: true
+  param_names:
+  - a
+  - b
+  body:
+    statements:
+    - !Return
+      position:
+        line: 2
+        col: 10
+      is_assignable: false
+      result_type:
+        name: int32
+        internal: !Int
+          bits: 32
+          signed: true
+      kind: !Binary
+        a:
+          position:
+            line: 2
+            col: 10
+          is_assignable: true
+          result_type:
+            name: int32
+            internal: !Int
+              bits: 32
+              signed: true
+          kind: !Ident
+            name: a
+        op: Add
+        b:
+          position:
+            line: 2
+            col: 14
+          is_assignable: true
+          result_type:
+            name: int32
+            internal: !Int
+              bits: 32
+              signed: true
+          kind: !Ident
+            name: b

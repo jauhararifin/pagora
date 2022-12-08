@@ -5,12 +5,12 @@ use crate::{
         GroupedExprNode, IfStmtNode, IndexExprNode, Item, ParameterNode, ReturnStmtNode, RootNode,
         StmtNode, TypeExprNode, UnaryExprNode, VarNode, WhileStmtNode,
     },
-    errors::{CompileError, MultiErrors, UnexpectedToken},
+    errors::{unexpected_token, unexpected_token_for, CompileError, Result},
     tokens::{Position, Token, TokenKind},
 };
 use std::{iter::Peekable, rc::Rc, vec::IntoIter};
 
-pub fn parse(tokens: Vec<Token>) -> Result<RootNode, CompileError> {
+pub fn parse(tokens: Vec<Token>) -> Result<RootNode> {
     let mut token_stream = TokenStream::new(tokens);
     parse_root(&mut token_stream)
 }
@@ -52,16 +52,16 @@ impl TokenStream {
         })
     }
 
-    fn take(&mut self, kind: TokenKind) -> Result<Token, CompileError> {
+    fn take(&mut self, kind: TokenKind, expected: Option<&str>) -> Result<Token> {
         let token = self.next();
         if token.kind == kind {
             Ok(token)
         } else {
-            Err(UnexpectedToken {
-                expected: vec![kind],
-                token,
+            if let Some(expected) = expected {
+                Err(unexpected_token_for(&token, expected))?
+            } else {
+                Err(unexpected_token(&token, &[kind]))?
             }
-            .into())
         }
     }
 
@@ -82,7 +82,7 @@ impl TokenStream {
 
 const ITEM_SYNC_TOKENS: &'static [TokenKind] = &[TokenKind::Var, TokenKind::Function];
 
-fn parse_root(tokens: &mut TokenStream) -> Result<RootNode, CompileError> {
+fn parse_root(tokens: &mut TokenStream) -> Result<RootNode> {
     let items = parse_multiple(
         tokens,
         ITEM_SYNC_TOKENS,
@@ -99,12 +99,12 @@ fn parse_multiple<T, F>(
     ignores: &[TokenKind],
     stop_tokens: &[TokenKind],
     parse_fn: F,
-) -> Result<Vec<T>, CompileError>
+) -> Result<Vec<T>>
 where
-    F: Fn(&mut TokenStream) -> Result<T, CompileError>,
+    F: Fn(&mut TokenStream) -> Result<T>,
 {
     let mut items = Vec::<T>::new();
-    let mut errors = MultiErrors::new();
+    let mut errors = CompileError::new();
 
     while !stop_tokens.contains(&tokens.kind()) {
         if ignores.contains(&tokens.kind()) {
@@ -131,23 +131,20 @@ where
     }
 }
 
-fn parse_item(tokens: &mut TokenStream) -> Result<Item, CompileError> {
+fn parse_item(tokens: &mut TokenStream) -> Result<Item> {
     Ok(match tokens.kind() {
         TokenKind::Var => Item::Var(parse_variable(tokens)?),
         TokenKind::Function => Item::Func(parse_func(tokens)?),
-        _ => {
-            return Err(UnexpectedToken {
-                expected: vec![TokenKind::Var, TokenKind::Function],
-                token: tokens.token(),
-            }
-            .into());
-        }
+        _ => Err(unexpected_token(
+            &tokens.token(),
+            &[TokenKind::Var, TokenKind::Function],
+        ))?,
     })
 }
 
-fn parse_variable(tokens: &mut TokenStream) -> Result<VarNode, CompileError> {
-    let var = tokens.take(TokenKind::Var)?;
-    let name = tokens.take(TokenKind::Ident)?;
+fn parse_variable(tokens: &mut TokenStream) -> Result<VarNode> {
+    let var = tokens.take(TokenKind::Var, None)?;
+    let name = tokens.take(TokenKind::Ident, None)?;
 
     let colon = tokens.take_if(TokenKind::Colon);
     let typ = if colon.is_none() {
@@ -163,7 +160,7 @@ fn parse_variable(tokens: &mut TokenStream) -> Result<VarNode, CompileError> {
         Some(parse_expr(tokens)?)
     };
 
-    tokens.take(TokenKind::Semicolon)?;
+    tokens.take(TokenKind::Semicolon, None)?;
 
     Ok(VarNode {
         var,
@@ -175,7 +172,7 @@ fn parse_variable(tokens: &mut TokenStream) -> Result<VarNode, CompileError> {
     })
 }
 
-fn parse_func(tokens: &mut TokenStream) -> Result<FuncNode, CompileError> {
+fn parse_func(tokens: &mut TokenStream) -> Result<FuncNode> {
     let head = parse_func_head(tokens)?;
     let body = if tokens.kind() == TokenKind::OpenBlock {
         Some(parse_block_stmt(tokens)?)
@@ -185,10 +182,10 @@ fn parse_func(tokens: &mut TokenStream) -> Result<FuncNode, CompileError> {
     Ok(FuncNode { head, body })
 }
 
-fn parse_func_head(tokens: &mut TokenStream) -> Result<FuncHeadNode, CompileError> {
-    let func = tokens.take(TokenKind::Function)?;
+fn parse_func_head(tokens: &mut TokenStream) -> Result<FuncHeadNode> {
+    let func = tokens.take(TokenKind::Function, None)?;
     let native = tokens.take_if(TokenKind::Native);
-    let name = tokens.take(TokenKind::Ident)?;
+    let name = tokens.take(TokenKind::Ident, None)?;
     let (open_brac, parameters, close_brac) = parse_sequence(
         tokens,
         TokenKind::OpenBrac,
@@ -221,14 +218,14 @@ fn parse_sequence<T, F>(
     delim_tok: TokenKind,
     end_tok: TokenKind,
     parse_fn: F,
-) -> Result<(Token, Vec<T>, Token), CompileError>
+) -> Result<(Token, Vec<T>, Token)>
 where
-    F: Fn(&mut TokenStream) -> Result<T, CompileError>,
+    F: Fn(&mut TokenStream) -> Result<T>,
 {
-    let opening = tokens.take(begin_tok)?;
+    let opening = tokens.take(begin_tok, None)?;
 
     let mut items = Vec::<T>::new();
-    let mut errors = MultiErrors::new();
+    let mut errors = CompileError::new();
     while tokens.kind() != end_tok {
         match parse_fn(tokens) {
             Ok(item) => items.push(item),
@@ -237,7 +234,7 @@ where
         tokens.take_if(delim_tok);
     }
 
-    let closing = tokens.take(end_tok)?;
+    let closing = tokens.take(end_tok, None)?;
 
     if !errors.is_empty() {
         Err(errors.into())
@@ -246,19 +243,19 @@ where
     }
 }
 
-fn parse_parameter(tokens: &mut TokenStream) -> Result<ParameterNode, CompileError> {
-    let name = tokens.take(TokenKind::Ident)?;
-    let colon = tokens.take(TokenKind::Colon)?;
+fn parse_parameter(tokens: &mut TokenStream) -> Result<ParameterNode> {
+    let name = tokens.take(TokenKind::Ident, None)?;
+    let colon = tokens.take(TokenKind::Colon, None)?;
     let typ = parse_type_expr(tokens)?;
     Ok(ParameterNode { name, colon, typ })
 }
 
-fn parse_type_expr(tokens: &mut TokenStream) -> Result<TypeExprNode, CompileError> {
-    let ident = tokens.take(TokenKind::Ident)?;
+fn parse_type_expr(tokens: &mut TokenStream) -> Result<TypeExprNode> {
+    let ident = tokens.take(TokenKind::Ident, None)?;
     let typ = TypeExprNode::Ident(ident);
 
     if let Some(open_square) = tokens.take_if(TokenKind::OpenSquare) {
-        let close_square = tokens.take(TokenKind::CloseSquare)?;
+        let close_square = tokens.take(TokenKind::CloseSquare, None)?;
         return Ok(TypeExprNode::Array(ArrayTypeNode {
             element_type: Box::new(typ),
             open_square,
@@ -269,7 +266,7 @@ fn parse_type_expr(tokens: &mut TokenStream) -> Result<TypeExprNode, CompileErro
     Ok(typ)
 }
 
-fn parse_stmt(tokens: &mut TokenStream) -> Result<StmtNode, CompileError> {
+fn parse_stmt(tokens: &mut TokenStream) -> Result<StmtNode> {
     Ok(match tokens.kind() {
         TokenKind::OpenBlock => StmtNode::Block(parse_block_stmt(tokens)?),
         TokenKind::Var => StmtNode::Var(parse_variable(tokens)?),
@@ -294,8 +291,8 @@ const STMT_SYNC_TOKEN: &'static [TokenKind] = &[
     TokenKind::OpenBrac,
 ];
 
-fn parse_block_stmt(tokens: &mut TokenStream) -> Result<BlockStmtNode, CompileError> {
-    let open_block = tokens.take(TokenKind::OpenBlock)?;
+fn parse_block_stmt(tokens: &mut TokenStream) -> Result<BlockStmtNode> {
+    let open_block = tokens.take(TokenKind::OpenBlock, None)?;
     let statements = parse_multiple(
         tokens,
         STMT_SYNC_TOKEN,
@@ -303,7 +300,7 @@ fn parse_block_stmt(tokens: &mut TokenStream) -> Result<BlockStmtNode, CompileEr
         &[TokenKind::CloseBlock, TokenKind::Eof],
         parse_stmt,
     )?;
-    let close_block = tokens.take(TokenKind::CloseBlock)?;
+    let close_block = tokens.take(TokenKind::CloseBlock, None)?;
     Ok(BlockStmtNode {
         open_block,
         statements,
@@ -311,34 +308,25 @@ fn parse_block_stmt(tokens: &mut TokenStream) -> Result<BlockStmtNode, CompileEr
     })
 }
 
-fn parse_return_stmt(tokens: &mut TokenStream) -> Result<ReturnStmtNode, CompileError> {
-    let return_tok = tokens.take(TokenKind::Return)?;
+fn parse_return_stmt(tokens: &mut TokenStream) -> Result<ReturnStmtNode> {
+    let return_tok = tokens.take(TokenKind::Return, None)?;
     let value = if tokens.kind() != TokenKind::Semicolon {
         Some(parse_expr(tokens)?)
     } else {
         None
     };
-    tokens.take(TokenKind::Semicolon)?;
+    tokens.take(TokenKind::Semicolon, None)?;
     Ok(ReturnStmtNode { return_tok, value })
 }
 
-const KEYWORD_TOKENS: &'static [TokenKind] = &[TokenKind::Break, TokenKind::Continue];
-
-fn parse_keyword_stmt(tokens: &mut TokenStream) -> Result<Token, CompileError> {
-    if KEYWORD_TOKENS.contains(&tokens.kind()) {
-        let keyword = tokens.next();
-        tokens.take(TokenKind::Semicolon)?;
-        Ok(keyword)
-    } else {
-        Err(CompileError::unexpected_token(
-            Vec::from(KEYWORD_TOKENS),
-            tokens.next(),
-        ))
-    }
+fn parse_keyword_stmt(tokens: &mut TokenStream) -> Result<Token> {
+    let keyword = tokens.next();
+    tokens.take(TokenKind::Semicolon, None)?;
+    Ok(keyword)
 }
 
-fn parse_if_stmt(tokens: &mut TokenStream) -> Result<IfStmtNode, CompileError> {
-    let if_tok = tokens.take(TokenKind::If)?;
+fn parse_if_stmt(tokens: &mut TokenStream) -> Result<IfStmtNode> {
+    let if_tok = tokens.take(TokenKind::If, None)?;
     let condition = parse_expr(tokens)?;
     let body = parse_block_stmt(tokens)?;
 
@@ -346,7 +334,7 @@ fn parse_if_stmt(tokens: &mut TokenStream) -> Result<IfStmtNode, CompileError> {
     let mut else_stmt = None;
 
     while tokens.kind() == TokenKind::Else {
-        let else_tok = tokens.take(TokenKind::Else)?;
+        let else_tok = tokens.take(TokenKind::Else, None)?;
         if let Some(if_tok) = tokens.take_if(TokenKind::If) {
             let condition = parse_expr(tokens)?;
             let body = parse_block_stmt(tokens)?;
@@ -372,8 +360,8 @@ fn parse_if_stmt(tokens: &mut TokenStream) -> Result<IfStmtNode, CompileError> {
     })
 }
 
-fn parse_while_stmt(tokens: &mut TokenStream) -> Result<WhileStmtNode, CompileError> {
-    let while_tok = tokens.take(TokenKind::While)?;
+fn parse_while_stmt(tokens: &mut TokenStream) -> Result<WhileStmtNode> {
+    let while_tok = tokens.take(TokenKind::While, None)?;
     let condition = parse_expr(tokens)?;
     let body = parse_block_stmt(tokens)?;
     Ok(WhileStmtNode {
@@ -383,14 +371,14 @@ fn parse_while_stmt(tokens: &mut TokenStream) -> Result<WhileStmtNode, CompileEr
     })
 }
 
-fn parse_assign_or_call_stmt(tokens: &mut TokenStream) -> Result<StmtNode, CompileError> {
+fn parse_assign_or_call_stmt(tokens: &mut TokenStream) -> Result<StmtNode> {
     let expr = parse_expr(tokens)?;
 
     match tokens.kind() {
         TokenKind::Assign => {
-            let assign = tokens.take(TokenKind::Assign)?;
+            let assign = tokens.take(TokenKind::Assign, None)?;
             let value = parse_expr(tokens)?;
-            tokens.take(TokenKind::Semicolon)?;
+            tokens.take(TokenKind::Semicolon, None)?;
             Ok(StmtNode::Assign(AssignStmtNode {
                 receiver: expr,
                 assign,
@@ -398,19 +386,19 @@ fn parse_assign_or_call_stmt(tokens: &mut TokenStream) -> Result<StmtNode, Compi
             }))
         }
         TokenKind::Semicolon => {
-            tokens.take(TokenKind::Semicolon)?;
+            tokens.take(TokenKind::Semicolon, None)?;
             match expr {
                 ExprNode::Call(call_expr) => Ok(StmtNode::Call(call_expr)),
                 // TODO: fix this, should be: expected statement found expr.
-                _ => Err(CompileError::unexpected_token(
-                    vec![TokenKind::Assign, TokenKind::Semicolon],
-                    tokens.next(),
+                _ => Err(unexpected_token(
+                    &tokens.next(),
+                    &[TokenKind::Assign, TokenKind::Semicolon],
                 )),
             }
         }
-        _ => Err(CompileError::unexpected_token(
-            vec![TokenKind::Assign, TokenKind::Semicolon],
-            tokens.next(),
+        _ => Err(unexpected_token(
+            &tokens.next(),
+            &[TokenKind::Assign, TokenKind::Semicolon],
         )),
     }
 }
@@ -436,11 +424,11 @@ const BINOP_PRECEDENCE: &'static [TokenKind] = &[
     TokenKind::Mod,
 ];
 
-fn parse_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
+fn parse_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
     parse_binary_expr(tokens, TokenKind::Or)
 }
 
-fn parse_binary_expr(tokens: &mut TokenStream, op: TokenKind) -> Result<ExprNode, CompileError> {
+fn parse_binary_expr(tokens: &mut TokenStream, op: TokenKind) -> Result<ExprNode> {
     let next_op = BINOP_PRECEDENCE
         .iter()
         .skip_while(|p| *p != &op)
@@ -470,11 +458,11 @@ fn parse_binary_expr(tokens: &mut TokenStream, op: TokenKind) -> Result<ExprNode
     Ok(result)
 }
 
-fn parse_index_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
+fn parse_index_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
     let target = parse_cast_expr(tokens)?;
     if let Some(open_square) = tokens.take_if(TokenKind::OpenSquare) {
         let index = parse_expr(tokens)?;
-        let close_square = tokens.take(TokenKind::CloseSquare)?;
+        let close_square = tokens.take(TokenKind::CloseSquare, None)?;
         Ok(ExprNode::Index(IndexExprNode {
             target: Box::new(target),
             open_square,
@@ -486,7 +474,7 @@ fn parse_index_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> 
     }
 }
 
-fn parse_cast_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
+fn parse_cast_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
     let value = parse_unary_expr(tokens)?;
     if let Some(as_tok) = tokens.take_if(TokenKind::As) {
         let target = parse_type_expr(tokens)?;
@@ -507,7 +495,7 @@ const UNARY_OP: &'static [TokenKind] = &[
     TokenKind::Not,
 ];
 
-fn parse_unary_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
+fn parse_unary_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
     if !UNARY_OP.contains(&tokens.kind()) {
         return parse_call_expr(tokens);
     }
@@ -520,7 +508,7 @@ fn parse_unary_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> 
     }))
 }
 
-fn parse_call_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
+fn parse_call_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
     let target = parse_primary_expr(tokens)?;
 
     if tokens.kind() != TokenKind::OpenBrac {
@@ -543,23 +531,12 @@ fn parse_call_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
     }))
 }
 
-const EXPR_SYNC_TOKEN: &'static [TokenKind] = &[
-    TokenKind::OpenBrac,
-    TokenKind::OpenSquare,
-    TokenKind::Ident,
-    TokenKind::IntegerLit,
-    TokenKind::RealLit,
-    TokenKind::StringLit,
-    TokenKind::True,
-    TokenKind::False,
-];
-
-fn parse_primary_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError> {
+fn parse_primary_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
     match tokens.kind() {
         TokenKind::OpenBrac => {
-            let open_brac = tokens.take(TokenKind::OpenBrac)?;
+            let open_brac = tokens.take(TokenKind::OpenBrac, None)?;
             let value = parse_expr(tokens)?;
-            let close_brac = tokens.take(TokenKind::CloseBrac)?;
+            let close_brac = tokens.take(TokenKind::CloseBrac, None)?;
             Ok(ExprNode::Grouped(GroupedExprNode {
                 open_brac,
                 value: Box::new(value),
@@ -585,10 +562,7 @@ fn parse_primary_expr(tokens: &mut TokenStream) -> Result<ExprNode, CompileError
         TokenKind::RealLit => Ok(ExprNode::RealLit(tokens.next())),
         TokenKind::StringLit => Ok(ExprNode::StringLit(tokens.next())),
         TokenKind::True | TokenKind::False => Ok(ExprNode::BooleanLit(tokens.next())),
-        _ => Err(CompileError::unexpected_token(
-            Vec::from(EXPR_SYNC_TOKEN),
-            tokens.next(),
-        )),
+        _ => Err(unexpected_token_for(&tokens.next(), "EXPRESSION")),
     }
 }
 

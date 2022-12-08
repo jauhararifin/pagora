@@ -1,13 +1,13 @@
 use crate::{
-    errors::{CompileError, MultiErrors},
+    errors::{missing_closing_quote, unexpected_char, CompileError, Result},
     tokens::{Position, Token, TokenKind},
 };
 use std::{iter::Peekable, rc::Rc, vec::IntoIter};
 
-pub fn scan(code: &str) -> Result<Vec<Token>, CompileError> {
+pub fn scan(code: &str) -> Result<Vec<Token>> {
     let mut scanner = Scanner::new(code);
     let mut result = vec![];
-    let mut errors = MultiErrors::new();
+    let mut errors = CompileError::new();
 
     loop {
         match scanner.next() {
@@ -141,14 +141,14 @@ impl Scanner {
         let position = tok.pos;
         let opening_quote = tok.ch;
         let mut value = String::from(tok.ch);
-        let mut errors = MultiErrors::new();
+        let mut errors = CompileError::new();
 
         let mut after_backslash = false;
         let mut is_closed = false;
 
         while let Some(c) = self.source_code.next() {
             if c.ch == '\n' {
-                errors.push(CompileError::unexpected_char(c.pos, c.ch));
+                errors.push(unexpected_char(c.pos, c.ch));
                 break;
             }
 
@@ -162,7 +162,7 @@ impl Scanner {
                     '"' => Ok('"'),
                     '\'' => Ok('\''),
                     '`' => Ok('`'),
-                    _ => Err(CompileError::unexpected_char(c.pos, c.ch)),
+                    _ => Err(unexpected_char(c.pos, c.ch)),
                 };
 
                 if let Ok(c) = next_char {
@@ -183,7 +183,7 @@ impl Scanner {
         }
 
         if !is_closed {
-            errors.push(CompileError::missing_closing_quote(position));
+            errors.push(missing_closing_quote(position));
         }
 
         if !errors.is_empty() {
@@ -332,7 +332,7 @@ impl Scanner {
 
     fn scan_unexpected_chars(&mut self) -> ScanResult {
         if let Some(char_pos) = self.source_code.next() {
-            ScanResult::Err(CompileError::unexpected_char(char_pos.pos, char_pos.ch))
+            ScanResult::Err(unexpected_char(char_pos.pos, char_pos.ch))
         } else {
             ScanResult::None
         }
