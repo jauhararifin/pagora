@@ -117,6 +117,7 @@ where
                 Ok(item) => items.push(item),
                 Err(err) => {
                     errors.push(err);
+                    tokens.skip();
                     tokens.skip_until(&sync_tokens);
                 }
             }

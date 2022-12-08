@@ -4,5 +4,9 @@
     "runner",
     "wasm",
     "app"
-  ]
+  ],
+  "scripts": {
+    "build": "npm run build -w lang && npm run build -w runner && npm run build -w app",
+    "deploy": "vercel build && vercel deploy --prebuilt && vercel --prod"
+  }
 }
