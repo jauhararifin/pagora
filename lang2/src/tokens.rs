@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{rc::Rc, fmt::Display};
+use std::{fmt::Display, rc::Rc};
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct Position {

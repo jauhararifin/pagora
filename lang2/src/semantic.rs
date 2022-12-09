@@ -5,6 +5,7 @@ use crate::tokens::Position;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Program {
+    pub types: Vec<Rc<Type>>,
     pub variables: Vec<Variable>,
     pub functions: Vec<Function>,
 }

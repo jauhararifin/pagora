@@ -1,4 +1,31 @@
 !Ok
+types:
+- name: int32
+  internal: !Int
+    bits: 32
+    signed: true
+- name: int64
+  internal: !Int
+    bits: 64
+    signed: true
+- name: uint32
+  internal: !Int
+    bits: 32
+    signed: false
+- name: uint64
+  internal: !Int
+    bits: 64
+    signed: false
+- name: float32
+  internal: !Float
+    bits: 32
+- name: float64
+  internal: !Float
+    bits: 64
+- name: bool
+  internal: Bool
+- name: string
+  internal: String
 variables: []
 functions:
 - name: main

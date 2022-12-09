@@ -32,11 +32,12 @@ pub fn analyze(root: RootNode) -> Result<Program> {
 
     let mut errors = CompileError::new();
 
-    for typ in builtin.types {
+    let types = builtin.types;
+    for typ in types.iter() {
         ctx.add_builtin_symbol(
             Rc::new(typ.name.as_ref().unwrap().clone()),
             SymbolKind::Type,
-            typ,
+            typ.clone(),
         );
     }
 
@@ -110,6 +111,7 @@ pub fn analyze(root: RootNode) -> Result<Program> {
         Err(errors)
     } else {
         Ok(Program {
+            types,
             variables,
             functions,
         })

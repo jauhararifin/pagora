@@ -1,4 +1,4 @@
-use lang2::{test::TranslateResult, translate::translate};
+use lang2::{test::TranslateResult, translate};
 use std::{
     fs::{read_dir, read_to_string, File},
     path::Path,
