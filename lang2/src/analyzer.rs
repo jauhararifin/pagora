@@ -56,6 +56,8 @@ pub fn analyze(root: RootNode) -> Result<Program> {
     let mut var_nodes = vec![];
     for item in root.items {
         match item {
+            Item::Struct(_) => todo!(),
+            Item::Tuple(_) => todo!(),
             Item::Func(func_node) => func_nodes.push(func_node),
             Item::Var(var_node) => var_nodes.push(var_node),
         }
@@ -711,6 +713,7 @@ fn analyze_grouped_expr(
 
 fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>> {
     Ok(match type_node {
+        TypeExprNode::Tuple(_) => todo!(),
         TypeExprNode::Ident(type_name) => {
             if let Some(symbol) = ctx.get_type(&type_name.value) {
                 if let SymbolKind::Type = symbol.kind {

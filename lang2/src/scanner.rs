@@ -3,7 +3,7 @@ use crate::{
     tokens::{Position, Token, TokenKind},
 };
 use lazy_static::lazy_static;
-use std::{iter::Peekable, rc::Rc, vec::IntoIter};
+use std::{collections::HashMap, iter::Peekable, rc::Rc, vec::IntoIter};
 
 pub fn scan(code: &str) -> Result<Vec<Token>> {
     let mut source_code = load_chars(code).into_iter().peekable();
@@ -88,6 +88,26 @@ fn skip_whitespace(source_code: &mut SourceCode) {
     }
 }
 
+lazy_static! {
+    static ref KEYWORDS: HashMap<&'static str, TokenKind> = HashMap::from([
+        ("var", TokenKind::Var),
+        ("as", TokenKind::As),
+        ("func", TokenKind::Function),
+        ("native", TokenKind::Native),
+        ("true", TokenKind::True),
+        ("false", TokenKind::False),
+        ("if", TokenKind::If),
+        ("else", TokenKind::Else),
+        ("while", TokenKind::While),
+        ("continue", TokenKind::Continue),
+        ("break", TokenKind::Break),
+        ("return", TokenKind::Return),
+        ("pub", TokenKind::Pub),
+        ("struct", TokenKind::Struct),
+        ("tuple", TokenKind::Tuple),
+    ]);
+}
+
 fn scan_word(source_code: &mut SourceCode) -> ScanResult {
     let initial = |c: &CharPos| c.ch.is_alphabetic() || c.ch == '_';
     let Some(tok) = source_code.next_if(initial) else {
@@ -102,22 +122,10 @@ fn scan_word(source_code: &mut SourceCode) -> ScanResult {
         value.push(c.ch);
     }
 
-    let kind = match value.as_str() {
-        "var" => TokenKind::Var,
-        "as" => TokenKind::As,
-        "func" => TokenKind::Function,
-        "native" => TokenKind::Native,
-        "type" => TokenKind::Type,
-        "true" => TokenKind::True,
-        "false" => TokenKind::False,
-        "if" => TokenKind::If,
-        "else" => TokenKind::Else,
-        "while" => TokenKind::While,
-        "continue" => TokenKind::Continue,
-        "break" => TokenKind::Break,
-        "return" => TokenKind::Return,
-        _ => TokenKind::Ident,
-    };
+    let kind = KEYWORDS
+        .get(value.as_str())
+        .map(|kind| kind.clone())
+        .unwrap_or(TokenKind::Ident);
 
     ScanResult::Token(Token {
         kind,

@@ -7,22 +7,46 @@ pub struct RootNode {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Item {
+    Struct(StructNode),
+    Tuple(TupleNode),
     Var(VarNode),
     Func(FuncNode),
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct VarNode {
-    pub var: Token,
+pub struct StructNode {
+    pub pub_tok: Option<Token>,
+    pub struct_tok: Token,
     pub name: Token,
-    pub colon: Option<Token>,
-    pub typ: Option<TypeExprNode>,
-    pub assign: Option<Token>,
-    pub value: Option<ExprNode>,
+    pub open_block: Token,
+    pub fields: Vec<StructFieldNode>,
+    pub close_block: Token,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct StructFieldNode {
+    pub name: Token,
+    pub colon: Token,
+    pub typ: TypeExprNode,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TupleNode {
+    pub pub_tok: Option<Token>,
+    pub tuple: Token,
+    pub name: Token,
+    pub typ: TupleTypeNode,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct VarNode {
+    pub pub_tok: Option<Token>,
+    pub stmt: VarStmtNode,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct FuncNode {
+    pub pub_tok: Option<Token>,
     pub head: FuncHeadNode,
     pub body: Option<BlockStmtNode>,
 }
@@ -48,8 +72,16 @@ pub struct ParameterNode {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum TypeExprNode {
+    Tuple(TupleTypeNode),
     Ident(Token),
     Array(ArrayTypeNode),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TupleTypeNode {
+    pub open_brac: Token,
+    pub fields: Vec<TypeExprNode>,
+    pub close_brac: Token,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -128,7 +160,7 @@ pub struct GroupedExprNode {
 #[derive(Debug, PartialEq, Eq)]
 pub enum StmtNode {
     Block(BlockStmtNode),
-    Var(VarNode),
+    Var(VarStmtNode),
     Return(ReturnStmtNode),
     Keyword(Token),
     If(IfStmtNode),
@@ -138,10 +170,20 @@ pub enum StmtNode {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct AssignStmtNode {
-    pub receiver: ExprNode,
-    pub assign: Token,
-    pub value: ExprNode,
+pub struct BlockStmtNode {
+    pub open_block: Token,
+    pub statements: Vec<StmtNode>,
+    pub close_block: Token,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct VarStmtNode {
+    pub var: Token,
+    pub name: Token,
+    pub colon: Option<Token>,
+    pub typ: Option<TypeExprNode>,
+    pub assign: Option<Token>,
+    pub value: Option<ExprNode>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -181,8 +223,8 @@ pub struct WhileStmtNode {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct BlockStmtNode {
-    pub open_block: Token,
-    pub statements: Vec<StmtNode>,
-    pub close_block: Token,
+pub struct AssignStmtNode {
+    pub receiver: ExprNode,
+    pub assign: Token,
+    pub value: ExprNode,
 }

@@ -122,6 +122,7 @@ impl Type {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TypeInternal {
+    Pointer(PointerType),
     Tuple(TupleType),
     Int(IntType),
     Float(FloatType),
@@ -134,6 +135,7 @@ pub enum TypeInternal {
 impl Display for TypeInternal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
+            Self::Pointer(t) => t.fmt(f),
             Self::Tuple(t) => t.fmt(f),
             Self::Int(t) => t.fmt(f),
             Self::Float(t) => t.fmt(f),
@@ -141,6 +143,22 @@ impl Display for TypeInternal {
             Self::String => write!(f, "string"),
             Self::Array(t) => t.fmt(f),
             Self::Function(t) => t.fmt(f),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum PointerType {
+    Named(Rc<String>), // pointer to named type
+    Anonymous(Rc<TypeInternal>),
+}
+
+impl Display for PointerType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "*")?;
+        match self {
+            Self::Named(name) => write!(f, "{}", &name),
+            Self::Anonymous(typ) => typ.fmt(f),
         }
     }
 }

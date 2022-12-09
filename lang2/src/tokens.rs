@@ -35,8 +35,9 @@ pub enum TokenKind {
     Arrow,
     Semicolon,
     Dot,
-    Type,
-    This,
+    Pub,
+    Struct,
+    Tuple,
 
     OpenBlock,
     CloseBlock,
