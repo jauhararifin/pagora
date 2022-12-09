@@ -275,6 +275,10 @@ fn parse_parameter(tokens: &mut TokenStream) -> Result<ParameterNode> {
 }
 
 fn parse_type_expr(tokens: &mut TokenStream) -> Result<TypeExprNode> {
+    if tokens.kind() == TokenKind::Mul {
+        return Ok(TypeExprNode::Pointer(Box::new(parse_type_expr(tokens)?)));
+    }
+
     if tokens.kind() == TokenKind::OpenBrac {
         return Ok(TypeExprNode::Tuple(parse_tuple_type_expr(tokens)?));
     }

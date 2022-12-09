@@ -2,7 +2,8 @@ use crate::{
     ast::{
         ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
         CastExprNode, ExprNode, FuncNode, GroupedExprNode, IfStmtNode, IndexExprNode, Item,
-        ReturnStmtNode, RootNode, StmtNode, TypeExprNode, UnaryExprNode, VarNode, WhileStmtNode,
+        ReturnStmtNode, RootNode, StmtNode, TypeExprNode, UnaryExprNode, VarNode, VarStmtNode,
+        WhileStmtNode,
     },
     builtin::{get_builtin, BOOL_TYPE, FLOAT32_TYPE, INT32_TYPE, STRING_TYPE},
     errors::{
@@ -121,24 +122,7 @@ pub fn analyze(root: RootNode) -> Result<Program> {
 }
 
 fn analyze_variable(ctx: &mut Context, var_node: &VarNode) -> Result<Variable> {
-    let name = var_node.name.value.clone();
-
-    let value = if let Some(ref expr_node) = var_node.value {
-        Some(analyze_expr(ctx, expr_node, None)?)
-    } else {
-        None
-    };
-
-    let typ = if let Some(ref type_node) = var_node.typ {
-        analyze_type(ctx, type_node)?
-    } else if let Some(ref value) = value {
-        value.result_type.clone()
-    } else {
-        unreachable!("a variable should has type or value");
-    };
-
-    ctx.add_user_symbol(&var_node.name, SymbolKind::Variable, typ.clone());
-    Ok(Variable { name, typ, value })
+    analyze_var_stmt(ctx, &var_node.stmt)
 }
 
 fn analyze_function(
@@ -190,7 +174,7 @@ fn analyze_function(
 fn analyze_statement(ctx: &mut Context, stmt: &StmtNode) -> Result<Statement> {
     Ok(match stmt {
         StmtNode::Block(stmt) => Statement::Block(analyze_block_statement(ctx, stmt, vec![])?),
-        StmtNode::Var(stmt) => Statement::Var(analyze_variable(ctx, stmt)?),
+        StmtNode::Var(stmt) => Statement::Var(analyze_var_stmt(ctx, stmt)?),
         StmtNode::Return(stmt) => Statement::Return(analyze_return_statement(ctx, stmt)?),
         StmtNode::Keyword(stmt) => analyze_keyword_statement(stmt),
         StmtNode::If(stmt) => Statement::If(analyze_if_statement(ctx, &stmt)?),
@@ -229,6 +213,27 @@ fn analyze_block_statement(
     } else {
         Ok(BlockStatement { statements })
     }
+}
+
+fn analyze_var_stmt(ctx: &mut Context, stmt: &VarStmtNode) -> Result<Variable> {
+    let name = stmt.name.value.clone();
+
+    let value = if let Some(ref expr_node) = stmt.value {
+        Some(analyze_expr(ctx, expr_node, None)?)
+    } else {
+        None
+    };
+
+    let typ = if let Some(ref type_node) = stmt.typ {
+        analyze_type(ctx, type_node)?
+    } else if let Some(ref value) = value {
+        value.result_type.clone()
+    } else {
+        unreachable!("a variable should has type or value");
+    };
+
+    ctx.add_user_symbol(&stmt.name, SymbolKind::Variable, typ.clone());
+    Ok(Variable { name, typ, value })
 }
 
 fn analyze_return_statement(ctx: &mut Context, stmt: &ReturnStmtNode) -> Result<Option<Expr>> {
@@ -726,6 +731,7 @@ fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>>
             name: None,
             internal: TypeInternal::Array(analyze_array_type(ctx, array_type)?),
         }),
+        TypeExprNode::Pointer(_) => todo!(),
     })
 }
 

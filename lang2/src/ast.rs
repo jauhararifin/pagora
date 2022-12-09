@@ -75,6 +75,7 @@ pub enum TypeExprNode {
     Tuple(TupleTypeNode),
     Ident(Token),
     Array(ArrayTypeNode),
+    Pointer(Box<TypeExprNode>),
 }
 
 #[derive(Debug, PartialEq, Eq)]
