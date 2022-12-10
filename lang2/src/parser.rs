@@ -2,9 +2,10 @@ use crate::{
     ast::{
         ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
         CastExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode, FuncNode,
-        GroupedExprNode, IfStmtNode, IndexExprNode, Item, ParameterNode, PointerTypeNode,
-        ReturnStmtNode, RootNode, SelectionExprNode, StmtNode, StructFieldNode, StructNode,
-        TupleNode, TupleTypeNode, TypeExprNode, UnaryExprNode, VarNode, VarStmtNode, WhileStmtNode,
+        GroupedExprNode, IfStmtNode, ImportNode, IndexExprNode, Item, ParameterNode,
+        PointerTypeNode, ReturnStmtNode, RootNode, SelectionExprNode, StmtNode, StructFieldNode,
+        StructNode, TupleNode, TupleTypeNode, TypeExprNode, UnaryExprNode, VarNode, VarStmtNode,
+        WhileStmtNode,
     },
     errors::{
         cannot_use_expr_as_stmt, unexpected_token, unexpected_token_for, CompileError, Result,
@@ -88,6 +89,7 @@ impl TokenStream {
 }
 
 const ITEM_SYNC_TOKENS: &'static [TokenKind] = &[
+    TokenKind::Import,
     TokenKind::Pub,
     TokenKind::Var,
     TokenKind::Function,
@@ -148,6 +150,10 @@ where
 }
 
 fn parse_item(tokens: &mut TokenStream) -> Result<Item> {
+    if tokens.kind() == TokenKind::Import {
+        return Ok(Item::Import(parse_import(tokens)?));
+    }
+
     let pub_tok = tokens.take_if(TokenKind::Pub);
     Ok(match tokens.kind() {
         TokenKind::Struct => Item::Struct(parse_struct(tokens, pub_tok)?),
@@ -158,6 +164,17 @@ fn parse_item(tokens: &mut TokenStream) -> Result<Item> {
             &tokens.token(),
             &[TokenKind::Var, TokenKind::Function],
         ))?,
+    })
+}
+
+fn parse_import(tokens: &mut TokenStream) -> Result<ImportNode> {
+    let import = tokens.take(TokenKind::Import, None)?;
+    let name = tokens.take(TokenKind::Ident, None)?;
+    let package = tokens.take(TokenKind::StringLit, None)?;
+    Ok(ImportNode {
+        import,
+        name,
+        package,
     })
 }
 

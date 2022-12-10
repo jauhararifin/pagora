@@ -7,10 +7,18 @@ pub struct RootNode {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Item {
+    Import(ImportNode),
     Struct(StructNode),
     Tuple(TupleNode),
     Var(VarNode),
     Func(FuncNode),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ImportNode {
+    pub import: Token,
+    pub name: Token,
+    pub package: Token,
 }
 
 #[derive(Debug, PartialEq, Eq)]

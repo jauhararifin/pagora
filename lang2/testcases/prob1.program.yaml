@@ -1,0 +1,343 @@
+!Ok
+types:
+- name: int32
+  internal: !Int
+    bits: 32
+    signed: true
+- name: int64
+  internal: !Int
+    bits: 64
+    signed: true
+- name: uint32
+  internal: !Int
+    bits: 32
+    signed: false
+- name: uint64
+  internal: !Int
+    bits: 64
+    signed: false
+- name: float32
+  internal: !Float
+    bits: 32
+- name: float64
+  internal: !Float
+    bits: 64
+- name: bool
+  internal: Bool
+- name: string
+  internal: String
+variables: []
+functions:
+- name: main
+  typ:
+    parameters: []
+    return_type:
+      name: null
+      internal: !Tuple
+        items: []
+  param_names: []
+  body:
+    statements:
+    - !Var
+      name: sum
+      typ:
+        name: int64
+        internal: !Int
+          bits: 64
+          signed: true
+      value:
+        position:
+          line: 2
+          col: 20
+        is_assignable: false
+        result_type:
+          name: int32
+          internal: !Int
+            bits: 32
+            signed: true
+        kind: !Const
+          value: !IntConst 0
+    - !Var
+      name: i
+      typ:
+        name: int64
+        internal: !Int
+          bits: 64
+          signed: true
+      value:
+        position:
+          line: 3
+          col: 18
+        is_assignable: false
+        result_type:
+          name: int32
+          internal: !Int
+            bits: 32
+            signed: true
+        kind: !Const
+          value: !IntConst 1
+    - !While
+      condition:
+        position:
+          line: 4
+          col: 9
+        is_assignable: false
+        result_type:
+          name: bool
+          internal: Bool
+        kind: !Binary
+          a:
+            position:
+              line: 4
+              col: 9
+            is_assignable: true
+            result_type:
+              name: int64
+              internal: !Int
+                bits: 64
+                signed: true
+            kind: !Ident
+              name: i
+          op: LEq
+          b:
+            position:
+              line: 4
+              col: 14
+            is_assignable: false
+            result_type:
+              name: int64
+              internal: !Int
+                bits: 64
+                signed: true
+            kind: !Const
+              value: !IntConst 1000
+      body:
+        statements:
+        - !If
+          condition:
+            position:
+              line: 5
+              col: 8
+            is_assignable: false
+            result_type:
+              name: bool
+              internal: Bool
+            kind: !Binary
+              a:
+                position:
+                  line: 5
+                  col: 8
+                is_assignable: false
+                result_type:
+                  name: bool
+                  internal: Bool
+                kind: !Binary
+                  a:
+                    position:
+                      line: 5
+                      col: 8
+                    is_assignable: false
+                    result_type:
+                      name: int64
+                      internal: !Int
+                        bits: 64
+                        signed: true
+                    kind: !Binary
+                      a:
+                        position:
+                          line: 5
+                          col: 8
+                        is_assignable: true
+                        result_type:
+                          name: int64
+                          internal: !Int
+                            bits: 64
+                            signed: true
+                        kind: !Ident
+                          name: i
+                      op: Mod
+                      b:
+                        position:
+                          line: 5
+                          col: 12
+                        is_assignable: false
+                        result_type:
+                          name: int64
+                          internal: !Int
+                            bits: 64
+                            signed: true
+                        kind: !Const
+                          value: !IntConst 3
+                  op: Eq
+                  b:
+                    position:
+                      line: 5
+                      col: 17
+                    is_assignable: false
+                    result_type:
+                      name: int64
+                      internal: !Int
+                        bits: 64
+                        signed: true
+                    kind: !Const
+                      value: !IntConst 0
+              op: Or
+              b:
+                position:
+                  line: 5
+                  col: 22
+                is_assignable: false
+                result_type:
+                  name: bool
+                  internal: Bool
+                kind: !Binary
+                  a:
+                    position:
+                      line: 5
+                      col: 22
+                    is_assignable: false
+                    result_type:
+                      name: int64
+                      internal: !Int
+                        bits: 64
+                        signed: true
+                    kind: !Binary
+                      a:
+                        position:
+                          line: 5
+                          col: 22
+                        is_assignable: true
+                        result_type:
+                          name: int64
+                          internal: !Int
+                            bits: 64
+                            signed: true
+                        kind: !Ident
+                          name: i
+                      op: Mod
+                      b:
+                        position:
+                          line: 5
+                          col: 26
+                        is_assignable: false
+                        result_type:
+                          name: int64
+                          internal: !Int
+                            bits: 64
+                            signed: true
+                        kind: !Const
+                          value: !IntConst 5
+                  op: Eq
+                  b:
+                    position:
+                      line: 5
+                      col: 31
+                    is_assignable: false
+                    result_type:
+                      name: int64
+                      internal: !Int
+                        bits: 64
+                        signed: true
+                    kind: !Const
+                      value: !IntConst 0
+          body: !Block
+            statements:
+            - !Assign
+              receiver:
+                position:
+                  line: 6
+                  col: 7
+                is_assignable: true
+                result_type:
+                  name: int64
+                  internal: !Int
+                    bits: 64
+                    signed: true
+                kind: !Ident
+                  name: sum
+              value:
+                position:
+                  line: 6
+                  col: 13
+                is_assignable: false
+                result_type:
+                  name: int64
+                  internal: !Int
+                    bits: 64
+                    signed: true
+                kind: !Binary
+                  a:
+                    position:
+                      line: 6
+                      col: 13
+                    is_assignable: true
+                    result_type:
+                      name: int64
+                      internal: !Int
+                        bits: 64
+                        signed: true
+                    kind: !Ident
+                      name: sum
+                  op: Add
+                  b:
+                    position:
+                      line: 6
+                      col: 19
+                    is_assignable: true
+                    result_type:
+                      name: int64
+                      internal: !Int
+                        bits: 64
+                        signed: true
+                    kind: !Ident
+                      name: i
+          else_stmt: null
+        - !Assign
+          receiver:
+            position:
+              line: 8
+              col: 5
+            is_assignable: true
+            result_type:
+              name: int64
+              internal: !Int
+                bits: 64
+                signed: true
+            kind: !Ident
+              name: i
+          value:
+            position:
+              line: 8
+              col: 9
+            is_assignable: false
+            result_type:
+              name: int64
+              internal: !Int
+                bits: 64
+                signed: true
+            kind: !Binary
+              a:
+                position:
+                  line: 8
+                  col: 9
+                is_assignable: true
+                result_type:
+                  name: int64
+                  internal: !Int
+                    bits: 64
+                    signed: true
+                kind: !Ident
+                  name: i
+              op: Add
+              b:
+                position:
+                  line: 8
+                  col: 13
+                is_assignable: false
+                result_type:
+                  name: int64
+                  internal: !Int
+                    bits: 64
+                    signed: true
+                kind: !Const
+                  value: !IntConst 1
