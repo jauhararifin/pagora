@@ -167,3 +167,17 @@ pub fn invalid_tuple_index(position: &Position, tuple: &TupleType, idx: i64) -> 
         ),
     )
 }
+
+pub fn cannot_use_expr_as_stmt(position: &Position) -> CompileError {
+    CompileError::from_message(
+        Some(position.clone()),
+        String::from("Expected a statement, but found an expr"),
+    )
+}
+
+pub fn cannot_use_anonymous_pointer(position: &Position) -> CompileError {
+    CompileError::from_message(
+        Some(position.clone()),
+        String::from("Pointer can only be applied on named type"),
+    )
+}

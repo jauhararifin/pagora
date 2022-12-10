@@ -7,9 +7,10 @@ use crate::{
     },
     builtin::{get_builtin, BOOL_TYPE, FLOAT32_TYPE, INT32_TYPE, STRING_TYPE},
     errors::{
-        cannot_cast, cannot_infer_type, cannot_redeclare_symbool, invalid_binary_op,
-        invalid_number_of_argument, invalid_tuple_index, invalid_unary_op, no_such_field, not_a,
-        not_assignable, type_mismatch, undefined_symbol, undefined_type, CompileError, Result,
+        cannot_cast, cannot_infer_type, cannot_redeclare_symbool, cannot_use_anonymous_pointer,
+        invalid_binary_op, invalid_number_of_argument, invalid_tuple_index, invalid_unary_op,
+        no_such_field, not_a, not_assignable, type_mismatch, undefined_symbol, undefined_type,
+        CompileError, Result,
     },
     semantic::{
         ArrayType, AssignStatement, BinaryExpr, BinaryOp, BlockStatement, CallExpr, CallStatement,
@@ -867,7 +868,7 @@ fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>>
                     })),
                 })
             } else {
-                todo!("pointer to unnamed type is not supported yet");
+                return Err(cannot_use_anonymous_pointer(&type_node.asterisk.position));
             }
         }
     })

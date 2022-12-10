@@ -6,7 +6,9 @@ use crate::{
         ReturnStmtNode, RootNode, SelectionExprNode, StmtNode, StructFieldNode, StructNode,
         TupleNode, TupleTypeNode, TypeExprNode, UnaryExprNode, VarNode, VarStmtNode, WhileStmtNode,
     },
-    errors::{unexpected_token, unexpected_token_for, CompileError, Result},
+    errors::{
+        cannot_use_expr_as_stmt, unexpected_token, unexpected_token_for, CompileError, Result,
+    },
     tokens::{Position, Token, TokenKind},
 };
 use std::{iter::Peekable, rc::Rc, vec::IntoIter};
@@ -467,6 +469,7 @@ fn parse_while_stmt(tokens: &mut TokenStream) -> Result<WhileStmtNode> {
 }
 
 fn parse_assign_or_call_stmt(tokens: &mut TokenStream) -> Result<StmtNode> {
+    let pos = tokens.token().position;
     let expr = parse_expr(tokens)?;
 
     match tokens.kind() {
@@ -484,11 +487,7 @@ fn parse_assign_or_call_stmt(tokens: &mut TokenStream) -> Result<StmtNode> {
             tokens.take(TokenKind::Semicolon, None)?;
             match expr {
                 ExprNode::Call(call_expr) => Ok(StmtNode::Call(call_expr)),
-                // TODO: fix this, should be: expected statement found expr.
-                _ => Err(unexpected_token(
-                    &tokens.next(),
-                    &[TokenKind::Assign, TokenKind::Semicolon],
-                )),
+                _ => Err(cannot_use_expr_as_stmt(&pos)),
             }
         }
         _ => Err(unexpected_token(
