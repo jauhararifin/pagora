@@ -81,7 +81,12 @@ impl TokenStream {
     }
 }
 
-const ITEM_SYNC_TOKENS: &'static [TokenKind] = &[TokenKind::Var, TokenKind::Function];
+const ITEM_SYNC_TOKENS: &'static [TokenKind] = &[
+    TokenKind::Var,
+    TokenKind::Function,
+    TokenKind::Struct,
+    TokenKind::Tuple,
+];
 
 fn parse_root(tokens: &mut TokenStream) -> Result<RootNode> {
     let items = parse_multiple(
@@ -118,10 +123,13 @@ where
                 Ok(item) => items.push(item),
                 Err(err) => {
                     errors.push(err);
-                    tokens.skip();
                     tokens.skip_until(&sync_tokens);
                 }
             }
+        } else {
+            errors.push(unexpected_token(&tokens.token(), sync_tokens));
+            tokens.skip();
+            tokens.skip_until(&sync_tokens);
         }
     }
 
@@ -361,19 +369,20 @@ fn parse_var_stmt(tokens: &mut TokenStream) -> Result<VarStmtNode> {
     let name = tokens.take(TokenKind::Ident, None)?;
 
     let colon = tokens.take_if(TokenKind::Colon);
-    let typ = if colon.is_none() {
-        None
+    let (typ, assign, value) = if colon.is_none() {
+        let assign = tokens.take(TokenKind::Assign, None)?;
+        let value = parse_expr(tokens)?;
+        (None, Some(assign), Some(value))
     } else {
-        Some(parse_type_expr(tokens)?)
+        let typ = parse_type_expr(tokens)?;
+        let assign = tokens.take_if(TokenKind::Assign);
+        let value = if assign.is_none() {
+            None
+        } else {
+            Some(parse_expr(tokens)?)
+        };
+        (Some(typ), assign, value)
     };
-
-    let assign = tokens.take_if(TokenKind::Assign);
-    let value = if assign.is_none() {
-        None
-    } else {
-        Some(parse_expr(tokens)?)
-    };
-
     tokens.take(TokenKind::Semicolon, None)?;
 
     Ok(VarStmtNode {

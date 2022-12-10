@@ -1,0 +1,104 @@
+!Ok
+types:
+- name: int32
+  internal: !Int
+    bits: 32
+    signed: true
+- name: int64
+  internal: !Int
+    bits: 64
+    signed: true
+- name: uint32
+  internal: !Int
+    bits: 32
+    signed: false
+- name: uint64
+  internal: !Int
+    bits: 64
+    signed: false
+- name: float32
+  internal: !Float
+    bits: 32
+- name: float64
+  internal: !Float
+    bits: 64
+- name: bool
+  internal: Bool
+- name: string
+  internal: String
+- name: Struct1
+  internal: !Struct
+    fields:
+    - name: A
+      typ:
+        name: int32
+        internal: !Int
+          bits: 32
+          signed: true
+variables: []
+functions:
+- name: main
+  typ:
+    parameters: []
+    return_type:
+      name: null
+      internal: !Tuple
+        items: []
+  param_names: []
+  body:
+    statements:
+    - !Var
+      name: a
+      typ:
+        name: Struct1
+        internal: !Struct
+          fields:
+          - name: A
+            typ:
+              name: int32
+              internal: !Int
+                bits: 32
+                signed: true
+      value: null
+    - !Assign
+      receiver:
+        position:
+          line: 7
+          col: 3
+        is_assignable: true
+        result_type:
+          name: int32
+          internal: !Int
+            bits: 32
+            signed: true
+        kind: !StructSelection
+          value:
+            position:
+              line: 7
+              col: 3
+            is_assignable: true
+            result_type:
+              name: Struct1
+              internal: !Struct
+                fields:
+                - name: A
+                  typ:
+                    name: int32
+                    internal: !Int
+                      bits: 32
+                      signed: true
+            kind: !Ident
+              name: a
+          selection: A
+      value:
+        position:
+          line: 7
+          col: 9
+        is_assignable: false
+        result_type:
+          name: int32
+          internal: !Int
+            bits: 32
+            signed: true
+        kind: !Const
+          value: !IntConst 2

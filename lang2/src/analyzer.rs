@@ -35,7 +35,7 @@ pub fn analyze(root: RootNode) -> Result<Program> {
     let mut errors = CompileError::new();
 
     // load all builtin types
-    let types = builtin.types;
+    let mut types = builtin.types;
     for typ in types.iter() {
         ctx.add_builtin_symbol(
             Rc::new(typ.name.as_ref().unwrap().clone()),
@@ -71,6 +71,7 @@ pub fn analyze(root: RootNode) -> Result<Program> {
                     name: Some(struct_node.name.value.as_ref().clone()),
                     internal: TypeInternal::Struct(typ),
                 });
+                types.push(typ.clone());
                 ctx.add_user_symbol(&struct_node.name, SymbolKind::Type, typ);
             }
             Item::Tuple(tuple_node) => {
@@ -85,6 +86,7 @@ pub fn analyze(root: RootNode) -> Result<Program> {
                     name: Some(tuple_node.name.value.as_ref().clone()),
                     internal: TypeInternal::Tuple(typ),
                 });
+                types.push(typ.clone());
                 ctx.add_user_symbol(&tuple_node.name, SymbolKind::Type, typ);
             }
             _ => continue,
