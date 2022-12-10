@@ -122,7 +122,7 @@ impl Type {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TypeInternal {
-    Pointer(PointerType),
+    Pointer(Rc<Type>),
     Tuple(TupleType),
     Struct(StructType),
     Int(IntType),
@@ -131,6 +131,7 @@ pub enum TypeInternal {
     String,
     Array(ArrayType),
     Function(FunctionType),
+    Unknown, // this is for dealing with pointer. A pointer doesn't care its inner type.
 }
 
 impl Display for TypeInternal {
@@ -145,22 +146,7 @@ impl Display for TypeInternal {
             Self::String => write!(f, "string"),
             Self::Array(t) => t.fmt(f),
             Self::Function(t) => t.fmt(f),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum PointerType {
-    Named(Rc<String>), // pointer to named type
-    Anonymous(Box<TypeInternal>),
-}
-
-impl Display for PointerType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "*")?;
-        match self {
-            Self::Named(name) => write!(f, "{}", &name),
-            Self::Anonymous(typ) => typ.fmt(f),
+            Self::Unknown => write!(f, "unknown"),
         }
     }
 }
@@ -324,6 +310,7 @@ pub enum UnaryOp {
     Sub,
     Add,
     Not,
+    Addr,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]

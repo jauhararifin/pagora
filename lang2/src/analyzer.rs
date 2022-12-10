@@ -14,8 +14,8 @@ use crate::{
     semantic::{
         ArrayType, AssignStatement, BinaryExpr, BinaryOp, BlockStatement, CallExpr, CallStatement,
         CastExpr, Const, ConstExpr, Expr, ExprKind, Function, FunctionType, IdentExpr, IfStatement,
-        IndexExpr, PointerType, Program, Statement, StructField, StructType, TupleType, Type,
-        TypeInternal, UnaryExpr, UnaryOp, Variable, WhileStatement,
+        IndexExpr, Program, Statement, StructField, StructType, TupleType, Type, TypeInternal,
+        UnaryExpr, UnaryOp, Variable, WhileStatement,
     },
     tokens::{Token, TokenKind},
 };
@@ -628,6 +628,7 @@ lazy_static! {
         (TokenKind::Sub, UnaryOp::Sub),
         (TokenKind::Not, UnaryOp::Not),
         (TokenKind::BitNot, UnaryOp::BitNot),
+        (TokenKind::BitAnd, UnaryOp::Addr),
     ]);
 }
 
@@ -648,6 +649,11 @@ fn analyze_unary_expr(
         value.result_type.clone()
     } else if BOOL_UNARY_OP.contains(op) && value.result_type.is_bool() {
         value.result_type.clone()
+    } else if let UnaryOp::Addr = op {
+        Rc::new(Type {
+            name: None,
+            internal: TypeInternal::Pointer(value.result_type.clone()),
+        })
     } else {
         return Err(invalid_unary_op(&expr_node.op, &value));
     };
@@ -793,7 +799,10 @@ fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>>
                 }
                 Rc::new(Type {
                     name: None,
-                    internal: TypeInternal::Pointer(PointerType::Named(type_name.value.clone())),
+                    internal: TypeInternal::Pointer(Rc::new(Type {
+                        name: Some(type_name.value.as_ref().clone()),
+                        internal: TypeInternal::Unknown,
+                    })),
                 })
             } else {
                 analyze_type(ctx, type_node)?

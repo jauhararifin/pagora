@@ -571,6 +571,7 @@ const UNARY_OP: &'static [TokenKind] = &[
     TokenKind::Sub,
     TokenKind::Add,
     TokenKind::Not,
+    TokenKind::BitAnd,
 ];
 
 fn parse_unary_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
