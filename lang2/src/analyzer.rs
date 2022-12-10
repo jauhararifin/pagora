@@ -2,19 +2,19 @@ use crate::{
     ast::{
         ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
         CastExprNode, ExprNode, FuncNode, GroupedExprNode, IfStmtNode, IndexExprNode, Item,
-        ReturnStmtNode, RootNode, StmtNode, TypeExprNode, UnaryExprNode, VarNode, VarStmtNode,
-        WhileStmtNode,
+        ReturnStmtNode, RootNode, StmtNode, TupleTypeNode, TypeExprNode, UnaryExprNode, VarNode,
+        VarStmtNode, WhileStmtNode,
     },
     builtin::{get_builtin, BOOL_TYPE, FLOAT32_TYPE, INT32_TYPE, STRING_TYPE},
     errors::{
-        cannot_cast, cannot_infer_type, invalid_binary_op, invalid_number_of_argument,
-        invalid_unary_op, not_a_function, not_an_array, not_assignable, type_mismatch,
-        undefined_symbol, undefined_type, CompileError, Result,
+        cannot_cast, cannot_infer_type, cannot_redeclare_symbool, invalid_binary_op,
+        invalid_number_of_argument, invalid_unary_op, not_a_function, not_an_array, not_assignable,
+        type_mismatch, undefined_symbol, undefined_type, CompileError, Result,
     },
     semantic::{
         ArrayType, AssignStatement, BinaryExpr, BinaryOp, BlockStatement, CallExpr, CallStatement,
         CastExpr, Const, ConstExpr, Expr, ExprKind, Function, FunctionType, IdentExpr, IfStatement,
-        IndexExpr, Program, Statement, Type, TypeInternal, UnaryExpr, UnaryOp, Variable,
+        IndexExpr, Program, Statement, TupleType, Type, TypeInternal, UnaryExpr, UnaryOp, Variable,
         WhileStatement,
     },
     tokens::{Token, TokenKind},
@@ -40,6 +40,17 @@ pub fn analyze(root: RootNode) -> Result<Program> {
             SymbolKind::Type,
             typ.clone(),
         );
+    }
+
+    for item in root.items.iter() {
+        let name = match item {
+            Item::Struct(node) => &node.name,
+            Item::Tuple(node) => &node.name,
+            _ => continue,
+        };
+        if let Err(err) = ctx.add_typename(name) {
+            errors.push(err);
+        }
     }
 
     for func in builtin.functions {
@@ -718,7 +729,10 @@ fn analyze_grouped_expr(
 
 fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>> {
     Ok(match type_node {
-        TypeExprNode::Tuple(_) => todo!(),
+        TypeExprNode::Tuple(tuple_type) => Rc::new(Type {
+            name: None,
+            internal: TypeInternal::Tuple(analyze_tuple_type(ctx, tuple_type)?),
+        }),
         TypeExprNode::Ident(type_name) => {
             if let Some(symbol) = ctx.get_type(&type_name.value) {
                 if let SymbolKind::Type = symbol.kind {
@@ -733,6 +747,15 @@ fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>>
         }),
         TypeExprNode::Pointer(_) => todo!(),
     })
+}
+
+fn analyze_tuple_type(ctx: &mut Context, tuple_node: &TupleTypeNode) -> Result<TupleType> {
+    let mut items = vec![];
+    for item_node in tuple_node.fields.iter() {
+        items.push(analyze_type(ctx, item_node)?);
+    }
+
+    Ok(TupleType { items })
 }
 
 // TODO: consider using lazy static instead of calling method like this.
@@ -782,6 +805,7 @@ enum SymbolKind {
 }
 
 struct Context {
+    type_names: HashMap<Rc<String>, Token>,
     symbol_table: HashMap<Rc<String>, Vec<Symbol>>,
     scopes: Vec<HashSet<Rc<String>>>,
     loop_depth: i32,
@@ -791,11 +815,21 @@ struct Context {
 impl Context {
     fn new() -> Self {
         Self {
+            type_names: HashMap::new(),
             symbol_table: HashMap::new(),
             scopes: vec![],
             loop_depth: 0,
             current_return_type: Type::tuple(vec![]),
         }
+    }
+
+    fn add_typename(&mut self, name: &Token) -> Result<()> {
+        let entry = self.type_names.get(name.value.as_ref());
+        if let Some(declared_at) = entry {
+            return Err(cannot_redeclare_symbool(name, declared_at));
+        }
+        self.type_names.insert(name.value.clone(), name.clone());
+        Ok(())
     }
 
     fn get_type(&self, name: &String) -> Option<&Symbol> {

@@ -150,7 +150,7 @@ impl Display for TypeInternal {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum PointerType {
     Named(Rc<String>), // pointer to named type
-    Anonymous(Rc<TypeInternal>),
+    Anonymous(Box<TypeInternal>),
 }
 
 impl Display for PointerType {

@@ -62,6 +62,16 @@ pub fn unexpected_token_for(token: &Token, expected: &str) -> CompileError {
     )
 }
 
+pub fn cannot_redeclare_symbool(token: &Token, declared_at: &Token) -> CompileError {
+    CompileError::from_message(
+        Some(token.position.clone()),
+        format!(
+            "Symbol {} is alredy declared at {}",
+            token.value, &declared_at.position
+        ),
+    )
+}
+
 pub fn not_assignable(expr: &Expr) -> CompileError {
     CompileError::from_message(
         Some(expr.position.clone()),
