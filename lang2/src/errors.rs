@@ -3,6 +3,7 @@ use crate::{
     tokens::{Position, Token, TokenKind},
 };
 use serde::{Deserialize, Serialize};
+use std::io;
 
 pub type Result<T> = std::result::Result<T, CompileError>;
 
@@ -34,6 +35,12 @@ impl CompileError {
 
     pub fn is_empty(&self) -> bool {
         self.messages.is_empty()
+    }
+}
+
+impl From<io::Error> for CompileError {
+    fn from(err: io::Error) -> Self {
+        CompileError::from_message(None, err.to_string())
     }
 }
 

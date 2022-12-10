@@ -169,11 +169,11 @@ fn parse_item(tokens: &mut TokenStream) -> Result<Item> {
 
 fn parse_import(tokens: &mut TokenStream) -> Result<ImportNode> {
     let import = tokens.take(TokenKind::Import, None)?;
-    let name = tokens.take(TokenKind::Ident, None)?;
+    let alias = tokens.take(TokenKind::Ident, None)?;
     let package = tokens.take(TokenKind::StringLit, None)?;
     Ok(ImportNode {
         import,
-        name,
+        alias,
         package,
     })
 }

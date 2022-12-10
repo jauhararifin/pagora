@@ -2,17 +2,17 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     errors::{CompileError, Result},
-    semantic::Program,
+    semantic::Unit,
 };
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum TranslateResult {
-    Ok(Program),
+    Ok(Unit),
     Err(CompileError),
 }
 
-impl From<Result<Program>> for TranslateResult {
-    fn from(result: Result<Program>) -> Self {
+impl From<Result<Unit>> for TranslateResult {
+    fn from(result: Result<Unit>) -> Self {
         match result {
             Ok(program) => Self::Ok(program),
             Err(errs) => Self::Err(errs),

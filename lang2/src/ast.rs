@@ -17,7 +17,7 @@ pub enum Item {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ImportNode {
     pub import: Token,
-    pub name: Token,
+    pub alias: Token,
     pub package: Token,
 }
 

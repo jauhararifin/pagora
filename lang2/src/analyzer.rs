@@ -15,7 +15,7 @@ use crate::{
     semantic::{
         ArrayType, AssignStatement, BinaryExpr, BinaryOp, BlockStatement, CallExpr, CallStatement,
         CastExpr, Const, ConstExpr, Expr, ExprKind, Function, FunctionType, IdentExpr, IfStatement,
-        IndexExpr, Program, Statement, StructField, StructSelectionExpr, StructType,
+        IndexExpr, Unit, Statement, StructField, StructSelectionExpr, StructType,
         TupleSelectionExpr, TupleType, Type, TypeInternal, UnaryExpr, UnaryOp, Variable,
         WhileStatement,
     },
@@ -28,7 +28,7 @@ use std::{
     rc::Rc,
 };
 
-pub fn analyze(root: RootNode) -> Result<Program> {
+pub fn analyze(root: RootNode) -> Result<Unit> {
     let builtin = get_builtin();
     let mut ctx = Context::new();
     ctx.add_scope();
@@ -171,7 +171,7 @@ pub fn analyze(root: RootNode) -> Result<Program> {
     if !errors.is_empty() {
         Err(errors)
     } else {
-        Ok(Program {
+        Ok(Unit {
             types,
             variables,
             functions,
