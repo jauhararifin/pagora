@@ -124,6 +124,7 @@ impl Type {
 pub enum TypeInternal {
     Pointer(PointerType),
     Tuple(TupleType),
+    Struct(StructType),
     Int(IntType),
     Float(FloatType),
     Bool,
@@ -137,6 +138,7 @@ impl Display for TypeInternal {
         match &self {
             Self::Pointer(t) => t.fmt(f),
             Self::Tuple(t) => t.fmt(f),
+            Self::Struct(t) => t.fmt(f),
             Self::Int(t) => t.fmt(f),
             Self::Float(t) => t.fmt(f),
             Self::Bool => write!(f, "bool"),
@@ -175,6 +177,24 @@ impl Display for TupleType {
             f.field(item.as_ref());
         }
         f.finish()
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct StructType {
+    pub fields: Vec<StructField>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct StructField {
+    pub name: Rc<String>,
+    pub typ: Rc<Type>,
+}
+
+impl Display for StructType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: write proper struct representation
+        write!(f, "struct")
     }
 }
 

@@ -2,8 +2,8 @@ use crate::{
     ast::{
         ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
         CastExprNode, ExprNode, FuncNode, GroupedExprNode, IfStmtNode, IndexExprNode, Item,
-        ReturnStmtNode, RootNode, StmtNode, TupleTypeNode, TypeExprNode, UnaryExprNode, VarNode,
-        VarStmtNode, WhileStmtNode,
+        ReturnStmtNode, RootNode, StmtNode, StructNode, TupleTypeNode, TypeExprNode, UnaryExprNode,
+        VarNode, VarStmtNode, WhileStmtNode,
     },
     builtin::{get_builtin, BOOL_TYPE, FLOAT32_TYPE, INT32_TYPE, STRING_TYPE},
     errors::{
@@ -14,8 +14,8 @@ use crate::{
     semantic::{
         ArrayType, AssignStatement, BinaryExpr, BinaryOp, BlockStatement, CallExpr, CallStatement,
         CastExpr, Const, ConstExpr, Expr, ExprKind, Function, FunctionType, IdentExpr, IfStatement,
-        IndexExpr, Program, Statement, TupleType, Type, TypeInternal, UnaryExpr, UnaryOp, Variable,
-        WhileStatement,
+        IndexExpr, PointerType, Program, Statement, StructField, StructType, TupleType, Type,
+        TypeInternal, UnaryExpr, UnaryOp, Variable, WhileStatement,
     },
     tokens::{Token, TokenKind},
 };
@@ -33,6 +33,7 @@ pub fn analyze(root: RootNode) -> Result<Program> {
 
     let mut errors = CompileError::new();
 
+    // load all builtin types
     let types = builtin.types;
     for typ in types.iter() {
         ctx.add_builtin_symbol(
@@ -42,6 +43,7 @@ pub fn analyze(root: RootNode) -> Result<Program> {
         );
     }
 
+    // load all user typenames
     for item in root.items.iter() {
         let name = match item {
             Item::Struct(node) => &node.name,
@@ -53,6 +55,42 @@ pub fn analyze(root: RootNode) -> Result<Program> {
         }
     }
 
+    // load all user types
+    for item in root.items.iter() {
+        match item {
+            Item::Struct(struct_node) => {
+                let typ = match analyze_struct_type(&mut ctx, struct_node) {
+                    Ok(t) => t,
+                    Err(err) => {
+                        errors.push(err);
+                        continue;
+                    }
+                };
+                let typ = Rc::new(Type {
+                    name: Some(struct_node.name.value.as_ref().clone()),
+                    internal: TypeInternal::Struct(typ),
+                });
+                ctx.add_user_symbol(&struct_node.name, SymbolKind::Type, typ);
+            }
+            Item::Tuple(tuple_node) => {
+                let typ = match analyze_tuple_type(&mut ctx, &tuple_node.typ) {
+                    Ok(t) => t,
+                    Err(err) => {
+                        errors.push(err);
+                        continue;
+                    }
+                };
+                let typ = Rc::new(Type {
+                    name: Some(tuple_node.name.value.as_ref().clone()),
+                    internal: TypeInternal::Tuple(typ),
+                });
+                ctx.add_user_symbol(&tuple_node.name, SymbolKind::Type, typ);
+            }
+            _ => continue,
+        }
+    }
+
+    // load all builtin functions
     for func in builtin.functions {
         ctx.add_builtin_symbol(
             func.name,
@@ -64,17 +102,18 @@ pub fn analyze(root: RootNode) -> Result<Program> {
         );
     }
 
+    // extract func and var nodes
     let mut func_nodes = vec![];
     let mut var_nodes = vec![];
     for item in root.items {
         match item {
-            Item::Struct(_) => todo!(),
-            Item::Tuple(_) => todo!(),
             Item::Func(func_node) => func_nodes.push(func_node),
             Item::Var(var_node) => var_nodes.push(var_node),
+            _ => continue,
         }
     }
 
+    // analyze user function types
     for func_node in func_nodes.iter() {
         match analyze_func_type(&mut ctx, func_node) {
             Ok(func_type) => {
@@ -93,6 +132,7 @@ pub fn analyze(root: RootNode) -> Result<Program> {
         }
     }
 
+    // analyze user variables
     let mut variables = Vec::<Variable>::new();
     for var_node in var_nodes.iter() {
         match analyze_variable(&mut ctx, var_node) {
@@ -101,6 +141,7 @@ pub fn analyze(root: RootNode) -> Result<Program> {
         }
     }
 
+    // analyze user functions
     let mut functions = Vec::<Function>::new();
     for func_node in func_nodes {
         let Some(func_type) = &ctx.get_val(func_node.head.name.value.as_ref()) else {
@@ -745,7 +786,19 @@ fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>>
             name: None,
             internal: TypeInternal::Array(analyze_array_type(ctx, array_type)?),
         }),
-        TypeExprNode::Pointer(_) => todo!(),
+        TypeExprNode::Pointer(type_node) => {
+            if let TypeExprNode::Ident(type_name) = type_node.as_ref() {
+                if !ctx.has_typename(&type_name.value) {
+                    return Err(undefined_type(type_name));
+                }
+                Rc::new(Type {
+                    name: None,
+                    internal: TypeInternal::Pointer(PointerType::Named(type_name.value.clone())),
+                })
+            } else {
+                analyze_type(ctx, type_node)?
+            }
+        }
     })
 }
 
@@ -787,6 +840,17 @@ fn analyze_func_type(ctx: &mut Context, func_node: &FuncNode) -> Result<Function
     })
 }
 
+fn analyze_struct_type(ctx: &mut Context, struct_node: &StructNode) -> Result<StructType> {
+    let mut fields = vec![];
+    for field in struct_node.fields.iter() {
+        let name = field.name.value.clone();
+        let typ = analyze_type(ctx, &field.typ)?;
+        fields.push(StructField { name, typ });
+    }
+
+    Ok(StructType { fields })
+}
+
 fn is_type_equal(a: &Type, b: &Type) -> bool {
     a == b
 }
@@ -821,6 +885,10 @@ impl Context {
             loop_depth: 0,
             current_return_type: Type::tuple(vec![]),
         }
+    }
+
+    fn has_typename(&self, name: &Rc<String>) -> bool {
+        self.type_names.contains_key(name)
     }
 
     fn add_typename(&mut self, name: &Token) -> Result<()> {
