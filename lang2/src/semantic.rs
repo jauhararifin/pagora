@@ -269,6 +269,8 @@ pub enum ExprKind {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
     Index(IndexExpr),
+    StructSelection(StructSelectionExpr),
+    TupleSelection(TupleSelectionExpr),
     Cast(CastExpr),
     Call(CallExpr),
     Ident(IdentExpr),
@@ -323,6 +325,18 @@ pub struct UnaryExpr {
 pub struct IndexExpr {
     pub target: Box<Expr>,
     pub index: Box<Expr>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct StructSelectionExpr {
+    pub value: Box<Expr>,
+    pub selection: Rc<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct TupleSelectionExpr {
+    pub value: Box<Expr>,
+    pub selection: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]

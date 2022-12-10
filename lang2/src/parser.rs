@@ -3,8 +3,8 @@ use crate::{
         ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
         CastExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode, FuncNode,
         GroupedExprNode, IfStmtNode, IndexExprNode, Item, ParameterNode, ReturnStmtNode, RootNode,
-        StmtNode, StructFieldNode, StructNode, TupleNode, TupleTypeNode, TypeExprNode,
-        UnaryExprNode, VarNode, VarStmtNode, WhileStmtNode,
+        SelectionExprNode, StmtNode, StructFieldNode, StructNode, TupleNode, TupleTypeNode,
+        TypeExprNode, UnaryExprNode, VarNode, VarStmtNode, WhileStmtNode,
     },
     errors::{unexpected_token, unexpected_token_for, CompileError, Result},
     tokens::{Position, Token, TokenKind},
@@ -588,7 +588,7 @@ fn parse_unary_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
 }
 
 fn parse_call_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
-    let target = parse_primary_expr(tokens)?;
+    let target = parse_selection_expr(tokens)?;
 
     if tokens.kind() != TokenKind::OpenBrac {
         return Ok(target);
@@ -608,6 +608,28 @@ fn parse_call_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
         arguments,
         close_brac,
     }))
+}
+
+fn parse_selection_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
+    let value = parse_primary_expr(tokens)?;
+    let Some(dot) = tokens.take_if(TokenKind::Dot) else {
+        return Ok(value)
+    };
+    let selection = tokens.take_if(TokenKind::IntegerLit);
+    if let Some(selection) = selection {
+        return Ok(ExprNode::Selection(SelectionExprNode {
+            value: Box::new(value),
+            dot,
+            selection,
+        }));
+    }
+
+    let selection = tokens.take(TokenKind::Ident, None)?;
+    return Ok(ExprNode::Selection(SelectionExprNode {
+        value: Box::new(value),
+        dot,
+        selection,
+    }));
 }
 
 fn parse_primary_expr(tokens: &mut TokenStream) -> Result<ExprNode> {

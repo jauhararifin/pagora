@@ -105,6 +105,7 @@ pub enum ExprNode {
     Call(CallExprNode),
     Index(IndexExprNode),
     Cast(CastExprNode),
+    Selection(SelectionExprNode),
     Grouped(GroupedExprNode),
 }
 
@@ -149,6 +150,13 @@ pub struct CastExprNode {
     pub value: Box<ExprNode>,
     pub as_tok: Token,
     pub target: Box<TypeExprNode>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct SelectionExprNode {
+    pub value: Box<ExprNode>,
+    pub dot: Token,
+    pub selection: Token,
 }
 
 #[derive(Debug, PartialEq, Eq)]

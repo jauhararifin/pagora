@@ -1,5 +1,5 @@
 use crate::{
-    semantic::{Expr, Type},
+    semantic::{Expr, TupleType, Type},
     tokens::{Position, Token, TokenKind},
 };
 use serde::{Deserialize, Serialize};
@@ -124,17 +124,10 @@ pub fn invalid_unary_op(op: &Token, value: &Expr) -> CompileError {
     )
 }
 
-pub fn not_a_function(value: &Expr) -> CompileError {
+pub fn not_a(expected: &str, value: &Expr) -> CompileError {
     CompileError::from_message(
         Some(value.position.clone()),
-        format!("Expected function but found {}", value.result_type),
-    )
-}
-
-pub fn not_an_array(value: &Expr) -> CompileError {
-    CompileError::from_message(
-        Some(value.position.clone()),
-        format!("Expected array but found {}", value.result_type),
+        format!("Expected {}, but found {}", expected, value.result_type),
     )
 }
 
@@ -153,5 +146,23 @@ pub fn cannot_cast(value: &Expr, into: &Type) -> CompileError {
     CompileError::from_message(
         Some(value.position.clone()),
         format!("Cannot cast expression into {}", into),
+    )
+}
+
+pub fn no_such_field(position: &Position, field_name: &str) -> CompileError {
+    CompileError::from_message(
+        Some(position.clone()),
+        format!("There is no field {} in the struct", field_name),
+    )
+}
+
+pub fn invalid_tuple_index(position: &Position, tuple: &TupleType, idx: i64) -> CompileError {
+    CompileError::from_message(
+        Some(position.clone()),
+        format!(
+            "The tuple only have {} elements, but found index {}",
+            tuple.items.len(),
+            idx
+        ),
     )
 }

@@ -2,20 +2,21 @@ use crate::{
     ast::{
         ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
         CastExprNode, ExprNode, FuncNode, GroupedExprNode, IfStmtNode, IndexExprNode, Item,
-        ReturnStmtNode, RootNode, StmtNode, StructNode, TupleTypeNode, TypeExprNode, UnaryExprNode,
-        VarNode, VarStmtNode, WhileStmtNode,
+        ReturnStmtNode, RootNode, SelectionExprNode, StmtNode, StructNode, TupleTypeNode,
+        TypeExprNode, UnaryExprNode, VarNode, VarStmtNode, WhileStmtNode,
     },
     builtin::{get_builtin, BOOL_TYPE, FLOAT32_TYPE, INT32_TYPE, STRING_TYPE},
     errors::{
         cannot_cast, cannot_infer_type, cannot_redeclare_symbool, invalid_binary_op,
-        invalid_number_of_argument, invalid_unary_op, not_a_function, not_an_array, not_assignable,
-        type_mismatch, undefined_symbol, undefined_type, CompileError, Result,
+        invalid_number_of_argument, invalid_tuple_index, invalid_unary_op, no_such_field, not_a,
+        not_assignable, type_mismatch, undefined_symbol, undefined_type, CompileError, Result,
     },
     semantic::{
         ArrayType, AssignStatement, BinaryExpr, BinaryOp, BlockStatement, CallExpr, CallStatement,
         CastExpr, Const, ConstExpr, Expr, ExprKind, Function, FunctionType, IdentExpr, IfStatement,
-        IndexExpr, Program, Statement, StructField, StructType, TupleType, Type, TypeInternal,
-        UnaryExpr, UnaryOp, Variable, WhileStatement,
+        IndexExpr, Program, Statement, StructField, StructSelectionExpr, StructType,
+        TupleSelectionExpr, TupleType, Type, TypeInternal, UnaryExpr, UnaryOp, Variable,
+        WhileStatement,
     },
     tokens::{Token, TokenKind},
 };
@@ -392,6 +393,7 @@ fn analyze_expr(
         ExprNode::Call(expr) => analyze_call_expr(ctx, expr, type_hint)?,
         ExprNode::Index(expr) => analyze_index_expr(ctx, expr, type_hint)?,
         ExprNode::Cast(expr) => analyze_cast_expr(ctx, expr, type_hint)?,
+        ExprNode::Selection(expr) => analyze_selection_expr(ctx, expr, type_hint)?,
         ExprNode::Grouped(expr) => analyze_grouped_expr(ctx, expr, type_hint)?,
     };
     Ok(value)
@@ -678,7 +680,7 @@ fn analyze_call_expr(
 
     let func_type = match callee.result_type.internal {
         TypeInternal::Function(ref func_type) => func_type,
-        _ => return Err(not_a_function(&callee)),
+        _ => return Err(not_a("function", &callee)),
     };
 
     if func_type.parameters.len() != expr_node.arguments.len() {
@@ -718,7 +720,7 @@ fn analyze_index_expr(
 
     let array_type = match target.result_type.internal {
         TypeInternal::Array(ref array_type) => array_type,
-        _ => return Err(not_an_array(&target)),
+        _ => return Err(not_a("array", &target)),
     };
 
     let int_type = get_builtin_type(ctx, INT32_TYPE);
@@ -764,6 +766,62 @@ fn analyze_cast_expr(
             target: target.clone(),
         }),
     })
+}
+
+fn analyze_selection_expr(
+    ctx: &mut Context,
+    expr_node: &SelectionExprNode,
+    _: Option<Rc<Type>>,
+) -> Result<Expr> {
+    let value = analyze_expr(ctx, &expr_node.value, None)?;
+    let selection = &expr_node.selection;
+
+    if selection.kind == TokenKind::Ident {
+        // TODO: in the future, we should support more pattern (like package.symbol and method).
+        let struct_type = match value.result_type.internal {
+            TypeInternal::Struct(ref t) => t,
+            _ => return Err(not_a("struct", &value)),
+        };
+        let field_name = selection.value.clone();
+        let Some(field) = struct_type.fields.iter().find(|field| field.name == field_name) else {
+            return Err(no_such_field(&value.position, field_name.as_str()));
+        };
+
+        Ok(Expr {
+            position: value.position.clone(),
+            is_assignable: true,
+            result_type: field.typ.clone(),
+            kind: ExprKind::StructSelection(StructSelectionExpr {
+                value: Box::new(value),
+                selection: field_name,
+            }),
+        })
+    } else if selection.kind == TokenKind::IntegerLit {
+        let idx: i64 = selection
+            .value
+            .parse()
+            .expect("cannot parse integer literal");
+        let tuple_type = match value.result_type.internal {
+            TypeInternal::Tuple(ref t) => t,
+            _ => return Err(not_a("tuple", &value)),
+        };
+        if idx < 0 || idx as usize >= tuple_type.items.len() {
+            return Err(invalid_tuple_index(&value.position, tuple_type, idx));
+        }
+        let item = &tuple_type.items[idx as usize];
+
+        Ok(Expr {
+            position: value.position.clone(),
+            is_assignable: true,
+            result_type: item.clone(),
+            kind: ExprKind::TupleSelection(TupleSelectionExpr {
+                value: Box::new(value),
+                selection: idx as usize,
+            }),
+        })
+    } else {
+        unreachable!("invalid selection type: {:?}", selection.kind);
+    }
 }
 
 fn analyze_grouped_expr(
