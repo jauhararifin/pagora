@@ -18,7 +18,7 @@ use crate::{
         TupleSelectionExpr, TupleType, Type, TypeInternal, UnaryExpr, UnaryOp, Variable,
         WhileStatement,
     },
-    tokens::{Token, TokenKind},
+    tokens::{Position, Token, TokenKind},
 };
 use lazy_static::lazy_static;
 use std::{
@@ -37,6 +37,8 @@ pub fn analyze(root: RootNode) -> Result<Program> {
     // load all builtin types
     let mut types = builtin.types;
     for typ in types.iter() {
+        let name = typ.name.as_ref().unwrap().clone();
+        ctx.add_builtin_typename(&Rc::new(name));
         ctx.add_builtin_symbol(
             Rc::new(typ.name.as_ref().unwrap().clone()),
             SymbolKind::Type,
@@ -853,7 +855,7 @@ fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>>
             internal: TypeInternal::Array(analyze_array_type(ctx, array_type)?),
         }),
         TypeExprNode::Pointer(type_node) => {
-            if let TypeExprNode::Ident(type_name) = type_node.as_ref() {
+            if let TypeExprNode::Ident(type_name) = type_node.pointee.as_ref() {
                 if !ctx.has_typename(&type_name.value) {
                     return Err(undefined_type(type_name));
                 }
@@ -865,7 +867,7 @@ fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>>
                     })),
                 })
             } else {
-                analyze_type(ctx, type_node)?
+                todo!("pointer to unnamed type is not supported yet");
             }
         }
     })
@@ -938,7 +940,7 @@ enum SymbolKind {
 }
 
 struct Context {
-    type_names: HashMap<Rc<String>, Token>,
+    type_names: HashMap<Rc<String>, Option<Position>>,
     symbol_table: HashMap<Rc<String>, Vec<Symbol>>,
     scopes: Vec<HashSet<Rc<String>>>,
     loop_depth: i32,
@@ -960,12 +962,17 @@ impl Context {
         self.type_names.contains_key(name)
     }
 
+    fn add_builtin_typename(&mut self, name: &Rc<String>) {
+        self.type_names.insert(name.clone(), None);
+    }
+
     fn add_typename(&mut self, name: &Token) -> Result<()> {
         let entry = self.type_names.get(name.value.as_ref());
         if let Some(declared_at) = entry {
             return Err(cannot_redeclare_symbool(name, declared_at));
         }
-        self.type_names.insert(name.value.clone(), name.clone());
+        self.type_names
+            .insert(name.value.clone(), Some(name.position.clone()));
         Ok(())
     }
 

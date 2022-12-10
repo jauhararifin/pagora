@@ -73,8 +73,8 @@ fn next(source_code: &mut SourceCode) -> ScanResult {
     scan_word(source_code)
         .or_else(|| scan_string_lit(source_code))
         .or_else(|| scan_number_lit(source_code))
-        .or_else(|| scan_symbol(source_code))
         .or_else(|| scan_comment(source_code))
+        .or_else(|| scan_symbol(source_code))
         .or_else(|| scan_unexpected_chars(source_code))
 }
 

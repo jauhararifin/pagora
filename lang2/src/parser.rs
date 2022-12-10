@@ -2,9 +2,9 @@ use crate::{
     ast::{
         ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
         CastExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode, FuncNode,
-        GroupedExprNode, IfStmtNode, IndexExprNode, Item, ParameterNode, ReturnStmtNode, RootNode,
-        SelectionExprNode, StmtNode, StructFieldNode, StructNode, TupleNode, TupleTypeNode,
-        TypeExprNode, UnaryExprNode, VarNode, VarStmtNode, WhileStmtNode,
+        GroupedExprNode, IfStmtNode, IndexExprNode, Item, ParameterNode, PointerTypeNode,
+        ReturnStmtNode, RootNode, SelectionExprNode, StmtNode, StructFieldNode, StructNode,
+        TupleNode, TupleTypeNode, TypeExprNode, UnaryExprNode, VarNode, VarStmtNode, WhileStmtNode,
     },
     errors::{unexpected_token, unexpected_token_for, CompileError, Result},
     tokens::{Position, Token, TokenKind},
@@ -22,6 +22,10 @@ struct TokenStream {
 
 impl TokenStream {
     fn new(tokens: Vec<Token>) -> Self {
+        let tokens: Vec<Token> = tokens
+            .into_iter()
+            .filter(|tok| tok.kind != TokenKind::Comment)
+            .collect();
         Self {
             tokens: tokens.into_iter().peekable(),
         }
@@ -82,6 +86,7 @@ impl TokenStream {
 }
 
 const ITEM_SYNC_TOKENS: &'static [TokenKind] = &[
+    TokenKind::Pub,
     TokenKind::Var,
     TokenKind::Function,
     TokenKind::Struct,
@@ -283,8 +288,11 @@ fn parse_parameter(tokens: &mut TokenStream) -> Result<ParameterNode> {
 }
 
 fn parse_type_expr(tokens: &mut TokenStream) -> Result<TypeExprNode> {
-    if tokens.kind() == TokenKind::Mul {
-        return Ok(TypeExprNode::Pointer(Box::new(parse_type_expr(tokens)?)));
+    if let Some(asterisk) = tokens.take_if(TokenKind::Mul) {
+        return Ok(TypeExprNode::Pointer(PointerTypeNode {
+            asterisk,
+            pointee: Box::new(parse_type_expr(tokens)?),
+        }));
     }
 
     if tokens.kind() == TokenKind::OpenBrac {

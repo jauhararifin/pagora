@@ -75,7 +75,7 @@ pub enum TypeExprNode {
     Tuple(TupleTypeNode),
     Ident(Token),
     Array(ArrayTypeNode),
-    Pointer(Box<TypeExprNode>),
+    Pointer(PointerTypeNode),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -90,6 +90,12 @@ pub struct ArrayTypeNode {
     pub open_square: Token,
     pub close_square: Token,
     pub element_type: Box<TypeExprNode>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct PointerTypeNode {
+    pub asterisk: Token,
+    pub pointee: Box<TypeExprNode>,
 }
 
 #[derive(Debug, PartialEq, Eq)]

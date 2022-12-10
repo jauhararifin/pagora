@@ -35,6 +35,32 @@ types:
         internal: !Int
           bits: 32
           signed: true
+- name: Struct2
+  internal: !Struct
+    fields:
+    - name: B
+      typ:
+        name: Struct1
+        internal: !Struct
+          fields:
+          - name: A
+            typ:
+              name: int32
+              internal: !Int
+                bits: 32
+                signed: true
+    - name: C
+      typ:
+        name: null
+        internal: !Pointer
+          name: Struct1
+          internal: Unknown
+    - name: D
+      typ:
+        name: null
+        internal: !Pointer
+          name: int32
+          internal: Unknown
 variables: []
 functions:
 - name: main
@@ -63,7 +89,7 @@ functions:
     - !Assign
       receiver:
         position:
-          line: 7
+          line: 13
           col: 3
         is_assignable: true
         result_type:
@@ -74,7 +100,7 @@ functions:
         kind: !StructSelection
           value:
             position:
-              line: 7
+              line: 13
               col: 3
             is_assignable: true
             result_type:
@@ -92,7 +118,7 @@ functions:
           selection: A
       value:
         position:
-          line: 7
+          line: 13
           col: 9
         is_assignable: false
         result_type:
@@ -102,3 +128,86 @@ functions:
             signed: true
         kind: !Const
           value: !IntConst 2
+    - !Assign
+      receiver:
+        position:
+          line: 14
+          col: 3
+        is_assignable: true
+        result_type:
+          name: int32
+          internal: !Int
+            bits: 32
+            signed: true
+        kind: !StructSelection
+          value:
+            position:
+              line: 14
+              col: 3
+            is_assignable: true
+            result_type:
+              name: Struct1
+              internal: !Struct
+                fields:
+                - name: A
+                  typ:
+                    name: int32
+                    internal: !Int
+                      bits: 32
+                      signed: true
+            kind: !Ident
+              name: a
+          selection: A
+      value:
+        position:
+          line: 14
+          col: 9
+        is_assignable: false
+        result_type:
+          name: int32
+          internal: !Int
+            bits: 32
+            signed: true
+        kind: !Binary
+          a:
+            position:
+              line: 14
+              col: 9
+            is_assignable: true
+            result_type:
+              name: int32
+              internal: !Int
+                bits: 32
+                signed: true
+            kind: !StructSelection
+              value:
+                position:
+                  line: 14
+                  col: 9
+                is_assignable: true
+                result_type:
+                  name: Struct1
+                  internal: !Struct
+                    fields:
+                    - name: A
+                      typ:
+                        name: int32
+                        internal: !Int
+                          bits: 32
+                          signed: true
+                kind: !Ident
+                  name: a
+              selection: A
+          op: Add
+          b:
+            position:
+              line: 14
+              col: 15
+            is_assignable: false
+            result_type:
+              name: int32
+              internal: !Int
+                bits: 32
+                signed: true
+            kind: !Const
+              value: !IntConst 1

@@ -62,13 +62,14 @@ pub fn unexpected_token_for(token: &Token, expected: &str) -> CompileError {
     )
 }
 
-pub fn cannot_redeclare_symbool(token: &Token, declared_at: &Token) -> CompileError {
+pub fn cannot_redeclare_symbool(token: &Token, declared_at: &Option<Position>) -> CompileError {
     CompileError::from_message(
         Some(token.position.clone()),
-        format!(
-            "Symbol {} is alredy declared at {}",
-            token.value, &declared_at.position
-        ),
+        if let Some(position) = declared_at {
+            format!("Symbol {} is alredy declared at {}", token.value, position,)
+        } else {
+            format!("Symbol {} is alredy declared as builtin", token.value,)
+        },
     )
 }
 
