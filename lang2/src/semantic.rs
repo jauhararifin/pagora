@@ -4,6 +4,12 @@ use std::{fmt::Display, rc::Rc};
 use crate::tokens::Position;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct Name {
+    package: Rc<String>,
+    id: Rc<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Unit {
     pub types: Vec<Rc<Type>>,
     pub variables: Vec<Variable>,

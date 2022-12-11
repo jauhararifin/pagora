@@ -3,8 +3,8 @@ use std::{collections::HashMap, fs, path::PathBuf};
 use crate::errors::{CompileError, Result};
 
 pub struct Package<T> {
-    path: String,
-    files: HashMap<String, T>,
+    pub path: String,
+    pub files: HashMap<String, T>,
 }
 
 pub fn load_package(package_path: &str) -> Result<Package<Box<PathBuf>>> {

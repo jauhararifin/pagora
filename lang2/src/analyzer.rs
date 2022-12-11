@@ -1,25 +1,22 @@
 use crate::{
     ast::{
-        ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
-        CastExprNode, ExprNode, FuncNode, GroupedExprNode, IfStmtNode, IndexExprNode, Item,
-        ReturnStmtNode, RootNode, SelectionExprNode, StmtNode, StructNode, TupleTypeNode,
-        TypeExprNode, UnaryExprNode, VarNode, VarStmtNode, WhileStmtNode,
+        ArrayLitNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode, CastExprNode,
+        ExprNode, FuncNode, GroupedExprNode, IfStmtNode, IndexExprNode, Item, ReturnStmtNode,
+        RootNode, SelectionExprNode, StmtNode, VarNode, VarStmtNode, WhileStmtNode, UnaryExprNode,
     },
-    builtin::{get_builtin, BOOL_TYPE, FLOAT32_TYPE, INT32_TYPE, STRING_TYPE},
     errors::{
-        cannot_cast, cannot_infer_type, cannot_redeclare_symbool, cannot_use_anonymous_pointer,
-        invalid_binary_op, invalid_number_of_argument, invalid_tuple_index, invalid_unary_op,
-        no_such_field, not_a, not_assignable, type_mismatch, undefined_symbol, undefined_type,
-        CompileError, Result,
+        cannot_cast, cannot_infer_type, invalid_binary_op, invalid_number_of_argument,
+        invalid_tuple_index, invalid_unary_op, no_such_field, not_a, not_assignable, type_mismatch,
+        undefined_symbol, CompileError, Result,
     },
     semantic::{
-        ArrayType, AssignStatement, BinaryExpr, BinaryOp, BlockStatement, CallExpr, CallStatement,
-        CastExpr, Const, ConstExpr, Expr, ExprKind, Function, FunctionType, IdentExpr, IfStatement,
-        IndexExpr, Unit, Statement, StructField, StructSelectionExpr, StructType,
-        TupleSelectionExpr, TupleType, Type, TypeInternal, UnaryExpr, UnaryOp, Variable,
-        WhileStatement,
+        AssignStatement, BinaryExpr, BinaryOp, BlockStatement, CallExpr, CallStatement, CastExpr,
+        Const, ConstExpr, Expr, ExprKind, Function, FunctionType, IdentExpr, IfStatement,
+        IndexExpr, Statement, StructSelectionExpr, TupleSelectionExpr, Type, TypeInternal,
+        UnaryExpr, UnaryOp, Unit, Variable, WhileStatement,
     },
-    tokens::{Position, Token, TokenKind},
+    tokens::{Token, TokenKind},
+    types::{analyze_func_type, analyze_type, is_type_equal, TypeSet},
 };
 use lazy_static::lazy_static;
 use std::{
@@ -28,85 +25,11 @@ use std::{
     rc::Rc,
 };
 
-pub fn analyze(root: RootNode) -> Result<Unit> {
-    let builtin = get_builtin();
-    let mut ctx = Context::new();
+pub fn analyze(type_set: &mut TypeSet, root: RootNode) -> Result<Unit> {
+    let mut ctx = Context::new(type_set);
     ctx.add_scope();
 
     let mut errors = CompileError::new();
-
-    // load all builtin types
-    let mut types = builtin.types;
-    for typ in types.iter() {
-        let name = typ.name.as_ref().unwrap().clone();
-        ctx.add_builtin_typename(&Rc::new(name));
-        ctx.add_builtin_symbol(
-            Rc::new(typ.name.as_ref().unwrap().clone()),
-            SymbolKind::Type,
-            typ.clone(),
-        );
-    }
-
-    // load all user typenames
-    for item in root.items.iter() {
-        let name = match item {
-            Item::Struct(node) => &node.name,
-            Item::Tuple(node) => &node.name,
-            _ => continue,
-        };
-        if let Err(err) = ctx.add_typename(name) {
-            errors.push(err);
-        }
-    }
-
-    // load all user types
-    for item in root.items.iter() {
-        match item {
-            Item::Struct(struct_node) => {
-                let typ = match analyze_struct_type(&mut ctx, struct_node) {
-                    Ok(t) => t,
-                    Err(err) => {
-                        errors.push(err);
-                        continue;
-                    }
-                };
-                let typ = Rc::new(Type {
-                    name: Some(struct_node.name.value.as_ref().clone()),
-                    internal: TypeInternal::Struct(typ),
-                });
-                types.push(typ.clone());
-                ctx.add_user_symbol(&struct_node.name, SymbolKind::Type, typ);
-            }
-            Item::Tuple(tuple_node) => {
-                let typ = match analyze_tuple_type(&mut ctx, &tuple_node.typ) {
-                    Ok(t) => t,
-                    Err(err) => {
-                        errors.push(err);
-                        continue;
-                    }
-                };
-                let typ = Rc::new(Type {
-                    name: Some(tuple_node.name.value.as_ref().clone()),
-                    internal: TypeInternal::Tuple(typ),
-                });
-                types.push(typ.clone());
-                ctx.add_user_symbol(&tuple_node.name, SymbolKind::Type, typ);
-            }
-            _ => continue,
-        }
-    }
-
-    // load all builtin functions
-    for func in builtin.functions {
-        ctx.add_builtin_symbol(
-            func.name,
-            SymbolKind::Variable,
-            Rc::new(Type {
-                name: None,
-                internal: TypeInternal::Function(func.typ),
-            }),
-        );
-    }
 
     // extract func and var nodes
     let mut func_nodes = vec![];
@@ -121,11 +44,10 @@ pub fn analyze(root: RootNode) -> Result<Unit> {
 
     // analyze user function types
     for func_node in func_nodes.iter() {
-        match analyze_func_type(&mut ctx, func_node) {
+        match analyze_func_type(ctx.type_set, func_node) {
             Ok(func_type) => {
-                ctx.add_user_symbol(
+                ctx.add_symbol(
                     &func_node.head.name,
-                    SymbolKind::Variable,
                     Rc::new(Type {
                         name: None,
                         internal: TypeInternal::Function(func_type),
@@ -150,7 +72,7 @@ pub fn analyze(root: RootNode) -> Result<Unit> {
     // analyze user functions
     let mut functions = Vec::<Function>::new();
     for func_node in func_nodes {
-        let Some(func_type) = &ctx.get_val(func_node.head.name.value.as_ref()) else {
+        let Some(func_type) = &ctx.get_symbol(func_node.head.name.value.as_ref()) else {
             continue;
         };
         let func_type = match func_type.typ.internal {
@@ -172,7 +94,7 @@ pub fn analyze(root: RootNode) -> Result<Unit> {
         Err(errors)
     } else {
         Ok(Unit {
-            types,
+            types: ctx.type_set.types(),
             variables,
             functions,
         })
@@ -211,8 +133,7 @@ fn analyze_function(
             func_node.head.parameters.iter(),
         )
         .map(|(param_type, param_node)| Symbol {
-            token: Some(param_node.name.clone()),
-            kind: SymbolKind::Variable,
+            token: param_node.name.clone(),
             typ: param_type.clone(),
         })
         .collect();
@@ -250,9 +171,7 @@ fn analyze_block_statement(
     ctx.add_scope();
 
     for symbol in additional_symbols {
-        if let Some(ref token) = symbol.token {
-            ctx.add_user_symbol(token, SymbolKind::Variable, symbol.typ);
-        }
+        ctx.add_symbol(&symbol.token, symbol.typ);
     }
 
     let mut errors = CompileError::new();
@@ -283,14 +202,14 @@ fn analyze_var_stmt(ctx: &mut Context, stmt: &VarStmtNode) -> Result<Variable> {
     };
 
     let typ = if let Some(ref type_node) = stmt.typ {
-        analyze_type(ctx, type_node)?
+        analyze_type(ctx.type_set, type_node)?
     } else if let Some(ref value) = value {
         value.result_type.clone()
     } else {
         unreachable!("a variable should has type or value");
     };
 
-    ctx.add_user_symbol(&stmt.name, SymbolKind::Variable, typ.clone());
+    ctx.add_symbol(&stmt.name, typ.clone());
     Ok(Variable { name, typ, value })
 }
 
@@ -325,11 +244,16 @@ fn analyze_if_statement(ctx: &mut Context, stmt: &IfStmtNode) -> Result<IfStatem
         None
     };
 
+    let condition_type = ctx.type_set.get_type(&"bool".into()).unwrap();
+
     for else_if in stmt.else_ifs.iter().rev() {
         let body = analyze_block_statement(ctx, &else_if.body, vec![])?;
-        let condition_type = get_builtin_type(ctx, BOOL_TYPE);
+        let condition = analyze_expr(ctx, &else_if.condition, Some(condition_type))?;
+        if !is_type_equal(&condition.result_type, &condition_type) {
+            return Err(type_mismatch(&condition_type, &condition));
+        }
         let else_if_stmt = IfStatement {
-            condition: analyze_expr(ctx, &else_if.condition, condition_type)?,
+            condition,
             body: Box::new(Statement::Block(body)),
             else_stmt: else_stmt.take(),
         };
@@ -337,17 +261,25 @@ fn analyze_if_statement(ctx: &mut Context, stmt: &IfStmtNode) -> Result<IfStatem
     }
 
     let body = analyze_block_statement(ctx, &stmt.body, vec![])?;
-    let condition_type = get_builtin_type(ctx, BOOL_TYPE);
+
+    let condition = analyze_expr(ctx, &stmt.condition, Some(condition_type))?;
+    if !is_type_equal(&condition.result_type, &condition_type) {
+        return Err(type_mismatch(&condition_type, &condition));
+    }
+
     Ok(IfStatement {
-        condition: analyze_expr(ctx, &stmt.condition, condition_type)?,
+        condition,
         body: Box::new(Statement::Block(body)),
         else_stmt,
     })
 }
 
 fn analyze_while_statement(ctx: &mut Context, stmt: &WhileStmtNode) -> Result<WhileStatement> {
-    let condition_type = get_builtin_type(ctx, BOOL_TYPE);
-    let condition = analyze_expr(ctx, &stmt.condition, condition_type)?;
+    let condition_type = ctx
+        .type_set
+        .get_type(&"bool".into())
+        .expect("bool type should be defined");
+    let condition = analyze_expr(ctx, &stmt.condition, Some(condition_type))?;
 
     ctx.add_loop();
     let body = analyze_block_statement(ctx, &stmt.body, vec![])?;
@@ -406,7 +338,9 @@ fn analyze_expr(
 
 fn analyze_ident_expr(ctx: &mut Context, token: &Token) -> Result<Expr> {
     let name = token.value.clone();
-    let symbol = ctx.get_val(name.as_ref()).ok_or(undefined_symbol(&token))?;
+    let symbol = ctx
+        .get_symbol(name.as_ref())
+        .ok_or(undefined_symbol(&token))?;
     Ok(Expr {
         position: token.position.clone(),
         is_assignable: true,
@@ -423,10 +357,10 @@ fn analyze_integer_lit_expr(
     let result_type = if let Some(hint) = type_hint {
         match &hint.internal {
             TypeInternal::Int(_) => hint,
-            _ => get_builtin_type(ctx, INT32_TYPE).unwrap(),
+            _ => ctx.type_set.get_type(&"int32".into()).unwrap(),
         }
     } else {
-        get_builtin_type(ctx, INT32_TYPE).unwrap()
+        ctx.type_set.get_type(&"int32".into()).unwrap()
     };
 
     let value = token.value.parse::<u64>().expect("invalid integer literal");
@@ -449,10 +383,10 @@ fn analyze_real_lit_expr(
     let result_type = if let Some(hint) = type_hint {
         match &hint.internal {
             TypeInternal::Float(_) => hint,
-            _ => get_builtin_type(ctx, FLOAT32_TYPE).unwrap(),
+            _ => ctx.type_set.get_type(&"float32".into()).unwrap(),
         }
     } else {
-        get_builtin_type(ctx, FLOAT32_TYPE).unwrap()
+        ctx.type_set.get_type(&"float32".into()).unwrap()
     };
 
     let value = token.value.parse::<f64>().expect("invalid float literal");
@@ -474,7 +408,10 @@ fn analyze_boolean_lit_expr(ctx: &mut Context, token: &Token, _: Option<Rc<Type>
         _ => unreachable!("boolean expression should be either true or false"),
     };
 
-    let result_type = get_builtin_type(ctx, BOOL_TYPE).expect("bool type should be defined");
+    let result_type = ctx
+        .type_set
+        .get_type(&"bool".into())
+        .expect("bool type should be defined");
 
     Ok(Expr {
         position: token.position.clone(),
@@ -493,7 +430,10 @@ fn analyze_string_lit_expr(ctx: &mut Context, token: &Token, _: Option<Rc<Type>>
         .trim_end_matches('"')
         .into();
 
-    let result_type = get_builtin_type(ctx, STRING_TYPE).expect("string type should be defined");
+    let result_type = ctx
+        .type_set
+        .get_type(&"string".into())
+        .expect("string type should be defined");
 
     Ok(Expr {
         position: token.position.clone(),
@@ -606,9 +546,13 @@ fn analyze_binary_expr(
     } else if REAL_BIN_OP.contains(op) && typ.is_float() {
         typ
     } else if COMP_BIN_OP.contains(op) && (typ.is_int() || typ.is_float() || typ.is_string()) {
-        get_builtin_type(ctx, BOOL_TYPE).unwrap()
+        ctx.type_set
+            .get_type(&"bool".into())
+            .expect("bool type should be defined")
     } else if BOOL_BIN_OP.contains(op) && typ.is_bool() {
-        get_builtin_type(ctx, BOOL_TYPE).unwrap()
+        ctx.type_set
+            .get_type(&"bool".into())
+            .expect("bool type should be defined")
     } else {
         return Err(invalid_binary_op(&a, &expr_node.op, &b));
     };
@@ -728,13 +672,13 @@ fn analyze_index_expr(
         _ => return Err(not_a("array", &target)),
     };
 
-    let int_type = get_builtin_type(ctx, INT32_TYPE);
-    let index = analyze_expr(ctx, &expr_node.index, int_type)?;
+    let int_type = ctx
+        .type_set
+        .get_type(&"int32".into())
+        .expect("int32 type should be defined");
+    let index = analyze_expr(ctx, &expr_node.index, Some(int_type))?;
     if !index.result_type.is_int() {
-        return Err(type_mismatch(
-            get_builtin_type(ctx, INT32_TYPE).unwrap().as_ref(),
-            &index,
-        ));
+        return Err(type_mismatch(&int_type, &index));
     }
 
     Ok(Expr {
@@ -754,7 +698,7 @@ fn analyze_cast_expr(
     _: Option<Rc<Type>>,
 ) -> Result<Expr> {
     let value = analyze_expr(ctx, &expr_node.value, None)?;
-    let target = analyze_type(ctx, &expr_node.target)?;
+    let target = analyze_type(ctx.type_set, &expr_node.target)?;
 
     let castable = (value.result_type.is_int() || value.result_type.is_float())
         && (target.is_int() || target.is_float());
@@ -837,121 +781,24 @@ fn analyze_grouped_expr(
     analyze_expr(ctx, &expr_node.value, type_hint)
 }
 
-fn analyze_type(ctx: &mut Context, type_node: &TypeExprNode) -> Result<Rc<Type>> {
-    Ok(match type_node {
-        TypeExprNode::Tuple(tuple_type) => Rc::new(Type {
-            name: None,
-            internal: TypeInternal::Tuple(analyze_tuple_type(ctx, tuple_type)?),
-        }),
-        TypeExprNode::Ident(type_name) => {
-            if let Some(symbol) = ctx.get_type(&type_name.value) {
-                if let SymbolKind::Type = symbol.kind {
-                    return Ok(symbol.typ.clone());
-                }
-            }
-            return Err(undefined_type(type_name));
-        }
-        TypeExprNode::Array(ref array_type) => Rc::new(Type {
-            name: None,
-            internal: TypeInternal::Array(analyze_array_type(ctx, array_type)?),
-        }),
-        TypeExprNode::Pointer(type_node) => {
-            if let TypeExprNode::Ident(type_name) = type_node.pointee.as_ref() {
-                if !ctx.has_typename(&type_name.value) {
-                    return Err(undefined_type(type_name));
-                }
-                Rc::new(Type {
-                    name: None,
-                    internal: TypeInternal::Pointer(Rc::new(Type {
-                        name: Some(type_name.value.as_ref().clone()),
-                        internal: TypeInternal::Unknown,
-                    })),
-                })
-            } else {
-                return Err(cannot_use_anonymous_pointer(&type_node.asterisk.position));
-            }
-        }
-    })
-}
-
-fn analyze_tuple_type(ctx: &mut Context, tuple_node: &TupleTypeNode) -> Result<TupleType> {
-    let mut items = vec![];
-    for item_node in tuple_node.fields.iter() {
-        items.push(analyze_type(ctx, item_node)?);
-    }
-
-    Ok(TupleType { items })
-}
-
-// TODO: consider using lazy static instead of calling method like this.
-fn get_builtin_type(ctx: &mut Context, name: &str) -> Option<Rc<Type>> {
-    ctx.get_type(&String::from(name))
-        .map(|symbol| symbol.typ.clone())
-}
-
-fn analyze_array_type(ctx: &mut Context, array_node: &ArrayTypeNode) -> Result<ArrayType> {
-    let element_type = analyze_type(ctx, &array_node.element_type)?;
-    Ok(ArrayType { element_type })
-}
-
-fn analyze_func_type(ctx: &mut Context, func_node: &FuncNode) -> Result<FunctionType> {
-    let mut parameters = vec![];
-    for param_node in func_node.head.parameters.iter() {
-        parameters.push(analyze_type(ctx, &param_node.typ)?);
-    }
-
-    let return_type = if let Some(ref return_type_node) = func_node.head.return_type {
-        analyze_type(ctx, return_type_node)?
-    } else {
-        Type::tuple(vec![])
-    };
-
-    Ok(FunctionType {
-        parameters,
-        return_type,
-    })
-}
-
-fn analyze_struct_type(ctx: &mut Context, struct_node: &StructNode) -> Result<StructType> {
-    let mut fields = vec![];
-    for field in struct_node.fields.iter() {
-        let name = field.name.value.clone();
-        let typ = analyze_type(ctx, &field.typ)?;
-        fields.push(StructField { name, typ });
-    }
-
-    Ok(StructType { fields })
-}
-
-fn is_type_equal(a: &Type, b: &Type) -> bool {
-    a == b
-}
-
 #[derive(Debug)]
 struct Symbol {
-    token: Option<Token>,
-    kind: SymbolKind,
+    token: Token,
     typ: Rc<Type>,
 }
 
-#[derive(Debug)]
-enum SymbolKind {
-    Variable,
-    Type,
-}
-
-struct Context {
-    type_names: HashMap<Rc<String>, Option<Position>>,
+struct Context<'a> {
+    type_set: &'a mut TypeSet,
     symbol_table: HashMap<Rc<String>, Vec<Symbol>>,
     scopes: Vec<HashSet<Rc<String>>>,
     loop_depth: i32,
     current_return_type: Rc<Type>,
 }
 
-impl Context {
-    fn new() -> Self {
+impl<'a> Context<'a> {
+    fn new(type_set: &'a mut TypeSet) -> Self {
         Self {
-            type_names: HashMap::new(),
+            type_set,
             symbol_table: HashMap::new(),
             scopes: vec![],
             loop_depth: 0,
@@ -959,45 +806,11 @@ impl Context {
         }
     }
 
-    fn has_typename(&self, name: &Rc<String>) -> bool {
-        self.type_names.contains_key(name)
+    fn get_symbol(&self, name: &String) -> Option<&Symbol> {
+        self.symbol_table.get(name)?.last()
     }
 
-    fn add_builtin_typename(&mut self, name: &Rc<String>) {
-        self.type_names.insert(name.clone(), None);
-    }
-
-    fn add_typename(&mut self, name: &Token) -> Result<()> {
-        let entry = self.type_names.get(name.value.as_ref());
-        if let Some(declared_at) = entry {
-            return Err(cannot_redeclare_symbool(name, declared_at));
-        }
-        self.type_names
-            .insert(name.value.clone(), Some(name.position.clone()));
-        Ok(())
-    }
-
-    fn get_type(&self, name: &String) -> Option<&Symbol> {
-        self.symbol_table
-            .get(name)?
-            .last()
-            .and_then(|sym| match sym.kind {
-                SymbolKind::Type => Some(sym),
-                _ => None,
-            })
-    }
-
-    fn get_val(&self, name: &String) -> Option<&Symbol> {
-        self.symbol_table
-            .get(name)?
-            .last()
-            .and_then(|sym| match sym.kind {
-                SymbolKind::Variable => Some(sym),
-                _ => None,
-            })
-    }
-
-    fn add_user_symbol(&mut self, token: &Token, kind: SymbolKind, typ: Rc<Type>) {
+    fn add_symbol(&mut self, token: &Token, typ: Rc<Type>) {
         let scope = self.scopes.last_mut().unwrap();
         if scope.contains(&token.value) {
             unreachable!("cannot redeclare symbol with the same name");
@@ -1007,24 +820,7 @@ impl Context {
             .entry(token.value.clone())
             .or_insert(vec![])
             .push(Symbol {
-                token: Some(token.clone()),
-                kind,
-                typ: typ.clone(),
-            });
-    }
-
-    fn add_builtin_symbol(&mut self, name: Rc<String>, kind: SymbolKind, typ: Rc<Type>) {
-        let scope = self.scopes.last_mut().unwrap();
-        if scope.contains(&name) {
-            unreachable!("cannot redeclare builtin with the same name");
-        }
-        scope.insert(name.clone());
-        self.symbol_table
-            .entry(name.clone())
-            .or_insert(vec![])
-            .push(Symbol {
-                token: None,
-                kind,
+                token: token.clone(),
                 typ: typ.clone(),
             });
     }

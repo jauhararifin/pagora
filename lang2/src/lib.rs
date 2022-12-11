@@ -8,6 +8,7 @@ mod scanner;
 mod semantic;
 pub mod test;
 mod tokens;
+mod types;
 
 use analyzer::analyze;
 use errors::Result;
