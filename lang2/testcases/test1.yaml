@@ -1,0 +1,4 @@
+!Err
+messages:
+- position: null
+  message: 'Found an import cycle: example.com/testcases/test1'

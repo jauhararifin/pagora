@@ -2,11 +2,11 @@ use crate::tokens::Token;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RootNode {
-    pub items: Vec<Item>,
+    pub items: Vec<ItemNode>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum Item {
+pub enum ItemNode {
     Import(ImportNode),
     Struct(StructNode),
     Tuple(TupleNode),
@@ -84,6 +84,7 @@ pub enum TypeExprNode {
     Ident(Token),
     Array(ArrayTypeNode),
     Pointer(PointerTypeNode),
+    Selection(SelectionTypeNode),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -104,6 +105,13 @@ pub struct ArrayTypeNode {
 pub struct PointerTypeNode {
     pub asterisk: Token,
     pub pointee: Box<TypeExprNode>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct SelectionTypeNode {
+    pub value: Token,
+    pub dot: Token,
+    pub selection: Token,
 }
 
 #[derive(Debug, PartialEq, Eq)]

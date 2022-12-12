@@ -1,37 +1,16 @@
-use std::{collections::HashMap, fs, path::PathBuf};
+use std::rc::Rc;
 
-use crate::errors::{CompileError, Result};
+use serde::{Deserialize, Serialize};
 
-pub struct Package<T> {
-    pub path: String,
-    pub files: HashMap<String, T>,
+use crate::{ast::RootNode, scope::Scope};
+
+pub struct Package {
+    pub name: Rc<String>,
+    pub scope: Scope,
+    pub asts: Vec<RootNode>,
 }
 
-pub fn load_package(package_path: &str) -> Result<Package<Box<PathBuf>>> {
-    let mut path = std::env::var("PAGORA_ROOT")
-        .map(|path| PathBuf::from(path))
-        .or_else(|_| std::env::current_dir())?;
-    path.push("lib/");
-    path.push(package_path);
-
-    if !path.is_dir() {
-        return Err(CompileError::from_message(
-            None,
-            format!("package {} not found", package_path),
-        ));
-    }
-
-    let mut files: HashMap<String, Box<PathBuf>> = HashMap::new();
-    for file in fs::read_dir(&path)? {
-        let file = file?;
-        files.insert(
-            String::from(file.path().to_str().unwrap()),
-            Box::new(file.path()),
-        );
-    }
-
-    Ok(Package {
-        path: String::from(path.to_str().unwrap()),
-        files,
-    })
+#[derive(Serialize, Deserialize)]
+pub struct Module {
+    pub module: Rc<String>,
 }

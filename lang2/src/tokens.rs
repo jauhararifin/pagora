@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::{fmt::Display, rc::Rc};
+use std::{fmt::Display, path::PathBuf, rc::Rc};
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Position {
+    pub file_path: Rc<PathBuf>,
     pub line: i64,
     pub col: i64,
 }

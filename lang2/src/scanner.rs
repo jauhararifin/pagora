@@ -3,10 +3,18 @@ use crate::{
     tokens::{Position, Token, TokenKind},
 };
 use lazy_static::lazy_static;
-use std::{collections::HashMap, iter::Peekable, rc::Rc, vec::IntoIter};
+use std::{
+    collections::HashMap,
+    fs::read_to_string,
+    iter::Peekable,
+    path::{Path, PathBuf},
+    rc::Rc,
+    vec::IntoIter,
+};
 
-pub fn scan(code: &str) -> Result<Vec<Token>> {
-    let mut source_code = load_chars(code).into_iter().peekable();
+pub fn scan(file_path: &Path) -> Result<Vec<Token>> {
+    let source_code = read_to_string(file_path)?;
+    let mut source_code = load_chars(file_path, &source_code).into_iter().peekable();
 
     let mut result = vec![];
     let mut errors = CompileError::new();
@@ -31,7 +39,8 @@ struct CharPos {
     pos: Position,
 }
 
-fn load_chars(s: &str) -> Vec<CharPos> {
+fn load_chars(file_path: &Path, s: &str) -> Vec<CharPos> {
+    let file_path = Rc::new(PathBuf::from(file_path));
     let mut line = 1;
     let mut col = 0;
     let mut result = vec![];
@@ -39,7 +48,11 @@ fn load_chars(s: &str) -> Vec<CharPos> {
         col += 1;
         result.push(CharPos {
             ch,
-            pos: Position { line, col },
+            pos: Position {
+                file_path: file_path.clone(),
+                line,
+                col,
+            },
         });
 
         if ch == '\n' {
@@ -137,10 +150,10 @@ fn scan_word(source_code: &mut SourceCode) -> ScanResult {
 
 fn scan_string_lit(source_code: &mut SourceCode) -> ScanResult {
     let Some(tok) = source_code.next_if(|c| c.ch == '"') else {
-            return ScanResult::None;
-        };
+        return ScanResult::None;
+    };
 
-    let position = tok.pos;
+    let position = tok.pos.clone();
     let opening_quote = tok.ch;
     let mut value = String::from(tok.ch);
     let mut errors = CompileError::new();
@@ -185,7 +198,7 @@ fn scan_string_lit(source_code: &mut SourceCode) -> ScanResult {
     }
 
     if !is_closed {
-        errors.push(missing_closing_quote(position));
+        errors.push(missing_closing_quote(position.clone()));
     }
 
     if !errors.is_empty() {
@@ -193,7 +206,7 @@ fn scan_string_lit(source_code: &mut SourceCode) -> ScanResult {
     } else {
         ScanResult::Token(Token {
             kind: TokenKind::StringLit,
-            position,
+            position: position.clone(),
             value: Rc::new(value),
         })
     }
@@ -268,9 +281,9 @@ lazy_static! {
 }
 
 fn scan_symbol(source_code: &mut SourceCode) -> ScanResult {
-    let Some(position) = source_code.peek().and_then(|c| Some(c.pos)) else {
-            return ScanResult::None;
-        };
+    let Some(position) = source_code.peek().and_then(|c| Some(c.pos.clone())) else {
+        return ScanResult::None;
+    };
 
     let mut value = String::new();
     let mut sym = String::new();
@@ -337,32 +350,5 @@ fn scan_unexpected_chars(source_code: &mut SourceCode) -> ScanResult {
         ScanResult::Err(unexpected_char(char_pos.pos, char_pos.ch))
     } else {
         ScanResult::None
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_simple_scan() {
-        let source_code = "var a: integer = 10;";
-        let tokens: Vec<TokenKind> = scan(&source_code)
-            .unwrap()
-            .into_iter()
-            .map(|tok| tok.kind)
-            .collect();
-        assert_eq!(
-            vec![
-                TokenKind::Var,
-                TokenKind::Ident,
-                TokenKind::Colon,
-                TokenKind::Ident,
-                TokenKind::Assign,
-                TokenKind::IntegerLit,
-                TokenKind::Semicolon,
-            ],
-            tokens
-        );
     }
 }

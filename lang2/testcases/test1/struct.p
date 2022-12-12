@@ -1,3 +1,5 @@
+import fmt "fmt"
+
 pub struct Struct1 {
   A: int32,
 }
@@ -12,4 +14,5 @@ func main() {
   var a: Struct1;
   a.A = 2;
   a.A = a.A + 1;
+  fmt.println("jauhar");
 }

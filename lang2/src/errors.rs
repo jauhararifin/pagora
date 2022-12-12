@@ -3,7 +3,7 @@ use crate::{
     tokens::{Position, Token, TokenKind},
 };
 use serde::{Deserialize, Serialize};
-use std::io;
+use std::{io, rc::Rc};
 
 pub type Result<T> = std::result::Result<T, CompileError>;
 
@@ -69,7 +69,7 @@ pub fn unexpected_token_for(token: &Token, expected: &str) -> CompileError {
     )
 }
 
-pub fn cannot_redeclare_symbool(token: &Token, declared_at: &Position) -> CompileError {
+pub fn cannot_redeclare_symbol(token: &Token, declared_at: &Position) -> CompileError {
     CompileError::from_message(
         Some(token.position.clone()),
         format!(
@@ -96,11 +96,18 @@ pub fn type_mismatch(expected: &Type, got: &Expr) -> CompileError {
     )
 }
 
-pub fn undefined_type(token: &Token) -> CompileError {
-    CompileError::from_message(
-        Some(token.position.clone()),
-        format!("Undefined type {}", token.value),
-    )
+pub fn undefined_type(pkg_name: Option<&Token>, token: &Token) -> CompileError {
+    if let Some(pkg_name) = pkg_name {
+        CompileError::from_message(
+            Some(token.position.clone()),
+            format!("Undefined type {}.{}", pkg_name.value, token.value),
+        )
+    } else {
+        CompileError::from_message(
+            Some(token.position.clone()),
+            format!("Undefined type {}", token.value),
+        )
+    }
 }
 
 pub fn undefined_symbol(token: &Token) -> CompileError {
@@ -186,4 +193,14 @@ pub fn cannot_use_anonymous_pointer(position: &Position) -> CompileError {
         Some(position.clone()),
         String::from("Pointer can only be applied on named type"),
     )
+}
+
+pub fn import_cycle(cycle: &[Rc<String>]) -> CompileError {
+    let cycle: Vec<&str> = cycle.iter().map(|s| s.as_str()).collect();
+    let cycle = cycle.join(" -> ").to_string();
+    CompileError::from_message(None, format!("Found an import cycle: {}", cycle))
+}
+
+pub fn missing_package(package_name: &str) -> CompileError {
+    CompileError::from_message(None, format!("Package {} not found", package_name))
 }

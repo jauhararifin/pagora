@@ -2,10 +2,10 @@ use crate::{
     ast::{
         ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
         CastExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode, FuncNode,
-        GroupedExprNode, IfStmtNode, ImportNode, IndexExprNode, Item, ParameterNode,
-        PointerTypeNode, ReturnStmtNode, RootNode, SelectionExprNode, StmtNode, StructFieldNode,
-        StructNode, TupleNode, TupleTypeNode, TypeExprNode, UnaryExprNode, VarNode, VarStmtNode,
-        WhileStmtNode,
+        GroupedExprNode, IfStmtNode, ImportNode, IndexExprNode, ItemNode, ParameterNode,
+        PointerTypeNode, ReturnStmtNode, RootNode, SelectionExprNode, SelectionTypeNode, StmtNode,
+        StructFieldNode, StructNode, TupleNode, TupleTypeNode, TypeExprNode, UnaryExprNode,
+        VarNode, VarStmtNode, WhileStmtNode,
     },
     errors::{
         cannot_use_expr_as_stmt, unexpected_token, unexpected_token_for, CompileError, Result,
@@ -149,17 +149,17 @@ where
     }
 }
 
-fn parse_item(tokens: &mut TokenStream) -> Result<Item> {
+fn parse_item(tokens: &mut TokenStream) -> Result<ItemNode> {
     if tokens.kind() == TokenKind::Import {
-        return Ok(Item::Import(parse_import(tokens)?));
+        return Ok(ItemNode::Import(parse_import(tokens)?));
     }
 
     let pub_tok = tokens.take_if(TokenKind::Pub);
     Ok(match tokens.kind() {
-        TokenKind::Struct => Item::Struct(parse_struct(tokens, pub_tok)?),
-        TokenKind::Tuple => Item::Tuple(parse_tuple(tokens, pub_tok)?),
-        TokenKind::Var => Item::Var(parse_var(tokens, pub_tok)?),
-        TokenKind::Function => Item::Func(parse_func(tokens, pub_tok)?),
+        TokenKind::Struct => ItemNode::Struct(parse_struct(tokens, pub_tok)?),
+        TokenKind::Tuple => ItemNode::Tuple(parse_tuple(tokens, pub_tok)?),
+        TokenKind::Var => ItemNode::Var(parse_var(tokens, pub_tok)?),
+        TokenKind::Function => ItemNode::Func(parse_func(tokens, pub_tok)?),
         _ => Err(unexpected_token(
             &tokens.token(),
             &[TokenKind::Var, TokenKind::Function],
@@ -318,18 +318,26 @@ fn parse_type_expr(tokens: &mut TokenStream) -> Result<TypeExprNode> {
         return Ok(TypeExprNode::Tuple(parse_tuple_type_expr(tokens)?));
     }
 
-    let ident = tokens.take(TokenKind::Ident, None)?;
-    let typ = TypeExprNode::Ident(ident);
-
     if let Some(open_square) = tokens.take_if(TokenKind::OpenSquare) {
         let close_square = tokens.take(TokenKind::CloseSquare, None)?;
         return Ok(TypeExprNode::Array(ArrayTypeNode {
-            element_type: Box::new(typ),
+            element_type: Box::new(parse_type_expr(tokens)?),
             open_square,
             close_square,
         }));
     }
 
+    let ident = tokens.take(TokenKind::Ident, None)?;
+    if let Some(dot) = tokens.take_if(TokenKind::Dot) {
+        let selection = tokens.take(TokenKind::Ident, None)?;
+        return Ok(TypeExprNode::Selection(SelectionTypeNode {
+            value: ident,
+            dot,
+            selection,
+        }));
+    }
+
+    let typ = TypeExprNode::Ident(ident);
     Ok(typ)
 }
 
@@ -697,136 +705,5 @@ fn parse_primary_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
         TokenKind::StringLit => Ok(ExprNode::StringLit(tokens.next())),
         TokenKind::True | TokenKind::False => Ok(ExprNode::BooleanLit(tokens.next())),
         _ => Err(unexpected_token_for(&tokens.next(), "EXPRESSION")),
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::scanner::scan;
-
-    #[test]
-    fn testcase_1() {
-        let source_code = r##"
-        var a: int = 10; 
-        func add() -> int { 
-            return a + b; 
-        }
-        "##;
-        let tokens = scan(source_code).unwrap();
-        let ast = parse(tokens).unwrap();
-        let expected = RootNode {
-            items: vec![
-                Item::Var(VarNode {
-                    pub_tok: None,
-                    stmt: VarStmtNode {
-                        var: Token {
-                            kind: TokenKind::Var,
-                            position: Position { line: 2, col: 9 },
-                            value: Rc::new("var".into()),
-                        },
-                        name: Token {
-                            kind: TokenKind::Ident,
-                            position: Position { line: 2, col: 13 },
-                            value: Rc::new("a".into()),
-                        },
-                        colon: Some(Token {
-                            kind: TokenKind::Colon,
-                            position: Position { line: 2, col: 14 },
-                            value: Rc::new(":".into()),
-                        }),
-                        typ: Some(TypeExprNode::Ident(Token {
-                            kind: TokenKind::Ident,
-                            position: Position { line: 2, col: 16 },
-                            value: Rc::new("int".into()),
-                        })),
-                        assign: Some(Token {
-                            kind: TokenKind::Assign,
-                            position: Position { line: 2, col: 20 },
-                            value: Rc::new("=".into()),
-                        }),
-                        value: Some(ExprNode::IntegerLit(Token {
-                            kind: TokenKind::IntegerLit,
-                            position: Position { line: 2, col: 22 },
-                            value: Rc::new("10".into()),
-                        })),
-                    },
-                }),
-                Item::Func(FuncNode {
-                    pub_tok: None,
-                    head: FuncHeadNode {
-                        func: Token {
-                            kind: TokenKind::Function,
-                            position: Position { line: 3, col: 9 },
-                            value: Rc::new("func".into()),
-                        },
-                        native: None,
-                        name: Token {
-                            kind: TokenKind::Ident,
-                            position: Position { line: 3, col: 14 },
-                            value: Rc::new("add".into()),
-                        },
-                        open_brac: Token {
-                            kind: TokenKind::OpenBrac,
-                            position: Position { line: 3, col: 17 },
-                            value: Rc::new("(".into()),
-                        },
-                        parameters: vec![],
-                        close_brac: Token {
-                            kind: TokenKind::CloseBrac,
-                            position: Position { line: 3, col: 18 },
-                            value: Rc::new(")".into()),
-                        },
-                        arrow: Some(Token {
-                            kind: TokenKind::Arrow,
-                            position: Position { line: 3, col: 20 },
-                            value: Rc::new("->".into()),
-                        }),
-                        return_type: Some(TypeExprNode::Ident(Token {
-                            kind: TokenKind::Ident,
-                            position: Position { line: 3, col: 23 },
-                            value: Rc::new("int".into()),
-                        })),
-                    },
-                    body: Some(BlockStmtNode {
-                        open_block: Token {
-                            kind: TokenKind::OpenBlock,
-                            position: Position { line: 3, col: 27 },
-                            value: Rc::new("{".into()),
-                        },
-                        statements: vec![StmtNode::Return(ReturnStmtNode {
-                            return_tok: Token {
-                                kind: TokenKind::Return,
-                                position: Position { line: 4, col: 13 },
-                                value: Rc::new("return".into()),
-                            },
-                            value: Some(ExprNode::Binary(BinaryExprNode {
-                                a: Box::new(ExprNode::Ident(Token {
-                                    kind: TokenKind::Ident,
-                                    position: Position { line: 4, col: 20 },
-                                    value: Rc::new("a".into()),
-                                })),
-                                op: Token {
-                                    kind: TokenKind::Add,
-                                    position: Position { line: 4, col: 22 },
-                                    value: Rc::new("+".into()),
-                                },
-                                b: Box::new(ExprNode::Ident(Token {
-                                    kind: TokenKind::Ident,
-                                    position: Position { line: 4, col: 24 },
-                                    value: Rc::new("b".into()),
-                                })),
-                            })),
-                        })],
-                        close_block: Token {
-                            kind: TokenKind::CloseBlock,
-                            position: Position { line: 5, col: 9 },
-                            value: Rc::new("}".into()),
-                        },
-                    }),
-                }),
-            ],
-        };
-        assert_eq!(expected, ast,);
     }
 }

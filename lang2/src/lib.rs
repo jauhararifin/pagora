@@ -1,25 +1,22 @@
 mod analyzer;
 mod ast;
-mod builtin;
 pub mod errors;
+mod loader;
 mod package;
 mod parser;
 mod scanner;
-mod semantic;
+mod scope;
+pub mod semantic;
 pub mod test;
 mod tokens;
 mod types;
 
 use analyzer::analyze;
 use errors::Result;
-use parser::parse;
-use scanner::scan;
+use loader::load_package;
 use semantic::Unit;
 
-pub fn translate(source_code: String) -> Result<Unit> {
-    let tokens = scan(&source_code)?;
-    let root_ast = parse(tokens)?;
-    let program = analyze(root_ast)?;
-
-    Ok(program)
+pub fn translate(package_name: &str) -> Result<Unit> {
+    let mut package = load_package(package_name)?;
+    analyze(&mut package)
 }
