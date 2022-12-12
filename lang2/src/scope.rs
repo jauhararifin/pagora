@@ -74,12 +74,24 @@ impl Scope {
         Ok(())
     }
 
-    pub fn get_type(&self, _package_name: Option<&String>, _name: &String) -> Option<Rc<Type>> {
-        todo!();
-        // self.symbols.get(name).and_then(|item| match item.kind {
-        //     SymbolKind::Type(t) => Some(t),
-        //     _ => None,
-        // })
+    pub fn get_type(&self, package_name: Option<&String>, name: &String) -> Option<Rc<Type>> {
+        let symbol = self.get_symbol(package_name, name)?;
+        let SymbolKind::Type(ref t) = symbol.kind else {
+            return None;
+        };
+        Some(t.clone())
+    }
+
+    fn get_symbol(&self, package_name: Option<&String>, name: &String) -> Option<&Symbol> {
+        if let Some(pkg_name) = package_name {
+            let scope_symbol = self.symbols.get(pkg_name)?;
+            let SymbolKind::Scope(ref scope) = scope_symbol.kind else {
+                return None;
+            };
+            scope.get_symbol(None, name)
+        } else {
+            self.symbols.get(name)
+        }
     }
 
     pub fn add_type(&mut self, token: &Token, typ: Rc<Type>) -> Result<()> {

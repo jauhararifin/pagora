@@ -1,4 +1,12 @@
 !Err
 messages:
-- position: null
-  message: Package example.com/testcases/test1 not found
+- position:
+    file_path: ../lib/fmt/print.p
+    line: 2
+    col: 23
+  message: Undefined type string
+- position:
+    file_path: ../lib/fmt/print.p
+    line: 4
+    col: 21
+  message: Undefined type string
