@@ -1,5 +1,6 @@
 mod analyzer;
 mod ast;
+mod builtin;
 pub mod errors;
 mod loader;
 mod package;

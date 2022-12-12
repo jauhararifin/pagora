@@ -8,6 +8,7 @@ pub struct RootNode {
 #[derive(Debug, PartialEq, Eq)]
 pub enum ItemNode {
     Import(ImportNode),
+    Builtin(BuiltinNode),
     Struct(StructNode),
     Tuple(TupleNode),
     Var(VarNode),
@@ -19,6 +20,13 @@ pub struct ImportNode {
     pub import: Token,
     pub alias: Token,
     pub package: Token,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct BuiltinNode {
+    pub pub_tok: Option<Token>,
+    pub builtin: Token,
+    pub name: Token,
 }
 
 #[derive(Debug, PartialEq, Eq)]

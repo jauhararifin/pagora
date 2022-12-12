@@ -119,6 +119,7 @@ lazy_static! {
         ("struct", TokenKind::Struct),
         ("tuple", TokenKind::Tuple),
         ("import", TokenKind::Import),
+        ("builtin", TokenKind::Builtin),
     ]);
 }
 

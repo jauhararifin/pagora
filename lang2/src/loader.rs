@@ -1,6 +1,7 @@
 use crate::{
     analyzer::{analyze_expr, analyze_string_lit},
     ast::{ItemNode, RootNode},
+    builtin::get_builtin,
     errors::{
         cannot_open_file, import_cycle, invalid_module_file, missing_package, CompileError, Result,
     },
@@ -196,6 +197,7 @@ fn populate_typenames<'a>(scope: &mut Scope, asts: &[RootNode]) -> Result<()> {
         scope.repopulate_imports(root_ast);
         for item in root_ast.items.iter() {
             let name = match item {
+                ItemNode::Builtin(node) => &node.name,
                 ItemNode::Struct(node) => &node.name,
                 ItemNode::Tuple(node) => &node.name,
                 _ => continue,
@@ -211,6 +213,13 @@ fn populate_typedefs<'a>(scope: &mut Scope, asts: &[RootNode]) -> Result<()> {
         scope.repopulate_imports(root_ast);
         for item in root_ast.items.iter() {
             match item {
+                ItemNode::Builtin(builtin_node) => {
+                    let typ = get_builtin(
+                        scope.package_name.as_str(),
+                        builtin_node.name.value.as_str(),
+                    );
+                    scope.add_type(&builtin_node.name, typ)?;
+                }
                 ItemNode::Struct(struct_node) => {
                     let typ = analyze_struct_type(scope, struct_node)?;
                     let typ = Rc::new(Type {

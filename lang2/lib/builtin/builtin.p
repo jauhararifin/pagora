@@ -1,17 +1,17 @@
 
-type native int32
+builtin int32;
 
-type native int64
+builtin int64;
 
-type native uint32
+builtin uint32;
 
-type native uint64
+builtin uint64;
 
-type native float32
+builtin float32;
 
-type native float64
+builtin float64;
 
-type native string
+builtin string;
 
-type native bool
+builtin bool;
 

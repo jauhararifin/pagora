@@ -1,7 +1,7 @@
 use crate::{
     ast::{
-        ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
-        CastExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode, FuncNode,
+        ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, BuiltinNode,
+        CallExprNode, CastExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode, FuncNode,
         GroupedExprNode, IfStmtNode, ImportNode, IndexExprNode, ItemNode, ParameterNode,
         PointerTypeNode, ReturnStmtNode, RootNode, SelectionExprNode, SelectionTypeNode, StmtNode,
         StructFieldNode, StructNode, TupleNode, TupleTypeNode, TypeExprNode, UnaryExprNode,
@@ -95,6 +95,7 @@ const ITEM_SYNC_TOKENS: &'static [TokenKind] = &[
     TokenKind::Function,
     TokenKind::Struct,
     TokenKind::Tuple,
+    TokenKind::Builtin,
 ];
 
 fn parse_root(tokens: &mut TokenStream) -> Result<RootNode> {
@@ -156,6 +157,7 @@ fn parse_item(tokens: &mut TokenStream) -> Result<ItemNode> {
 
     let pub_tok = tokens.take_if(TokenKind::Pub);
     Ok(match tokens.kind() {
+        TokenKind::Builtin => ItemNode::Builtin(parse_builtin(tokens, pub_tok)?),
         TokenKind::Struct => ItemNode::Struct(parse_struct(tokens, pub_tok)?),
         TokenKind::Tuple => ItemNode::Tuple(parse_tuple(tokens, pub_tok)?),
         TokenKind::Var => ItemNode::Var(parse_var(tokens, pub_tok)?),
@@ -175,6 +177,16 @@ fn parse_import(tokens: &mut TokenStream) -> Result<ImportNode> {
         import,
         alias,
         package,
+    })
+}
+
+fn parse_builtin(tokens: &mut TokenStream, pub_tok: Option<Token>) -> Result<BuiltinNode> {
+    let builtin = tokens.take(TokenKind::Builtin, None)?;
+    let name = tokens.take(TokenKind::Ident, None)?;
+    Ok(BuiltinNode {
+        pub_tok,
+        builtin,
+        name,
     })
 }
 

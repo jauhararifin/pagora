@@ -4,4 +4,4 @@ messages:
     file_path: ../lib/builtin/builtin.p
     line: 2
     col: 1
-  message: Expected either [Import, Pub, Var, Function, Struct, Tuple] but found Ident
+  message: Expected either [Import, Pub, Var, Function, Struct, Tuple, Builtin] but found Ident

@@ -8,7 +8,7 @@ use crate::{
 };
 
 pub struct Scope {
-    package_name: Rc<String>,
+    pub package_name: Rc<String>,
     imports: HashMap<Rc<String>, Rc<Scope>>,
     symbols: HashMap<Rc<String>, Symbol>,
 }
