@@ -1,4 +1,4 @@
 !Err
 messages:
 - position: null
-  message: 'Found an import cycle: example.com/testcases/test1'
+  message: Package example.com/testcases/test1 not found

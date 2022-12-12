@@ -408,12 +408,7 @@ fn analyze_boolean_lit_expr(scope: &Scope, token: &Token, _: Option<Rc<Type>>) -
 }
 
 fn analyze_string_lit_expr(scope: &Scope, token: &Token, _: Option<Rc<Type>>) -> Result<Expr> {
-    let value: String = token
-        .value
-        .trim_start_matches('"')
-        .trim_end_matches('"')
-        .into();
-
+    let value = analyze_string_lit(token);
     let result_type = scope
         .get_type(None, &"string".into())
         .expect("string type should be defined");
@@ -426,6 +421,10 @@ fn analyze_string_lit_expr(scope: &Scope, token: &Token, _: Option<Rc<Type>>) ->
             value: Const::StringConst(value),
         }),
     })
+}
+
+pub fn analyze_string_lit(token: &Token) -> String {
+    token.value[1..token.value.len() - 1].into()
 }
 
 fn analyze_array_lit_expr(

@@ -1,7 +1,9 @@
 use crate::{
-    analyzer::analyze_expr,
+    analyzer::{analyze_expr, analyze_string_lit},
     ast::{ItemNode, RootNode},
-    errors::{import_cycle, missing_package, CompileError, Result},
+    errors::{
+        cannot_open_file, import_cycle, invalid_module_file, missing_package, CompileError, Result,
+    },
     package::{Module, Package},
     parser::parse,
     scanner::scan,
@@ -58,6 +60,7 @@ pub fn load_package(package_name: &str) -> Result<Package> {
 
 fn get_package_loading_plan(root_package: &str) -> Result<Vec<Rc<String>>> {
     let root_package = Rc::new(root_package.to_string());
+    let mut visited: HashSet<Rc<String>> = HashSet::new();
     let mut importer: HashMap<Rc<String>, Rc<String>> = HashMap::new();
     let mut package_order: Vec<Rc<String>> = vec![];
 
@@ -68,7 +71,7 @@ fn get_package_loading_plan(root_package: &str) -> Result<Vec<Rc<String>>> {
     in_stack.insert(root_package.clone());
 
     while let Some(pkg) = stack.pop() {
-        if importer.contains_key(&pkg) {
+        if visited.contains(&pkg) {
             let mut cycle = vec![];
 
             let pivot = pkg.clone();
@@ -85,7 +88,7 @@ fn get_package_loading_plan(root_package: &str) -> Result<Vec<Rc<String>>> {
 
             return Err(import_cycle(&cycle));
         }
-
+        visited.insert(pkg.clone());
         package_order.push(pkg.clone());
 
         let package_files = load_package_files(root_package.as_str())?;
@@ -94,9 +97,9 @@ fn get_package_loading_plan(root_package: &str) -> Result<Vec<Rc<String>>> {
             let ast = parse(tokens)?;
             for item in ast.items.iter() {
                 if let ItemNode::Import(import) = item {
-                    let pkg_name = import.package.value.clone();
+                    let pkg_name = Rc::new(analyze_string_lit(&import.package));
                     if !in_stack.contains(&pkg_name) {
-                        stack.push(import.package.value.clone());
+                        stack.push(pkg_name.clone());
                         in_stack.insert(pkg_name.clone());
                         importer.insert(pkg_name, pkg.clone());
                     }
@@ -105,6 +108,7 @@ fn get_package_loading_plan(root_package: &str) -> Result<Vec<Rc<String>>> {
         }
     }
 
+    package_order.reverse();
     Ok(package_order)
 }
 
@@ -112,16 +116,17 @@ fn load_package_files(package_name: &str) -> Result<Vec<PathBuf>> {
     let package_dirs = get_package_dirs()?;
     let path = package_dirs.iter().find_map(|(mod_name, path)| {
         if package_name.starts_with(mod_name.as_str()) {
-            Some(path.clone())
+            let mut path = path.clone();
+            path.push(&package_name[mod_name.len()..].trim_start_matches("/"));
+            Some(path)
         } else {
             None
         }
     });
 
-    let Some(mut path) = path else {
+    let Some(path) = path else {
         return Err(missing_package(package_name));
     };
-    path.push(package_name);
 
     if !path.is_dir() {
         return Err(missing_package(package_name));
@@ -143,20 +148,23 @@ fn load_package_files(package_name: &str) -> Result<Vec<PathBuf>> {
 }
 
 fn get_package_dirs() -> Result<Vec<(Rc<String>, PathBuf)>> {
-    let mut path_builtin = std::env::var("PAGORA_ROOT")
+    let mut path_std = std::env::var("PAGORA_ROOT")
         .map(|path| PathBuf::from(path))
         .or_else(|_| std::env::current_dir())?;
-    path_builtin.push("lib/");
+    path_std.push("lib/");
 
     let mut user_mod_path = std::env::current_dir()?;
     user_mod_path.push("module.yaml");
-    let mod_file = fs::read_to_string(&user_mod_path)?;
-    let module: Module = serde_yaml::from_str(&mod_file).expect("TODO: handle this");
+    let mod_file =
+        fs::read_to_string(&user_mod_path).map_err(|err| cannot_open_file(&user_mod_path, err))?;
+    let module: Module = serde_yaml::from_str(&mod_file)
+        .map_err(|err| invalid_module_file(&user_mod_path, err.to_string().as_str()))?;
     let module = module.module;
+    user_mod_path.pop();
 
     Ok(vec![
-        (Rc::new("".to_string()), path_builtin),
         (module, user_mod_path),
+        (Rc::new("".to_string()), path_std),
     ])
 }
 

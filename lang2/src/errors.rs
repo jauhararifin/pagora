@@ -3,7 +3,7 @@ use crate::{
     tokens::{Position, Token, TokenKind},
 };
 use serde::{Deserialize, Serialize};
-use std::{io, rc::Rc};
+use std::{io, path::Path, rc::Rc};
 
 pub type Result<T> = std::result::Result<T, CompileError>;
 
@@ -203,4 +203,12 @@ pub fn import_cycle(cycle: &[Rc<String>]) -> CompileError {
 
 pub fn missing_package(package_name: &str) -> CompileError {
     CompileError::from_message(None, format!("Package {} not found", package_name))
+}
+
+pub fn cannot_open_file(file_path: &Path, err: io::Error) -> CompileError {
+    CompileError::from_message(None, format!("Cannot open file {:?}: {}", file_path, err))
+}
+
+pub fn invalid_module_file(file_path: &Path, err: &str) -> CompileError {
+    CompileError::from_message(None, format!("Malformed module file {:?}: {}", file_path, err))
 }
