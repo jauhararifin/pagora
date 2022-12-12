@@ -23,36 +23,17 @@ pub fn load_package(package_name: &str) -> Result<Package> {
 
     let mut scope_map: HashMap<Rc<String>, Rc<Scope>> = HashMap::new();
 
+    let builtin_package_name = Rc::new(String::from("builtin"));
+    let builtin_scope = Scope::new(builtin_package_name.clone());
+    let builtin_package = load_single_package(&builtin_package_name, &scope_map, &builtin_scope)?;
+    let builtin_scope = &builtin_package.scope;
+
     for pkg in loading_plan.iter() {
-        let mut scope = Scope::new(pkg.clone());
-        let mut asts = vec![];
-        let files = load_package_files(pkg)?;
-        for source_file in files.iter() {
-            let tokens = scan(source_file)?;
-            let ast = parse(tokens)?;
-            asts.push(ast);
-        }
-
-        for root_ast in asts.iter() {
-            for import in root_ast.items.iter() {
-                if let ItemNode::Import(import_node) = import {
-                    let imported_pkg = import_node.package.value.clone();
-                    let imported_scope = scope_map.get(&imported_pkg).unwrap();
-                    scope.add_import(imported_scope.clone());
-                }
-            }
-        }
-
-        load_single_package(&mut scope, asts.as_slice())?;
-
+        let package = load_single_package(pkg, &scope_map, &builtin_scope)?;
         if pkg.as_str() == package_name {
-            return Ok(Package {
-                name: pkg.clone(),
-                scope,
-                asts,
-            });
+            return Ok(package);
         }
-        scope_map.insert(pkg.clone(), Rc::new(scope));
+        scope_map.insert(pkg.clone(), Rc::new(package.scope));
     }
 
     unreachable!();
@@ -168,7 +149,41 @@ fn get_package_dirs() -> Result<Vec<(Rc<String>, PathBuf)>> {
     ])
 }
 
-fn load_single_package<'a>(scope: &mut Scope, asts: &[RootNode]) -> Result<()> {
+fn load_single_package(
+    pkg: &Rc<String>,
+    scopes: &HashMap<Rc<String>, Rc<Scope>>,
+    builtin_scope: &Scope,
+) -> Result<Package> {
+    let mut scope = Scope::new(pkg.clone());
+    scope.repopulate_builtins(builtin_scope);
+
+    let mut asts = vec![];
+    let files = load_package_files(pkg)?;
+    for source_file in files.iter() {
+        let tokens = scan(source_file)?;
+        let ast = parse(tokens)?;
+        asts.push(ast);
+    }
+
+    for root_ast in asts.iter() {
+        for import in root_ast.items.iter() {
+            if let ItemNode::Import(import_node) = import {
+                let imported_pkg = import_node.package.value.clone();
+                let imported_scope = scopes.get(&imported_pkg).unwrap();
+                scope.add_import(imported_scope.clone());
+            }
+        }
+    }
+
+    load_package_from_asts(&mut scope, asts.as_slice())?;
+    Ok(Package {
+        name: pkg.clone(),
+        scope,
+        asts,
+    })
+}
+
+fn load_package_from_asts<'a>(scope: &mut Scope, asts: &[RootNode]) -> Result<()> {
     populate_typenames(scope, asts)?;
     populate_typedefs(scope, asts)?;
     populate_functions(scope, asts)?;

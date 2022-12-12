@@ -22,6 +22,12 @@ impl Scope {
         }
     }
 
+    pub fn repopulate_builtins(&mut self, scope: &Scope) {
+        for (key, value) in scope.symbols.iter() {
+            self.symbols.insert(key.clone(), value.clone());
+        }
+    }
+
     pub fn repopulate_imports(&mut self, ast: &RootNode) {
         self.symbols.retain(|_, val| match val.kind {
             SymbolKind::Scope(_) => false,
@@ -132,11 +138,13 @@ impl Scope {
     }
 }
 
+#[derive(Clone)]
 pub struct Symbol {
     position: Position,
     kind: SymbolKind,
 }
 
+#[derive(Clone)]
 pub enum SymbolKind {
     UnknownType,
     _Val(Rc<Type>),
