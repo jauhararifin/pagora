@@ -1,7 +1,4 @@
-use crate::{
-    semantic::{Expr, TupleType, Type},
-    tokens::{Position, Token, TokenKind},
-};
+use crate::tokens::{Position, Token, TokenKind};
 use serde::{Deserialize, Serialize};
 use std::{io, path::Path, rc::Rc};
 
@@ -79,23 +76,23 @@ pub fn cannot_redeclare_symbol(token: &Token, declared_at: &Position) -> Compile
     )
 }
 
-pub fn not_assignable(expr: &Expr) -> CompileError {
-    CompileError::from_message(
-        Some(expr.position.clone()),
-        String::from("Expression is not assignable"),
-    )
-}
-
-pub fn type_mismatch(expected: &Type, got: &Expr) -> CompileError {
-    CompileError::from_message(
-        Some(got.position.clone()),
-        format!(
-            "Type mismatch, expected {} got {}",
-            expected, got.result_type
-        ),
-    )
-}
-
+// pub fn not_assignable(expr: &Expr) -> CompileError {
+//     CompileError::from_message(
+//         Some(expr.position.clone()),
+//         String::from("Expression is not assignable"),
+//     )
+// }
+//
+// pub fn type_mismatch(expected: &Type, got: &Expr) -> CompileError {
+//     CompileError::from_message(
+//         Some(got.position.clone()),
+//         format!(
+//             "Type mismatch, expected {} got {}",
+//             expected, got.result_type
+//         ),
+//     )
+// }
+//
 pub fn undefined_type(pkg_name: Option<&Token>, token: &Token) -> CompileError {
     if let Some(pkg_name) = pkg_name {
         CompileError::from_message(
@@ -121,30 +118,30 @@ pub fn cannot_infer_type(position: &Position) -> CompileError {
     CompileError::from_message(Some(position.clone()), format!("Cannot infer type"))
 }
 
-pub fn invalid_binary_op(a: &Expr, op: &Token, b: &Expr) -> CompileError {
-    CompileError::from_message(
-        Some(a.position.clone()),
-        format!(
-            "Cannot perform binary op {:?} for {} and {}",
-            op.kind, a.result_type, b.result_type
-        ),
-    )
-}
-
-pub fn invalid_unary_op(op: &Token, value: &Expr) -> CompileError {
-    CompileError::from_message(
-        Some(op.position.clone()),
-        format!("Cannot perform unary op {:?} for {}", op, value.result_type),
-    )
-}
-
-pub fn not_a(expected: &str, value: &Expr) -> CompileError {
-    CompileError::from_message(
-        Some(value.position.clone()),
-        format!("Expected {}, but found {}", expected, value.result_type),
-    )
-}
-
+// pub fn invalid_binary_op(a: &Expr, op: &Token, b: &Expr) -> CompileError {
+//     CompileError::from_message(
+//         Some(a.position.clone()),
+//         format!(
+//             "Cannot perform binary op {:?} for {} and {}",
+//             op.kind, a.result_type, b.result_type
+//         ),
+//     )
+// }
+//
+// pub fn invalid_unary_op(op: &Token, value: &Expr) -> CompileError {
+//     CompileError::from_message(
+//         Some(op.position.clone()),
+//         format!("Cannot perform unary op {:?} for {}", op, value.result_type),
+//     )
+// }
+//
+// pub fn not_a(expected: &str, value: &Expr) -> CompileError {
+//     CompileError::from_message(
+//         Some(value.position.clone()),
+//         format!("Expected {}, but found {}", expected, value.result_type),
+//     )
+// }
+//
 pub fn invalid_number_of_argument(
     position: &Position,
     expected: usize,
@@ -156,13 +153,13 @@ pub fn invalid_number_of_argument(
     )
 }
 
-pub fn cannot_cast(value: &Expr, into: &Type) -> CompileError {
-    CompileError::from_message(
-        Some(value.position.clone()),
-        format!("Cannot cast expression into {}", into),
-    )
-}
-
+// pub fn cannot_cast(value: &Expr, into: &Type) -> CompileError {
+//     CompileError::from_message(
+//         Some(value.position.clone()),
+//         format!("Cannot cast expression into {}", into),
+//     )
+// }
+//
 pub fn no_such_field(position: &Position, field_name: &str) -> CompileError {
     CompileError::from_message(
         Some(position.clone()),
@@ -170,17 +167,17 @@ pub fn no_such_field(position: &Position, field_name: &str) -> CompileError {
     )
 }
 
-pub fn invalid_tuple_index(position: &Position, tuple: &TupleType, idx: i64) -> CompileError {
-    CompileError::from_message(
-        Some(position.clone()),
-        format!(
-            "The tuple only have {} elements, but found index {}",
-            tuple.items.len(),
-            idx
-        ),
-    )
-}
-
+// pub fn invalid_tuple_index(position: &Position, tuple: &TupleType, idx: i64) -> CompileError {
+//     CompileError::from_message(
+//         Some(position.clone()),
+//         format!(
+//             "The tuple only have {} elements, but found index {}",
+//             tuple.items.len(),
+//             idx
+//         ),
+//     )
+// }
+//
 pub fn cannot_use_expr_as_stmt(position: &Position) -> CompileError {
     CompileError::from_message(
         Some(position.clone()),
@@ -210,5 +207,8 @@ pub fn cannot_open_file(file_path: &Path, err: io::Error) -> CompileError {
 }
 
 pub fn invalid_module_file(file_path: &Path, err: &str) -> CompileError {
-    CompileError::from_message(None, format!("Malformed module file {:?}: {}", file_path, err))
+    CompileError::from_message(
+        None,
+        format!("Malformed module file {:?}: {}", file_path, err),
+    )
 }

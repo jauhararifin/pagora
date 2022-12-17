@@ -1,6 +1,11 @@
 use crate::tokens::Token;
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct RootSet {
+    pub roots: Vec<RootNode>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct RootNode {
     pub items: Vec<ItemNode>,
 }
@@ -13,6 +18,15 @@ pub enum ItemNode {
     Tuple(TupleNode),
     Var(VarNode),
     Func(FuncNode),
+}
+
+impl ItemNode {
+    pub fn as_import(&self) -> Option<&ImportNode> {
+        match self {
+            Self::Import(node) => Some(node),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

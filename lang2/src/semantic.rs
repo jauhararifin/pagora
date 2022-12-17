@@ -1,19 +1,13 @@
+use crate::tokens::Position;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, rc::Rc};
 
-use crate::tokens::Position;
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct Name {
-    package: Rc<String>,
-    id: Rc<String>,
-}
-
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Unit {
-    pub types: Vec<Rc<Type>>,
+    pub types: Vec<Type>,
     pub variables: Vec<Variable>,
     pub functions: Vec<Function>,
+    // TODO: add init function here.
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -128,31 +122,25 @@ impl Type {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TypeInternal {
-    Pointer(Rc<Type>),
     Tuple(TupleType),
-    Struct(StructType),
     Int(IntType),
     Float(FloatType),
     Bool,
     String,
     Array(ArrayType),
     Function(FunctionType),
-    Unknown, // this is for dealing with pointer. A pointer doesn't care its inner type.
 }
 
 impl Display for TypeInternal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            Self::Pointer(t) => t.fmt(f),
             Self::Tuple(t) => t.fmt(f),
-            Self::Struct(t) => t.fmt(f),
             Self::Int(t) => t.fmt(f),
             Self::Float(t) => t.fmt(f),
             Self::Bool => write!(f, "bool"),
             Self::String => write!(f, "string"),
             Self::Array(t) => t.fmt(f),
             Self::Function(t) => t.fmt(f),
-            Self::Unknown => write!(f, "unknown"),
         }
     }
 }
@@ -169,24 +157,6 @@ impl Display for TupleType {
             f.field(item.as_ref());
         }
         f.finish()
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct StructType {
-    pub fields: Vec<StructField>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct StructField {
-    pub name: Rc<String>,
-    pub typ: Rc<Type>,
-}
-
-impl Display for StructType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TODO: write proper struct representation
-        write!(f, "struct")
     }
 }
 
@@ -275,8 +245,6 @@ pub enum ExprKind {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
     Index(IndexExpr),
-    StructSelection(StructSelectionExpr),
-    TupleSelection(TupleSelectionExpr),
     Cast(CastExpr),
     Call(CallExpr),
     Ident(IdentExpr),
@@ -318,7 +286,6 @@ pub enum UnaryOp {
     Sub,
     Add,
     Not,
-    Addr,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -331,18 +298,6 @@ pub struct UnaryExpr {
 pub struct IndexExpr {
     pub target: Box<Expr>,
     pub index: Box<Expr>,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct StructSelectionExpr {
-    pub value: Box<Expr>,
-    pub selection: Rc<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct TupleSelectionExpr {
-    pub value: Box<Expr>,
-    pub selection: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]

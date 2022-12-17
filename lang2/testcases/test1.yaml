@@ -1,7 +1,0 @@
-!Err
-messages:
-- position:
-    file_path: ../lib/builtin/builtin.p
-    line: 2
-    col: 1
-  message: Expected either [Import, Pub, Var, Function, Struct, Tuple, Builtin] but found Ident

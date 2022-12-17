@@ -1,102 +1,143 @@
-use crate::{
-    ast::{ArrayTypeNode, FuncNode, StructNode, TupleTypeNode, TypeExprNode},
-    errors::{cannot_use_anonymous_pointer, undefined_type, Result},
-    scope::Scope,
-    semantic::{ArrayType, FunctionType, StructField, StructType, TupleType, Type, TypeInternal},
-};
-use std::rc::Rc;
+use serde::{Deserialize, Serialize};
+use std::{fmt::Display, rc::Rc};
 
-pub fn analyze_type(scope: &Scope, type_node: &TypeExprNode) -> Result<Rc<Type>> {
-    Ok(match type_node {
-        TypeExprNode::Tuple(tuple_type) => Rc::new(Type {
-            name: None,
-            internal: TypeInternal::Tuple(analyze_tuple_type(scope, tuple_type)?),
-        }),
-        TypeExprNode::Ident(type_name) => {
-            if let Some(symbol) = scope.get_type(None, &type_name.value) {
-                return Ok(symbol.clone());
-            }
-            return Err(undefined_type(None, type_name));
-        }
-        TypeExprNode::Array(ref array_type) => Rc::new(Type {
-            name: None,
-            internal: TypeInternal::Array(analyze_array_type(scope, array_type)?),
-        }),
-        TypeExprNode::Pointer(type_node) => {
-            if let TypeExprNode::Ident(type_name) = type_node.pointee.as_ref() {
-                if !scope.has_typename(&type_name.value) {
-                    return Err(undefined_type(None, type_name));
-                }
-                Rc::new(Type {
-                    name: None,
-                    internal: TypeInternal::Pointer(Rc::new(Type {
-                        name: Some(type_name.value.as_ref().clone()),
-                        internal: TypeInternal::Unknown,
-                    })),
-                })
-            } else {
-                return Err(cannot_use_anonymous_pointer(&type_node.asterisk.position));
-            }
-        }
-        TypeExprNode::Selection(selection_node) => {
-            if let Some(typ) = scope.get_type(
-                Some(&selection_node.value.value),
-                &selection_node.selection.value,
-            ) {
-                return Ok(typ.clone());
-            } else {
-                return Err(undefined_type(
-                    Some(&selection_node.value),
-                    &selection_node.selection,
-                ));
-            }
-        }
-    })
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct Type {
+    pub name: Option<Rc<String>>,
+    pub internal: TypeInternal,
 }
 
-pub fn analyze_tuple_type(scope: &Scope, tuple_node: &TupleTypeNode) -> Result<TupleType> {
-    let mut items = vec![];
-    for item_node in tuple_node.fields.iter() {
-        items.push(analyze_type(scope, item_node)?);
+impl Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(ref name) = self.name {
+            name.fmt(f)
+        } else {
+            write!(f, "{}", &self.internal)
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum TypeInternal {
+    Pointer(Rc<Type>),
+    Tuple(TupleType),
+    Struct(StructType),
+    Int(IntType),
+    Float(FloatType),
+    Bool,
+    String,
+    Array(ArrayType),
+    Function(FunctionType),
+    Unknown, // this is for dealing with pointer. A pointer doesn't care its inner type.
+}
+
+impl Display for TypeInternal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::Pointer(t) => t.fmt(f),
+            Self::Tuple(t) => t.fmt(f),
+            Self::Struct(t) => t.fmt(f),
+            Self::Int(t) => t.fmt(f),
+            Self::Float(t) => t.fmt(f),
+            Self::Bool => write!(f, "bool"),
+            Self::String => write!(f, "string"),
+            Self::Array(t) => t.fmt(f),
+            Self::Function(t) => t.fmt(f),
+            Self::Unknown => write!(f, "unknown"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct TupleType {
+    pub items: Vec<Rc<Type>>,
+}
+
+impl Display for TupleType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut f = f.debug_tuple("");
+        for item in self.items.iter() {
+            f.field(item.as_ref());
+        }
+        f.finish()
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct StructType {
+    pub fields: Vec<StructField>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct StructField {
+    pub name: Rc<String>,
+    pub typ: Rc<Type>,
+}
+
+impl Display for StructType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: write proper struct representation
+        write!(f, "struct")
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct IntType {
+    pub bits: u8,
+    pub signed: bool,
+}
+
+impl Display for IntType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} bit signed integer", self.bits)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct FloatType {
+    pub bits: u8,
+}
+
+impl Display for FloatType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} bit float", self.bits)
+    }
+}
+
+#[derive(Clone, Debug, Eq, Serialize, Deserialize)]
+pub struct ArrayType {
+    pub element_type: Rc<Type>,
+}
+
+impl PartialEq for ArrayType {
+    fn eq(&self, other: &Self) -> bool {
+        self.element_type == other.element_type
     }
 
-    Ok(TupleType { items })
-}
-
-pub fn analyze_array_type(scope: &Scope, array_node: &ArrayTypeNode) -> Result<ArrayType> {
-    let element_type = analyze_type(scope, &array_node.element_type)?;
-    Ok(ArrayType { element_type })
-}
-
-pub fn analyze_func_type(scope: &Scope, func_node: &FuncNode) -> Result<FunctionType> {
-    let mut parameters = vec![];
-    for param_node in func_node.head.parameters.iter() {
-        parameters.push(analyze_type(scope, &param_node.typ)?);
+    fn ne(&self, other: &Self) -> bool {
+        self.element_type != other.element_type
     }
-
-    let return_type = if let Some(ref return_type_node) = func_node.head.return_type {
-        analyze_type(scope, return_type_node)?
-    } else {
-        Type::tuple(vec![])
-    };
-
-    Ok(FunctionType {
-        parameters,
-        return_type,
-    })
 }
 
-pub fn analyze_struct_type(scope: &Scope, struct_node: &StructNode) -> Result<StructType> {
-    let mut fields = vec![];
-    for field in struct_node.fields.iter() {
-        let name = field.name.value.clone();
-        let typ = analyze_type(scope, &field.typ)?;
-        fields.push(StructField { name, typ });
+impl Display for ArrayType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[]{}", self.element_type)
     }
-
-    Ok(StructType { fields })
 }
 
-pub fn is_type_equal(a: &Type, b: &Type) -> bool {
-    a == b
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct FunctionType {
+    pub parameters: Vec<Rc<Type>>,
+    pub return_type: Rc<Type>,
+}
+
+impl Display for FunctionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut arg_formatter = f.debug_tuple("func");
+        for param in self.parameters.iter() {
+            arg_formatter.field(param);
+        }
+        arg_formatter.finish()?;
+        write!(f, " -> {}", self.return_type)
+    }
 }
