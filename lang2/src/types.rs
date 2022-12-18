@@ -17,6 +17,15 @@ impl Display for Type {
     }
 }
 
+impl Type {
+    pub fn int(name: &str, bits: u8, signed: bool) -> Rc<Self> {
+        Rc::new(Self {
+            name: Some(Rc::new(String::from(name))),
+            internal: TypeInternal::Int(IntType { bits, signed }),
+        })
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TypeInternal {
     Pointer(Rc<Type>),
@@ -29,6 +38,10 @@ pub enum TypeInternal {
     Array(ArrayType),
     Function(FunctionType),
     Unknown, // this is for dealing with pointer. A pointer doesn't care its inner type.
+    Invalid, // invalid internal type marks a type as invalid.
+             // Type can be invalid when they have a cyclic dependency with other type.
+             // The purpose of having invalid type is to make the compilation can still continue
+             // even though we found an invalid type.
 }
 
 impl Display for TypeInternal {
@@ -43,7 +56,8 @@ impl Display for TypeInternal {
             Self::String => write!(f, "string"),
             Self::Array(t) => t.fmt(f),
             Self::Function(t) => t.fmt(f),
-            Self::Unknown => write!(f, "unknown"),
+            Self::Unknown => write!(f, "(unknown)"),
+            Self::Invalid => write!(f, "(invalid)"),
         }
     }
 }

@@ -55,7 +55,7 @@ pub fn load_package_complete(package_name: &str) -> Result<()> {
 
     let mut units = HashMap::new();
     for (package_name, asts) in toposort {
-        let unit = analyze_package(&package_name, &asts)?;
+        let unit = analyze_package(&units, &package_name, &asts)?;
         units.insert(package_name, unit);
     }
 

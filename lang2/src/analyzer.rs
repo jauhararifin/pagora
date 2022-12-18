@@ -2,14 +2,18 @@ use crate::{
     ast::{ItemNode, RootSet, TypeExprNode},
     errors::Result,
     scope::Scope,
-    semantic::Unit,
+    semantic::Unit, types::Type,
 };
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     rc::Rc,
 };
 
-pub fn analyze_package(package_name: &str, asts: &RootSet) -> Result<Unit> {
+pub fn analyze_package(
+    imports: &HashMap<Rc<String>, Unit>,
+    package_name: &str,
+    asts: &RootSet,
+) -> Result<Unit> {
     let toposort = toposort_types(asts);
     todo!();
 }
@@ -107,4 +111,26 @@ fn get_type_dependency(type_expr: &TypeExprNode) -> Vec<Rc<String>> {
         TypeExprNode::Pointer(_) => vec![],
         TypeExprNode::Selection(node) => vec![node.value.value.clone()],
     }
+}
+
+fn analyze_type(
+    imports: &HashMap<Rc<String>, Unit>,
+    scope: &HashMap<Rc<String>, Rc<Type>>,
+    type_node: &TypeExprNode,
+) -> Result<Rc<Type>> {
+    todo!();
+    // Ok(match type_node {
+    //     TypeExprNode::Ident(type_name) => {
+    //         if let Some(symbol) = ctx.get_type(&type_name.value) {
+    //             if let SymbolKind::Type = symbol.kind {
+    //                 return Ok(symbol.typ.clone());
+    //             }
+    //         }
+    //         return Err(undefined_type(type_name));
+    //     }
+    //     TypeExprNode::Array(ref array_type) => Rc::new(Type {
+    //         name: None,
+    //         internal: TypeInternal::Array(analyze_array_type(ctx, array_type)?),
+    //     }),
+    // })
 }

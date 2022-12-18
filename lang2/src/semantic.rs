@@ -1,12 +1,20 @@
-use crate::tokens::Position;
+use crate::{
+    scope::Scope,
+    tokens::Position,
+    types::{FunctionType, Type},
+};
 use serde::{Deserialize, Serialize};
-use std::{fmt::Display, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    rc::Rc,
+};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Unit {
-    pub types: Vec<Type>,
-    pub variables: Vec<Variable>,
-    pub functions: Vec<Function>,
+    pub types: HashMap<Rc<String>, Rc<Type>>,
+    pub variables: HashMap<Rc<String>, Variable>,
+    pub functions: HashMap<Rc<String>, Function>,
     // TODO: add init function here.
 }
 
@@ -23,202 +31,6 @@ pub struct Function {
     pub typ: FunctionType,
     pub param_names: Vec<Rc<String>>,
     pub body: Option<BlockStatement>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct Type {
-    pub name: Option<String>,
-    pub internal: TypeInternal,
-}
-
-impl Display for Type {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(ref name) = self.name {
-            write!(f, "{}", &name)
-        } else {
-            write!(f, "{}", &self.internal)
-        }
-    }
-}
-
-impl Type {
-    pub fn tuple(items: Vec<Rc<Type>>) -> Rc<Self> {
-        Rc::new(Self {
-            name: None,
-            internal: TypeInternal::Tuple(TupleType { items }),
-        })
-    }
-
-    pub fn int(name: &str, bits: u8, signed: bool) -> Rc<Self> {
-        Rc::new(Self {
-            name: Some(String::from(name)),
-            internal: TypeInternal::Int(IntType { bits, signed }),
-        })
-    }
-
-    pub fn is_int(&self) -> bool {
-        match self.internal {
-            TypeInternal::Int(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn float(name: &str, bits: u8) -> Rc<Self> {
-        Rc::new(Self {
-            name: Some(String::from(name)),
-            internal: TypeInternal::Float(FloatType { bits }),
-        })
-    }
-
-    pub fn is_float(&self) -> bool {
-        match self.internal {
-            TypeInternal::Float(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn bool(name: &str) -> Rc<Self> {
-        Rc::new(Self {
-            name: Some(String::from(name)),
-            internal: TypeInternal::Bool,
-        })
-    }
-
-    pub fn is_bool(&self) -> bool {
-        match self.internal {
-            TypeInternal::Bool => true,
-            _ => false,
-        }
-    }
-
-    pub fn string(name: &str) -> Rc<Self> {
-        Rc::new(Self {
-            name: Some(String::from(name)),
-            internal: TypeInternal::String,
-        })
-    }
-
-    pub fn is_string(&self) -> bool {
-        match self.internal {
-            TypeInternal::String => true,
-            _ => false,
-        }
-    }
-
-    pub fn array(name: Option<String>, element_type: Rc<Type>) -> Rc<Self> {
-        Rc::new(Self {
-            name,
-            internal: TypeInternal::Array(ArrayType { element_type }),
-        })
-    }
-
-    pub fn is_func(&self) -> bool {
-        match self.internal {
-            TypeInternal::Function(_) => true,
-            _ => false,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum TypeInternal {
-    Tuple(TupleType),
-    Int(IntType),
-    Float(FloatType),
-    Bool,
-    String,
-    Array(ArrayType),
-    Function(FunctionType),
-}
-
-impl Display for TypeInternal {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self {
-            Self::Tuple(t) => t.fmt(f),
-            Self::Int(t) => t.fmt(f),
-            Self::Float(t) => t.fmt(f),
-            Self::Bool => write!(f, "bool"),
-            Self::String => write!(f, "string"),
-            Self::Array(t) => t.fmt(f),
-            Self::Function(t) => t.fmt(f),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct TupleType {
-    pub items: Vec<Rc<Type>>,
-}
-
-impl Display for TupleType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut f = f.debug_tuple("");
-        for item in self.items.iter() {
-            f.field(item.as_ref());
-        }
-        f.finish()
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct IntType {
-    pub bits: u8,
-    pub signed: bool,
-}
-
-impl Display for IntType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} bit signed integer", self.bits)
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct FloatType {
-    pub bits: u8,
-}
-
-impl Display for FloatType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} bit float", self.bits)
-    }
-}
-
-#[derive(Clone, Debug, Eq, Serialize, Deserialize)]
-pub struct ArrayType {
-    pub element_type: Rc<Type>,
-}
-
-impl PartialEq for ArrayType {
-    fn eq(&self, other: &Self) -> bool {
-        self.element_type == other.element_type
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        self.element_type != other.element_type
-    }
-}
-
-impl Display for ArrayType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[]{}", self.element_type)
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct FunctionType {
-    pub parameters: Vec<Rc<Type>>,
-    pub return_type: Rc<Type>,
-}
-
-impl Display for FunctionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut arg_formatter = f.debug_tuple("func");
-        for param in self.parameters.iter() {
-            arg_formatter.field(param);
-        }
-        arg_formatter.finish()?;
-        write!(f, " -> {}", self.return_type)
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]

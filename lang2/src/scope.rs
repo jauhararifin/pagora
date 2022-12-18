@@ -1,9 +1,7 @@
-use crate::{
-    errors::Result,
-    semantic::{Expr, Type},
-};
+use crate::{errors::Result, semantic::Expr, types::Type};
 use std::rc::Rc;
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct Scope();
 
 impl Scope {
