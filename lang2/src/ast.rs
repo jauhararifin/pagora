@@ -10,12 +10,16 @@ pub struct RootNode {
     pub items: Vec<ItemNode>,
 }
 
+impl RootNode {
+    pub fn imports(&self) -> impl Iterator<Item = &ImportNode> {
+        self.items.iter().filter_map(|item| item.as_import())
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ItemNode {
     Import(ImportNode),
-    Builtin(BuiltinNode),
-    Struct(StructNode),
-    Tuple(TupleNode),
+    Type(TypeNode),
     Var(VarNode),
     Func(FuncNode),
 }
@@ -37,35 +41,10 @@ pub struct ImportNode {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct BuiltinNode {
+pub struct TypeNode {
     pub pub_tok: Option<Token>,
-    pub builtin: Token,
     pub name: Token,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct StructNode {
-    pub pub_tok: Option<Token>,
-    pub struct_tok: Token,
-    pub name: Token,
-    pub open_block: Token,
-    pub fields: Vec<StructFieldNode>,
-    pub close_block: Token,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct StructFieldNode {
-    pub name: Token,
-    pub colon: Token,
     pub typ: TypeExprNode,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct TupleNode {
-    pub pub_tok: Option<Token>,
-    pub tuple: Token,
-    pub name: Token,
-    pub typ: TupleTypeNode,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -103,6 +82,7 @@ pub struct ParameterNode {
 #[derive(Debug, PartialEq, Eq)]
 pub enum TypeExprNode {
     Tuple(TupleTypeNode),
+    Struct(StructTypeNode),
     Ident(Token),
     Array(ArrayTypeNode),
     Pointer(PointerTypeNode),
@@ -115,6 +95,22 @@ pub struct TupleTypeNode {
     pub fields: Vec<TypeExprNode>,
     pub close_brac: Token,
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct StructTypeNode {
+    pub struct_tok: Token,
+    pub open_block: Token,
+    pub fields: Vec<StructFieldNode>,
+    pub close_block: Token,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct StructFieldNode {
+    pub name: Token,
+    pub colon: Token,
+    pub typ: TypeExprNode,
+}
+
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ArrayTypeNode {

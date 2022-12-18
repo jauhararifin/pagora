@@ -39,8 +39,7 @@ pub fn load_package_complete(package_name: &str) -> Result<()> {
         let dependency: Vec<Rc<String>> = asts
             .roots
             .iter()
-            .flat_map(|root| root.items.iter())
-            .filter_map(|item| item.as_import())
+            .flat_map(|root| root.imports())
             .map(|import| import.package.value.clone())
             .collect();
         for dep in dependency {

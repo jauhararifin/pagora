@@ -8,7 +8,12 @@ pub struct Scope();
 
 impl Scope {
     pub fn new() -> Self {
-        todo!();
+        let mut scope = Self {};
+
+        let int32t = Rc::new(String::from("int32"));
+        scope.bind_type(int32t.clone(), Type::int(&int32t, 32, true));
+
+        scope
     }
 
     pub fn bind_value(&mut self, name: Rc<String>, value: Rc<Expr>) {

@@ -38,9 +38,8 @@ pub enum TokenKind {
     Dot,
     Pub,
     Struct,
-    Tuple,
     Import,
-    Builtin,
+    Type,
 
     OpenBlock,
     CloseBlock,

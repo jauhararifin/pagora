@@ -1,10 +1,10 @@
 use crate::{
     ast::{
-        ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, BuiltinNode,
-        CallExprNode, CastExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode, FuncNode,
+        ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
+        CastExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode, FuncNode,
         GroupedExprNode, IfStmtNode, ImportNode, IndexExprNode, ItemNode, ParameterNode,
         PointerTypeNode, ReturnStmtNode, RootNode, SelectionExprNode, SelectionTypeNode, StmtNode,
-        StructFieldNode, StructNode, TupleNode, TupleTypeNode, TypeExprNode, UnaryExprNode,
+        StructFieldNode, StructTypeNode, TupleTypeNode, TypeExprNode, TypeNode, UnaryExprNode,
         VarNode, VarStmtNode, WhileStmtNode,
     },
     errors::{
@@ -93,9 +93,7 @@ const ITEM_SYNC_TOKENS: &'static [TokenKind] = &[
     TokenKind::Pub,
     TokenKind::Var,
     TokenKind::Function,
-    TokenKind::Struct,
-    TokenKind::Tuple,
-    TokenKind::Builtin,
+    TokenKind::Type,
 ];
 
 fn parse_root(tokens: &mut TokenStream) -> Result<RootNode> {
@@ -157,9 +155,7 @@ fn parse_item(tokens: &mut TokenStream) -> Result<ItemNode> {
 
     let pub_tok = tokens.take_if(TokenKind::Pub);
     Ok(match tokens.kind() {
-        TokenKind::Builtin => ItemNode::Builtin(parse_builtin(tokens, pub_tok)?),
-        TokenKind::Struct => ItemNode::Struct(parse_struct(tokens, pub_tok)?),
-        TokenKind::Tuple => ItemNode::Tuple(parse_tuple(tokens, pub_tok)?),
+        TokenKind::Type => ItemNode::Type(parse_type(tokens, pub_tok)?),
         TokenKind::Var => ItemNode::Var(parse_var(tokens, pub_tok)?),
         TokenKind::Function => ItemNode::Func(parse_func(tokens, pub_tok)?),
         _ => Err(unexpected_token(
@@ -180,55 +176,11 @@ fn parse_import(tokens: &mut TokenStream) -> Result<ImportNode> {
     })
 }
 
-fn parse_builtin(tokens: &mut TokenStream, pub_tok: Option<Token>) -> Result<BuiltinNode> {
-    let builtin = tokens.take(TokenKind::Builtin, None)?;
+fn parse_type(tokens: &mut TokenStream, pub_tok: Option<Token>) -> Result<TypeNode> {
+    let type_tok = tokens.take(TokenKind::Type, None)?;
     let name = tokens.take(TokenKind::Ident, None)?;
-    Ok(BuiltinNode {
-        pub_tok,
-        builtin,
-        name,
-    })
-}
-
-fn parse_struct(tokens: &mut TokenStream, pub_tok: Option<Token>) -> Result<StructNode> {
-    let struct_tok = tokens.take(TokenKind::Struct, None)?;
-    let name = tokens.take(TokenKind::Ident, None)?;
-    let (open_block, fields, close_block) = parse_sequence(
-        tokens,
-        TokenKind::OpenBlock,
-        TokenKind::Comma,
-        TokenKind::CloseBlock,
-        parse_struct_field,
-    )?;
-
-    Ok(StructNode {
-        pub_tok,
-        struct_tok,
-        name,
-        open_block,
-        fields,
-        close_block,
-    })
-}
-
-fn parse_struct_field(tokens: &mut TokenStream) -> Result<StructFieldNode> {
-    let name = tokens.take(TokenKind::Ident, None)?;
-    let colon = tokens.take(TokenKind::Colon, None)?;
     let typ = parse_type_expr(tokens)?;
-    Ok(StructFieldNode { name, colon, typ })
-}
-
-fn parse_tuple(tokens: &mut TokenStream, pub_tok: Option<Token>) -> Result<TupleNode> {
-    let tuple = tokens.take(TokenKind::Tuple, None)?;
-    let name = tokens.take(TokenKind::Ident, None)?;
-    let typ = parse_tuple_type_expr(tokens)?;
-
-    Ok(TupleNode {
-        pub_tok,
-        tuple,
-        name,
-        typ,
-    })
+    Ok(TypeNode { pub_tok, name, typ })
 }
 
 fn parse_var(tokens: &mut TokenStream, pub_tok: Option<Token>) -> Result<VarNode> {
@@ -326,6 +278,10 @@ fn parse_type_expr(tokens: &mut TokenStream) -> Result<TypeExprNode> {
         }));
     }
 
+    if tokens.kind() == TokenKind::Struct {
+        return Ok(TypeExprNode::Struct(parse_struct_type_expr(tokens)?));
+    }
+
     if tokens.kind() == TokenKind::OpenBrac {
         return Ok(TypeExprNode::Tuple(parse_tuple_type_expr(tokens)?));
     }
@@ -338,7 +294,6 @@ fn parse_type_expr(tokens: &mut TokenStream) -> Result<TypeExprNode> {
             close_square,
         }));
     }
-
     let ident = tokens.take(TokenKind::Ident, None)?;
     if let Some(dot) = tokens.take_if(TokenKind::Dot) {
         let selection = tokens.take(TokenKind::Ident, None)?;
@@ -351,6 +306,31 @@ fn parse_type_expr(tokens: &mut TokenStream) -> Result<TypeExprNode> {
 
     let typ = TypeExprNode::Ident(ident);
     Ok(typ)
+}
+
+fn parse_struct_type_expr(tokens: &mut TokenStream) -> Result<StructTypeNode> {
+    let struct_tok = tokens.take(TokenKind::Struct, None)?;
+    let (open_block, fields, close_block) = parse_sequence(
+        tokens,
+        TokenKind::OpenBlock,
+        TokenKind::Comma,
+        TokenKind::CloseBlock,
+        parse_struct_field,
+    )?;
+
+    Ok(StructTypeNode {
+        struct_tok,
+        open_block,
+        fields,
+        close_block,
+    })
+}
+
+fn parse_struct_field(tokens: &mut TokenStream) -> Result<StructFieldNode> {
+    let name = tokens.take(TokenKind::Ident, None)?;
+    let colon = tokens.take(TokenKind::Colon, None)?;
+    let typ = parse_type_expr(tokens)?;
+    Ok(StructFieldNode { name, colon, typ })
 }
 
 fn parse_tuple_type_expr(tokens: &mut TokenStream) -> Result<TupleTypeNode> {
