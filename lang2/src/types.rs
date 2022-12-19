@@ -3,14 +3,14 @@ use std::{fmt::Display, rc::Rc};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Type {
-    pub name: Option<Rc<String>>,
+    pub name: Option<(Rc<String>, Rc<String>)>,
     pub internal: TypeInternal,
 }
 
 impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(ref name) = self.name {
-            name.fmt(f)
+            name.1.fmt(f)
         } else {
             write!(f, "{}", &self.internal)
         }
@@ -18,9 +18,9 @@ impl Display for Type {
 }
 
 impl Type {
-    pub fn int(name: &str, bits: u8, signed: bool) -> Rc<Self> {
+    pub fn int(name: (&str, &str), bits: u8, signed: bool) -> Rc<Self> {
         Rc::new(Self {
-            name: Some(Rc::new(String::from(name))),
+            name: Some((Rc::new(String::from(name.0)), Rc::new(String::from(name.1)))),
             internal: TypeInternal::Int(IntType { bits, signed }),
         })
     }

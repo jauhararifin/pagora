@@ -3,10 +3,10 @@ use std::{
     hash::Hash,
 };
 
-pub fn toposort<'a, 'b, T: Eq + Hash>(
-    adjlist: Vec<(&'a T, &'b Vec<&'a T>)>,
-) -> ToposortResult<'a, T> {
+pub fn toposort<'a, T: Eq + Hash>(adjlist: Vec<(&'a T, Vec<&'a T>)>) -> ToposortResult<'a, T> {
     let nodes = adjlist.iter().map(|(node, _)| *node);
+    let adjlist: Vec<(&'a T, &Vec<&'a T>)> =
+        adjlist.iter().map(|(item, deps)| (*item, deps)).collect();
     let mut instance = Toposort::new(&adjlist);
     for node in nodes {
         if !instance.visited.contains(node) {
@@ -15,7 +15,7 @@ pub fn toposort<'a, 'b, T: Eq + Hash>(
     }
     ToposortResult {
         orders: instance.orders,
-        cycle: instance.cycles,
+        cycles: instance.cycles,
     }
 }
 
@@ -31,8 +31,8 @@ struct Toposort<'a, 'b, T> {
 }
 
 pub struct ToposortResult<'a, T> {
-    orders: Vec<&'a T>,
-    cycle: Vec<Vec<&'a T>>,
+    pub orders: Vec<&'a T>,
+    pub cycles: Vec<Vec<&'a T>>,
 }
 
 impl<'a, 'b, T: Eq + Hash> Toposort<'a, 'b, T> {
@@ -105,26 +105,26 @@ mod tests {
     use super::*;
     #[test]
     fn test1() {
-        let node1 = (&1, &vec![&2, &3]);
-        let node2 = (&2, &vec![&4, &5]);
-        let node3 = (&3, &vec![&5, &6]);
-        let node4 = (&4, &vec![&7, &8]);
-        let node5 = (&5, &vec![]);
-        let node6 = (&6, &vec![&8]);
-        let node7 = (&7, &vec![&9, &10]);
-        let node8 = (&8, &vec![&2]);
-        let node9 = (&9, &vec![]);
-        let node10 = (&10, &vec![&2]);
-        let node11 = (&11, &vec![&10]);
-        let node12 = (&12, &vec![&5]);
-        let node13 = (&13, &vec![&14]);
-        let node14 = (&14, &vec![]);
+        let node1 = (&1, vec![&2, &3]);
+        let node2 = (&2, vec![&4, &5]);
+        let node3 = (&3, vec![&5, &6]);
+        let node4 = (&4, vec![&7, &8]);
+        let node5 = (&5, vec![]);
+        let node6 = (&6, vec![&8]);
+        let node7 = (&7, vec![&9, &10]);
+        let node8 = (&8, vec![&2]);
+        let node9 = (&9, vec![]);
+        let node10 = (&10, vec![&2]);
+        let node11 = (&11, vec![&10]);
+        let node12 = (&12, vec![&5]);
+        let node13 = (&13, vec![&14]);
+        let node14 = (&14, vec![]);
         let adjlist = vec![
             node1, node2, node3, node4, node5, node6, node7, node8, node9, node10, node11, node12,
             node13, node14,
         ];
         let result = toposort(adjlist);
         assert_eq!(result.orders, vec![&9, &5, &12, &14, &13]);
-        assert_eq!(result.cycle, vec![vec![&2, &4, &7, &10],]);
+        assert_eq!(result.cycles, vec![vec![&2, &4, &7, &10],]);
     }
 }

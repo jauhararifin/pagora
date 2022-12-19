@@ -12,9 +12,8 @@ use std::{
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Unit {
-    pub types: HashMap<Rc<String>, Rc<Type>>,
-    pub variables: HashMap<Rc<String>, Variable>,
-    pub functions: HashMap<Rc<String>, Function>,
+    pub types: HashMap<Rc<String>, (bool, Rc<Type>)>,
+    pub values: HashMap<Rc<String>, (bool, Expr)>,
     // TODO: add init function here.
 }
 
