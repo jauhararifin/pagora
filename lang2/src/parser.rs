@@ -1,11 +1,11 @@
 use crate::{
     ast::{
-        ArrayLitNode, ArrayTypeNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
-        CastExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode, FuncNode,
-        GroupedExprNode, IfStmtNode, ImportNode, IndexExprNode, ItemNode, ParameterNode,
-        PointerTypeNode, ReturnStmtNode, RootNode, SelectionExprNode, SelectionTypeNode, StmtNode,
-        StructFieldNode, StructTypeNode, TupleTypeNode, TypeExprNode, TypeNode, UnaryExprNode,
-        VarNode, VarStmtNode, WhileStmtNode,
+        AddrExprNode, ArrayLitNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
+        CastExprNode, DerefExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode,
+        FuncNode, GroupedExprNode, IfStmtNode, ImportNode, IndexExprNode, ItemNode,
+        KeyValueExprNode, ParameterNode, ReturnStmtNode, RootNode, SelectionExprNode,
+        SelectionTypeNode, StmtNode, StructExprTypeNode, StructFieldNode, StructLitNode,
+        TupleLitNode, TypeNode, UnaryExprNode, VarNode, VarStmtNode, WhileStmtNode,
     },
     errors::{
         cannot_use_expr_as_stmt, unexpected_token, unexpected_token_for, CompileError, Result,
@@ -179,8 +179,12 @@ fn parse_import(tokens: &mut TokenStream) -> Result<ImportNode> {
 fn parse_type(tokens: &mut TokenStream, pub_tok: Option<Token>) -> Result<TypeNode> {
     let type_tok = tokens.take(TokenKind::Type, None)?;
     let name = tokens.take(TokenKind::Ident, None)?;
-    let typ = parse_type_expr(tokens)?;
-    Ok(TypeNode { pub_tok, name, typ })
+    let type_expr = parse_expr(tokens)?;
+    Ok(TypeNode {
+        pub_tok,
+        name,
+        type_expr,
+    })
 }
 
 fn parse_var(tokens: &mut TokenStream, pub_tok: Option<Token>) -> Result<VarNode> {
@@ -215,7 +219,7 @@ fn parse_func_head(tokens: &mut TokenStream) -> Result<FuncHeadNode> {
     )?;
     let arrow = tokens.take_if(TokenKind::Arrow);
     let return_type = if arrow.is_some() {
-        Some(parse_type_expr(tokens)?)
+        Some(parse_expr(tokens)?)
     } else {
         None
     };
@@ -266,89 +270,93 @@ where
 fn parse_parameter(tokens: &mut TokenStream) -> Result<ParameterNode> {
     let name = tokens.take(TokenKind::Ident, None)?;
     let colon = tokens.take(TokenKind::Colon, None)?;
-    let typ = parse_type_expr(tokens)?;
-    Ok(ParameterNode { name, colon, typ })
-}
-
-fn parse_type_expr(tokens: &mut TokenStream) -> Result<TypeExprNode> {
-    if let Some(asterisk) = tokens.take_if(TokenKind::Mul) {
-        return Ok(TypeExprNode::Pointer(PointerTypeNode {
-            asterisk,
-            pointee: Box::new(parse_type_expr(tokens)?),
-        }));
-    }
-
-    if tokens.kind() == TokenKind::Struct {
-        return Ok(TypeExprNode::Struct(parse_struct_type_expr(tokens)?));
-    }
-
-    if tokens.kind() == TokenKind::OpenBrac {
-        return Ok(TypeExprNode::Tuple(parse_tuple_type_expr(tokens)?));
-    }
-
-    if let Some(open_square) = tokens.take_if(TokenKind::OpenSquare) {
-        let close_square = tokens.take(TokenKind::CloseSquare, None)?;
-        return Ok(TypeExprNode::Array(ArrayTypeNode {
-            element_type: Box::new(parse_type_expr(tokens)?),
-            open_square,
-            close_square,
-        }));
-    }
-    let ident = tokens.take(TokenKind::Ident, None)?;
-    if let Some(dot) = tokens.take_if(TokenKind::Dot) {
-        let selection = tokens.take(TokenKind::Ident, None)?;
-        return Ok(TypeExprNode::Selection(SelectionTypeNode {
-            value: ident,
-            dot,
-            selection,
-        }));
-    }
-
-    let typ = TypeExprNode::Ident(ident);
-    Ok(typ)
-}
-
-fn parse_struct_type_expr(tokens: &mut TokenStream) -> Result<StructTypeNode> {
-    let struct_tok = tokens.take(TokenKind::Struct, None)?;
-    let (open_block, fields, close_block) = parse_sequence(
-        tokens,
-        TokenKind::OpenBlock,
-        TokenKind::Comma,
-        TokenKind::CloseBlock,
-        parse_struct_field,
-    )?;
-
-    Ok(StructTypeNode {
-        struct_tok,
-        open_block,
-        fields,
-        close_block,
+    let type_expr = parse_expr(tokens)?;
+    Ok(ParameterNode {
+        name,
+        colon,
+        type_expr,
     })
 }
 
-fn parse_struct_field(tokens: &mut TokenStream) -> Result<StructFieldNode> {
-    let name = tokens.take(TokenKind::Ident, None)?;
-    let colon = tokens.take(TokenKind::Colon, None)?;
-    let typ = parse_type_expr(tokens)?;
-    Ok(StructFieldNode { name, colon, typ })
-}
-
-fn parse_tuple_type_expr(tokens: &mut TokenStream) -> Result<TupleTypeNode> {
-    let (open_brac, fields, close_brac) = parse_sequence(
-        tokens,
-        TokenKind::OpenBrac,
-        TokenKind::Comma,
-        TokenKind::CloseBrac,
-        parse_type_expr,
-    )?;
-
-    Ok(TupleTypeNode {
-        open_brac,
-        fields,
-        close_brac,
-    })
-}
-
+// fn parse_type_expr(tokens: &mut TokenStream) -> Result<TypeExprNode> {
+//     if let Some(asterisk) = tokens.take_if(TokenKind::Mul) {
+//         return Ok(TypeExprNode::Pointer(PointerTypeNode {
+//             asterisk,
+//             pointee: Box::new(parse_type_expr(tokens)?),
+//         }));
+//     }
+//
+//     if tokens.kind() == TokenKind::Struct {
+//         return Ok(TypeExprNode::Struct(parse_struct_type_expr(tokens)?));
+//     }
+//
+//     if tokens.kind() == TokenKind::OpenBrac {
+//         return Ok(TypeExprNode::Tuple(parse_tuple_type_expr(tokens)?));
+//     }
+//
+//     if let Some(open_square) = tokens.take_if(TokenKind::OpenSquare) {
+//         let close_square = tokens.take(TokenKind::CloseSquare, None)?;
+//         return Ok(TypeExprNode::Array(ArrayTypeNode {
+//             element_type: Box::new(parse_type_expr(tokens)?),
+//             open_square,
+//             close_square,
+//         }));
+//     }
+//     let ident = tokens.take(TokenKind::Ident, None)?;
+//     if let Some(dot) = tokens.take_if(TokenKind::Dot) {
+//         let selection = tokens.take(TokenKind::Ident, None)?;
+//         return Ok(TypeExprNode::Selection(SelectionTypeNode {
+//             value: ident,
+//             dot,
+//             selection,
+//         }));
+//     }
+//
+//     let typ = TypeExprNode::Ident(ident);
+//     Ok(typ)
+// }
+//
+// fn parse_struct_type_expr(tokens: &mut TokenStream) -> Result<StructTypeNode> {
+//     let struct_tok = tokens.take(TokenKind::Struct, None)?;
+//     let (open_block, fields, close_block) = parse_sequence(
+//         tokens,
+//         TokenKind::OpenBlock,
+//         TokenKind::Comma,
+//         TokenKind::CloseBlock,
+//         parse_struct_field,
+//     )?;
+//
+//     Ok(StructTypeNode {
+//         struct_tok,
+//         open_block,
+//         fields,
+//         close_block,
+//     })
+// }
+//
+// fn parse_struct_field(tokens: &mut TokenStream) -> Result<StructFieldNode> {
+//     let name = tokens.take(TokenKind::Ident, None)?;
+//     let colon = tokens.take(TokenKind::Colon, None)?;
+//     let typ = parse_type_expr(tokens)?;
+//     Ok(StructFieldNode { name, colon, typ })
+// }
+//
+// fn parse_tuple_type_expr(tokens: &mut TokenStream) -> Result<TupleTypeNode> {
+//     let (open_brac, fields, close_brac) = parse_sequence(
+//         tokens,
+//         TokenKind::OpenBrac,
+//         TokenKind::Comma,
+//         TokenKind::CloseBrac,
+//         parse_type_expr,
+//     )?;
+//
+//     Ok(TupleTypeNode {
+//         open_brac,
+//         fields,
+//         close_brac,
+//     })
+// }
+//
 fn parse_stmt(tokens: &mut TokenStream) -> Result<StmtNode> {
     Ok(match tokens.kind() {
         TokenKind::OpenBlock => StmtNode::Block(parse_block_stmt(tokens)?),
@@ -396,19 +404,19 @@ fn parse_var_stmt(tokens: &mut TokenStream) -> Result<VarStmtNode> {
     let name = tokens.take(TokenKind::Ident, None)?;
 
     let colon = tokens.take_if(TokenKind::Colon);
-    let (typ, assign, value) = if colon.is_none() {
+    let (type_expr, assign, value) = if colon.is_none() {
         let assign = tokens.take(TokenKind::Assign, None)?;
         let value = parse_expr(tokens)?;
         (None, Some(assign), Some(value))
     } else {
-        let typ = parse_type_expr(tokens)?;
+        let type_expr = parse_expr(tokens)?;
         let assign = tokens.take_if(TokenKind::Assign);
         let value = if assign.is_none() {
             None
         } else {
             Some(parse_expr(tokens)?)
         };
-        (Some(typ), assign, value)
+        (Some(type_expr), assign, value)
     };
     tokens.take(TokenKind::Semicolon, None)?;
 
@@ -416,7 +424,7 @@ fn parse_var_stmt(tokens: &mut TokenStream) -> Result<VarStmtNode> {
         var,
         name,
         colon,
-        typ,
+        type_expr,
         assign,
         value,
     })
@@ -588,7 +596,7 @@ fn parse_index_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
 fn parse_cast_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
     let value = parse_unary_expr(tokens)?;
     if let Some(as_tok) = tokens.take_if(TokenKind::As) {
-        let target = parse_type_expr(tokens)?;
+        let target = parse_expr(tokens)?;
         Ok(ExprNode::Cast(CastExprNode {
             value: Box::new(value),
             as_tok,
@@ -604,24 +612,35 @@ const UNARY_OP: &'static [TokenKind] = &[
     TokenKind::Sub,
     TokenKind::Add,
     TokenKind::Not,
-    TokenKind::BitAnd,
 ];
 
 fn parse_unary_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
-    if !UNARY_OP.contains(&tokens.kind()) {
-        return parse_call_expr(tokens);
+    if let Some(ampersand) = tokens.take_if(TokenKind::BitAnd) {
+        let value = parse_call_expr(tokens)?;
+        Ok(ExprNode::Addr(AddrExprNode {
+            ampersand,
+            value: Box::new(value),
+        }))
+    } else if let Some(asterisk) = tokens.take_if(TokenKind::Mul) {
+        let value = parse_call_expr(tokens)?;
+        Ok(ExprNode::Deref(DerefExprNode {
+            asterisk,
+            value: Box::new(value),
+        }))
+    } else if UNARY_OP.contains(&tokens.kind()) {
+        let op = tokens.next();
+        let value = parse_call_expr(tokens)?;
+        Ok(ExprNode::Unary(UnaryExprNode {
+            op,
+            value: Box::new(value),
+        }))
+    } else {
+        parse_unary_expr(tokens)
     }
-
-    let op = tokens.next();
-    let value = parse_call_expr(tokens)?;
-    Ok(ExprNode::Unary(UnaryExprNode {
-        op,
-        value: Box::new(value),
-    }))
 }
 
 fn parse_call_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
-    let target = parse_selection_expr(tokens)?;
+    let target = parse_composite_lit(tokens)?;
 
     if tokens.kind() != TokenKind::OpenBrac {
         return Ok(target);
@@ -643,8 +662,44 @@ fn parse_call_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
     }))
 }
 
+fn parse_composite_lit(tokens: &mut TokenStream) -> Result<ExprNode> {
+    let struct_type = parse_selection_expr(tokens)?;
+
+    if tokens.kind() != TokenKind::OpenBlock {
+        return Ok(struct_type);
+    }
+
+    let (open_block, values, close_block) = parse_sequence(
+        tokens,
+        TokenKind::OpenBlock,
+        TokenKind::Comma,
+        TokenKind::CloseBlock,
+        parse_key_value,
+    )?;
+
+    Ok(ExprNode::StructLit(StructLitNode {
+        struct_type: Box::new(struct_type),
+        open_block,
+        values,
+        close_block,
+    }))
+}
+
+fn parse_key_value(tokens: &mut TokenStream) -> Result<ExprNode> {
+    if let Some(key) = tokens.take_if(TokenKind::Ident) {
+        if let Some(colon) = tokens.take_if(TokenKind::Ident) {
+            let value = Box::new(parse_expr(tokens)?);
+            Ok(ExprNode::KeyValue(KeyValueExprNode { key, colon, value }))
+        } else {
+            Ok(ExprNode::Ident(key))
+        }
+    } else {
+        parse_expr(tokens)
+    }
+}
+
 fn parse_selection_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
-    let value = parse_primary_expr(tokens)?;
+    let value = parse_struct_type_expr(tokens)?;
     let Some(dot) = tokens.take_if(TokenKind::Dot) else {
         return Ok(value)
     };
@@ -665,6 +720,44 @@ fn parse_selection_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
     }));
 }
 
+fn parse_struct_type_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
+    if let Some(struct_tok) = tokens.take_if(TokenKind::Struct) {
+        let (open_block, fields, close_block) = parse_sequence(
+            tokens,
+            TokenKind::OpenBlock,
+            TokenKind::Comma,
+            TokenKind::CloseBlock,
+            parse_struct_field,
+        )?;
+
+        Ok(ExprNode::Struct(StructExprTypeNode {
+            struct_tok,
+            open_block,
+            fields,
+            close_block,
+        }))
+    } else {
+        parse_primary_expr(tokens)
+    }
+}
+
+fn parse_struct_field(tokens: &mut TokenStream) -> Result<StructFieldNode> {
+    let name = tokens.take(TokenKind::Ident, None)?;
+    let colon = tokens.take(TokenKind::Colon, None)?;
+    let type_expr = parse_expr(tokens)?;
+    Ok(StructFieldNode {
+        name,
+        colon,
+        type_expr,
+    })
+}
+
+// fn parse_array_type(tokens: &mut TokenStream) -> Result<ExprNode> {
+//     let open_square = tokens.take_if(TokenKind::OpenSquare, None)?;
+//     let close_square = tokens.take(TokenKind::CloseSquare, None)?;
+//     todo!();
+// }
+
 fn parse_primary_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
     match tokens.kind() {
         TokenKind::OpenBrac => {
@@ -675,20 +768,6 @@ fn parse_primary_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
                 open_brac,
                 value: Box::new(value),
                 close_brac,
-            }))
-        }
-        TokenKind::OpenSquare => {
-            let (open_square, elements, close_square) = parse_sequence(
-                tokens,
-                TokenKind::OpenSquare,
-                TokenKind::Comma,
-                TokenKind::CloseSquare,
-                parse_expr,
-            )?;
-            Ok(ExprNode::ArrayLit(ArrayLitNode {
-                open_square,
-                elements,
-                close_square,
             }))
         }
         TokenKind::Ident => Ok(ExprNode::Ident(tokens.next())),

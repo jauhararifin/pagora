@@ -44,7 +44,7 @@ pub struct ImportNode {
 pub struct TypeNode {
     pub pub_tok: Option<Token>,
     pub name: Token,
-    pub typ: TypeExprNode,
+    pub type_expr: ExprNode,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -69,60 +69,14 @@ pub struct FuncHeadNode {
     pub parameters: Vec<ParameterNode>,
     pub close_brac: Token,
     pub arrow: Option<Token>,
-    pub return_type: Option<TypeExprNode>,
+    pub return_type: Option<ExprNode>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParameterNode {
     pub name: Token,
     pub colon: Token,
-    pub typ: TypeExprNode,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum TypeExprNode {
-    Tuple(TupleTypeNode),
-    Struct(StructTypeNode),
-    Ident(Token),
-    Array(ArrayTypeNode),
-    Pointer(PointerTypeNode),
-    Selection(SelectionTypeNode),
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct TupleTypeNode {
-    pub open_brac: Token,
-    pub fields: Vec<TypeExprNode>,
-    pub close_brac: Token,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct StructTypeNode {
-    pub struct_tok: Token,
-    pub open_block: Token,
-    pub fields: Vec<StructFieldNode>,
-    pub close_block: Token,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct StructFieldNode {
-    pub name: Token,
-    pub colon: Token,
-    pub typ: TypeExprNode,
-}
-
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct ArrayTypeNode {
-    pub open_square: Token,
-    pub close_square: Token,
-    pub element_type: Box<TypeExprNode>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct PointerTypeNode {
-    pub asterisk: Token,
-    pub pointee: Box<TypeExprNode>,
+    pub type_expr: ExprNode,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -140,13 +94,19 @@ pub enum ExprNode {
     BooleanLit(Token),
     StringLit(Token),
     ArrayLit(ArrayLitNode),
+    StructLit(StructLitNode),
+    KeyValue(KeyValueExprNode),
     Binary(BinaryExprNode),
+    Addr(AddrExprNode),
+    Deref(DerefExprNode),
     Unary(UnaryExprNode),
     Call(CallExprNode),
     Index(IndexExprNode),
     Cast(CastExprNode),
     Selection(SelectionExprNode),
     Grouped(GroupedExprNode),
+    Array(ArrayExprTypeNode),
+    Struct(StructExprTypeNode),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -157,10 +117,44 @@ pub struct ArrayLitNode {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct StructLitNode {
+    pub struct_type: Box<ExprNode>,
+    pub open_block: Token,
+    pub values: Vec<ExprNode>,
+    pub close_block: Token,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct KeyValueExprNode {
+    pub key: Token,
+    pub colon: Token,
+    pub value: Box<ExprNode>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TupleLitNode {
+    pub open_brac: Token,
+    pub values: Vec<ExprNode>,
+    pub close_brac: Token,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct BinaryExprNode {
     pub a: Box<ExprNode>,
     pub op: Token,
     pub b: Box<ExprNode>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct AddrExprNode {
+    pub ampersand: Token,
+    pub value: Box<ExprNode>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DerefExprNode {
+    pub asterisk: Token,
+    pub value: Box<ExprNode>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -189,7 +183,7 @@ pub struct IndexExprNode {
 pub struct CastExprNode {
     pub value: Box<ExprNode>,
     pub as_tok: Token,
-    pub target: Box<TypeExprNode>,
+    pub target: Box<ExprNode>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -204,6 +198,28 @@ pub struct GroupedExprNode {
     pub open_brac: Token,
     pub value: Box<ExprNode>,
     pub close_brac: Token,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct StructExprTypeNode {
+    pub struct_tok: Token,
+    pub open_block: Token,
+    pub fields: Vec<StructFieldNode>,
+    pub close_block: Token,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct StructFieldNode {
+    pub name: Token,
+    pub colon: Token,
+    pub type_expr: ExprNode,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ArrayExprTypeNode {
+    pub open_square: Token,
+    pub close_square: Token,
+    pub element_type: Box<ExprNode>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -230,7 +246,7 @@ pub struct VarStmtNode {
     pub var: Token,
     pub name: Token,
     pub colon: Option<Token>,
-    pub typ: Option<TypeExprNode>,
+    pub type_expr: Option<ExprNode>,
     pub assign: Option<Token>,
     pub value: Option<ExprNode>,
 }
