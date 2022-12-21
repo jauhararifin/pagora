@@ -1,9 +1,11 @@
 use std::{collections::HashMap, iter::zip, rc::Rc};
 
 use crate::{
+    analyzer::dependencies::build_dependency_graph,
     ast::{ItemNode, RootSet},
-    errors::Result,
+    errors::{definition_cycle, CompileError, Result},
     semantic::Unit,
+    toposort::toposort,
 };
 
 pub fn analyze_package(
@@ -11,40 +13,59 @@ pub fn analyze_package(
     package_name: &str,
     asts: &RootSet,
 ) -> Result<Unit> {
-    let mut imports = vec![];
-    for root in asts.roots.iter() {
-        let import_binding: HashMap<Rc<String>, Rc<String>> = HashMap::from_iter(
-            root.items
-                .iter()
-                .filter_map(|item| item.as_import())
-                .map(|import| (import.alias.value.clone(), import.package.value.clone())),
-        );
-        imports.push(import_binding);
+    let dependency_graph = build_dependency_graph(asts)?;
+    let dependency_graph: Vec<(&Rc<String>, Vec<&Rc<String>>)> = dependency_graph
+        .iter()
+        .map(|(name, deps)| (name, deps.iter().collect()))
+        .collect();
+    let result = toposort(dependency_graph);
+
+    let mut errors = CompileError::new();
+    for cycle in result.cycles {
+        let cycle: Vec<Rc<String>> = cycle.into_iter().map(|v| v.clone()).collect();
+        errors.push(definition_cycle(&cycle));
     }
 
-    let mut type_asts = vec![];
-    let mut var_asts = vec![];
-    let mut func_asts = vec![];
-
-    for (import_binding, root) in zip(imports.iter(), asts.roots.iter()) {
-        for item in root.items.iter() {
-            match item {
-                ItemNode::Import(import_node) => (),
-                ItemNode::Type(type_node) => {
-                    type_asts.push((type_node, import_binding));
-                }
-                ItemNode::Var(var_node) => {
-                    var_asts.push((var_node, import_binding));
-                }
-                ItemNode::Func(func_node) => {
-                    func_asts.push((func_node, import_binding));
-                }
-            }
-        }
+    if !errors.is_empty() {
+        return Err(errors);
     }
 
     todo!();
 
+    // let mut imports = vec![];
+    // for root in asts.roots.iter() {
+    //     let import_binding: HashMap<Rc<String>, Rc<String>> = HashMap::from_iter(
+    //         root.items
+    //             .iter()
+    //             .filter_map(|item| item.as_import())
+    //             .map(|import| (import.alias.value.clone(), import.package.value.clone())),
+    //     );
+    //     imports.push(import_binding);
+    // }
+    //
+    // let mut type_asts = vec![];
+    // let mut var_asts = vec![];
+    // let mut func_asts = vec![];
+    //
+    // for (import_binding, root) in zip(imports.iter(), asts.roots.iter()) {
+    //     for item in root.items.iter() {
+    //         match item {
+    //             ItemNode::Import(import_node) => (),
+    //             ItemNode::Type(type_node) => {
+    //                 type_asts.push((type_node, import_binding));
+    //             }
+    //             ItemNode::Var(var_node) => {
+    //                 var_asts.push((var_node, import_binding));
+    //             }
+    //             ItemNode::Func(func_node) => {
+    //                 func_asts.push((func_node, import_binding));
+    //             }
+    //         }
+    //     }
+    // }
+    //
+    // todo!();
+    //
     // let mut scope = Scope::new(Rc::new(String::from(package_name)));
     //
     // let mut errors = CompileError::new();

@@ -205,6 +205,12 @@ pub fn import_cycle(cycle: &[Rc<String>]) -> CompileError {
     CompileError::from_message(None, format!("Found an import cycle: {}", cycle))
 }
 
+pub fn definition_cycle(cycle: &[Rc<String>]) -> CompileError {
+    let cycle: Vec<&str> = cycle.iter().map(|s| s.as_str()).collect();
+    let cycle = cycle.join(" refers tp ").to_string();
+    CompileError::from_message(None, format!("Found a definition cycle: {}", cycle))
+}
+
 pub fn missing_package(package_name: &str) -> CompileError {
     CompileError::from_message(None, format!("Package {} not found", package_name))
 }

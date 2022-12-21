@@ -1,13 +1,62 @@
-use super::scope::Scope;
 use crate::{
     ast::{
-        BlockStmtNode, CallExprNode, ExprNode, FuncNode, IfStmtNode, ItemNode, StmtNode,
+        BlockStmtNode, CallExprNode, ExprNode, FuncNode, IfStmtNode, ItemNode, RootSet, StmtNode,
         VarStmtNode, WhileStmtNode,
     },
-    errors::{unexpected, CompileError, Result},
+    errors::{cannot_redeclare_symbol, unexpected, CompileError, Result},
     semantic::IfStatement,
 };
-use std::rc::Rc;
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
+
+pub fn build_dependency_graph(root_set: &RootSet) -> Result<Vec<(Rc<String>, Vec<Rc<String>>)>> {
+    let mut scope = Scope::new();
+
+    scope.add_scope();
+    for item in root_set.roots.iter().flat_map(|root| root.items.iter()) {
+        let name = match item {
+            ItemNode::Var(node) => node.stmt.name.value.clone(),
+            ItemNode::Type(node) => node.name.value.clone(),
+            ItemNode::Func(node) => node.head.name.value.clone(),
+            _ => continue,
+        };
+        scope.add_name(name);
+    }
+
+    let mut result = vec![];
+    let mut errors = CompileError::new();
+
+    for root in root_set.roots.iter() {
+        scope.add_scope();
+
+        for item in root.items.iter() {
+            if let ItemNode::Import(node) = item {
+                scope.add_name(node.alias.value.clone());
+            }
+        }
+
+        for item in root.items.iter() {
+            let name = match item {
+                ItemNode::Var(node) => node.stmt.name.value.clone(),
+                ItemNode::Type(node) => node.name.value.clone(),
+                ItemNode::Func(node) => node.head.name.value.clone(),
+                _ => continue,
+            };
+
+            match get_item_dependencies(&mut scope, item) {
+                Ok(deps) => result.push((name.clone(), deps)),
+                Err(err) => errors.push(err),
+            }
+        }
+
+        scope.pop_scope();
+    }
+
+    scope.pop_scope();
+    Ok(result)
+}
 
 fn get_item_dependencies(scope: &mut Scope, item: &ItemNode) -> Result<Vec<Rc<String>>> {
     match item {
@@ -26,7 +75,7 @@ fn get_item_dependencies(scope: &mut Scope, item: &ItemNode) -> Result<Vec<Rc<St
 fn get_type_dependencies(scope: &Scope, expr_node: &ExprNode) -> Result<Vec<Rc<String>>> {
     match expr_node {
         ExprNode::Deref(_) => Ok(vec![]),
-        ExprNode::Ident(node) => Ok(if scope.has_in_root(&node.value) {
+        ExprNode::Ident(node) => Ok(if scope.is_root_name(&node.value) {
             vec![node.value.clone()]
         } else {
             vec![]
@@ -76,7 +125,7 @@ fn get_type_dependencies(scope: &Scope, expr_node: &ExprNode) -> Result<Vec<Rc<S
 
 fn get_expr_dependencies(scope: &Scope, expr_node: &ExprNode) -> Result<Vec<Rc<String>>> {
     match expr_node {
-        ExprNode::Ident(node) => Ok(if scope.has_in_root(&node.value) {
+        ExprNode::Ident(node) => Ok(if scope.is_root_name(&node.value) {
             vec![node.value.clone()]
         } else {
             vec![]
@@ -230,9 +279,7 @@ fn get_block_stmt_dependencies(
     scope.add_scope();
 
     for name in additional_names {
-        if let Err(err) = scope.add_name(name) {
-            errors.push(err);
-        }
+        scope.add_name(name);
     }
 
     for stmt in block_stmt.statements.iter() {
@@ -337,5 +384,55 @@ fn get_call_stmt_dependencies(
         Err(errors)
     } else {
         Ok(result)
+    }
+}
+
+struct Scope {
+    table: HashMap<Rc<String>, Vec<usize>>,
+    scopes: Vec<HashSet<Rc<String>>>,
+}
+
+impl Scope {
+    pub fn new() -> Self {
+        Self {
+            table: HashMap::new(),
+            scopes: vec![],
+        }
+    }
+
+    pub fn is_root_name(&self, name: &String) -> bool {
+        self.table.get(name).and_then(|v| v.last()).unwrap_or(&0) == &1
+    }
+
+    pub fn add_name(&mut self, name: Rc<String>) {
+        let last_scope = self
+            .scopes
+            .last_mut()
+            .expect("invalid state: scopes is empty");
+        if last_scope.contains(&name) {
+            return;
+        }
+
+        last_scope.insert(name.clone());
+        let v = self.table.entry(name.clone()).or_insert(vec![]);
+        v.push(self.scopes.len());
+    }
+
+    pub fn add_scope(&mut self) {
+        self.scopes.push(HashSet::new());
+    }
+
+    pub fn pop_scope(&mut self) {
+        for name in self
+            .scopes
+            .pop()
+            .expect("invalid state: popped empty scopes")
+        {
+            if self.table.get(&name).unwrap().len() == 1 {
+                self.table.remove(&name);
+            } else {
+                self.table.get_mut(&name).unwrap().pop();
+            }
+        }
     }
 }
