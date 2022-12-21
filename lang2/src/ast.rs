@@ -93,8 +93,7 @@ pub enum ExprNode {
     RealLit(Token),
     BooleanLit(Token),
     StringLit(Token),
-    ArrayLit(ArrayLitNode),
-    StructLit(StructLitNode),
+    CompositeLit(CompositeLitNode),
     KeyValue(KeyValueExprNode),
     Binary(BinaryExprNode),
     Addr(AddrExprNode),
@@ -105,20 +104,13 @@ pub enum ExprNode {
     Cast(CastExprNode),
     Selection(SelectionExprNode),
     Grouped(GroupedExprNode),
-    Array(ArrayExprTypeNode),
-    Struct(StructExprTypeNode),
+    Array(ArrayTypeExprNode),
+    Struct(StructTypeExprNode),
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct ArrayLitNode {
-    pub open_square: Token,
-    pub elements: Vec<ExprNode>,
-    pub close_square: Token,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct StructLitNode {
-    pub struct_type: Box<ExprNode>,
+pub struct CompositeLitNode {
+    pub type_expr: Box<ExprNode>,
     pub open_block: Token,
     pub values: Vec<ExprNode>,
     pub close_block: Token,
@@ -201,7 +193,7 @@ pub struct GroupedExprNode {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct StructExprTypeNode {
+pub struct StructTypeExprNode {
     pub struct_tok: Token,
     pub open_block: Token,
     pub fields: Vec<StructFieldNode>,
@@ -216,7 +208,7 @@ pub struct StructFieldNode {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct ArrayExprTypeNode {
+pub struct ArrayTypeExprNode {
     pub open_square: Token,
     pub close_square: Token,
     pub element_type: Box<ExprNode>,

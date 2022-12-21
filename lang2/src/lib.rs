@@ -6,7 +6,6 @@ mod errors;
 mod package;
 mod parser;
 mod scanner;
-mod scope;
 mod semantic;
 mod tokens;
 mod toposort;

@@ -41,6 +41,13 @@ impl From<io::Error> for CompileError {
     }
 }
 
+pub fn unexpected(expected: &str, found: &str, position: Position) -> CompileError {
+    CompileError::from_message(
+        Some(position),
+        format!("Expected {}, but found {}", expected, found),
+    )
+}
+
 pub fn unexpected_char(position: Position, ch: char) -> CompileError {
     CompileError::from_message(Some(position), format!("Unexpected character {}", ch))
 }

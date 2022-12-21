@@ -1,5 +1,4 @@
 use crate::{
-    scope::Scope,
     tokens::Position,
     types::{FunctionType, Type},
 };

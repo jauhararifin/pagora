@@ -4,7 +4,6 @@ use crate::{
     errors::{import_cycle, CompileError, Result},
     parser::parse,
     scanner::scan,
-    scope::Scope,
     toposort::toposort,
 };
 use std::{

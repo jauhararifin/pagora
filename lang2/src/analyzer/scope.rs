@@ -76,6 +76,26 @@ impl Scope {
         Ok(())
     }
 
+    pub fn has_in_root(&self, name: &String) -> bool {
+        todo!();
+    }
+
+    pub fn add_scope(&mut self) {
+        todo!();
+    }
+
+    pub fn pop_scope(&mut self) {
+        todo!();
+    }
+
+    pub fn add_name(&mut self, name: Rc<String>) -> Result<()> {
+        todo!();
+    }
+
+    pub fn lookup_in_root(&self, name: &String) -> Option<()> {
+        todo!();
+    }
+
     pub fn lookup_value(&self, name: &String) -> Option<Expr> {
         todo!();
     }

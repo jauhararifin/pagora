@@ -1,11 +1,11 @@
 use crate::{
     ast::{
-        AddrExprNode, ArrayLitNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode,
-        CastExprNode, DerefExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode,
+        AddrExprNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode, CastExprNode,
+        CompositeLitNode, DerefExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode,
         FuncNode, GroupedExprNode, IfStmtNode, ImportNode, IndexExprNode, ItemNode,
         KeyValueExprNode, ParameterNode, ReturnStmtNode, RootNode, SelectionExprNode,
-        SelectionTypeNode, StmtNode, StructExprTypeNode, StructFieldNode, StructLitNode,
-        TupleLitNode, TypeNode, UnaryExprNode, VarNode, VarStmtNode, WhileStmtNode,
+        SelectionTypeNode, StmtNode, StructFieldNode, StructTypeExprNode, TupleLitNode, TypeNode,
+        UnaryExprNode, VarNode, VarStmtNode, WhileStmtNode,
     },
     errors::{
         cannot_use_expr_as_stmt, unexpected_token, unexpected_token_for, CompileError, Result,
@@ -663,10 +663,10 @@ fn parse_call_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
 }
 
 fn parse_composite_lit(tokens: &mut TokenStream) -> Result<ExprNode> {
-    let struct_type = parse_selection_expr(tokens)?;
+    let type_expr = parse_selection_expr(tokens)?;
 
     if tokens.kind() != TokenKind::OpenBlock {
-        return Ok(struct_type);
+        return Ok(type_expr);
     }
 
     let (open_block, values, close_block) = parse_sequence(
@@ -677,8 +677,8 @@ fn parse_composite_lit(tokens: &mut TokenStream) -> Result<ExprNode> {
         parse_key_value,
     )?;
 
-    Ok(ExprNode::StructLit(StructLitNode {
-        struct_type: Box::new(struct_type),
+    Ok(ExprNode::CompositeLit(CompositeLitNode {
+        type_expr: Box::new(type_expr),
         open_block,
         values,
         close_block,
@@ -730,7 +730,7 @@ fn parse_struct_type_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
             parse_struct_field,
         )?;
 
-        Ok(ExprNode::Struct(StructExprTypeNode {
+        Ok(ExprNode::Struct(StructTypeExprNode {
             struct_tok,
             open_block,
             fields,
