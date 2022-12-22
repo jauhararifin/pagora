@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::tokens::Token;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -29,6 +31,31 @@ impl ItemNode {
         match self {
             Self::Import(node) => Some(node),
             _ => None,
+        }
+    }
+
+    pub fn as_type(&self) -> Option<&TypeNode> {
+        match self {
+            Self::Type(node) => Some(node),
+            _ => None,
+        }
+    }
+
+    pub fn name_token(&self) -> &Token {
+        match self {
+            Self::Import(node) => &node.alias,
+            Self::Type(node) => &node.name,
+            Self::Var(node) => &node.stmt.name,
+            Self::Func(node) => &node.head.name,
+        }
+    }
+
+    pub fn name(&self) -> Rc<String> {
+        match self {
+            Self::Import(node) => node.alias.value.clone(),
+            Self::Type(node) => node.name.value.clone(),
+            Self::Var(node) => node.stmt.name.value.clone(),
+            Self::Func(node) => node.head.name.value.clone(),
         }
     }
 }

@@ -11,9 +11,30 @@ use std::{
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Unit {
-    pub types: HashMap<Rc<String>, (bool, Rc<Type>)>,
-    pub values: HashMap<Rc<String>, (bool, Expr)>,
-    // TODO: add init function here.
+    pub symbols: HashMap<Rc<String>, Symbol>,
+}
+
+impl Unit {
+    pub fn new() -> Self {
+        Self {
+            symbols: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct Symbol {
+    pub exported: bool,
+    pub package: Rc<String>,
+    pub name: Rc<String>,
+    pub kind: SymbolKind,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub enum SymbolKind {
+    TypeUnknown,
+    Type(Rc<Type>),
+    Value(Rc<Expr>),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
