@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::tokens::Token;
+use crate::tokens::{Position, Token};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RootSet {
@@ -107,13 +107,6 @@ pub struct ParameterNode {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct SelectionTypeNode {
-    pub value: Token,
-    pub dot: Token,
-    pub selection: Token,
-}
-
-#[derive(Debug, PartialEq, Eq)]
 pub enum ExprNode {
     Ident(Token),
     IntegerLit(Token),
@@ -133,6 +126,31 @@ pub enum ExprNode {
     Grouped(GroupedExprNode),
     Array(ArrayTypeExprNode),
     Struct(StructTypeExprNode),
+}
+
+impl ExprNode {
+    pub fn position(&self) -> Position {
+        match self {
+            Self::Ident(node) => node.position.clone(),
+            Self::IntegerLit(node) => node.position.clone(),
+            Self::RealLit(node) => node.position.clone(),
+            Self::BooleanLit(node) => node.position.clone(),
+            Self::StringLit(node) => node.position.clone(),
+            Self::CompositeLit(node) => node.type_expr.position(),
+            Self::KeyValue(node) => node.key.position.clone(),
+            Self::Binary(node) => node.a.position(),
+            Self::Addr(node) => node.ampersand.position.clone(),
+            Self::Deref(node) => node.asterisk.position.clone(),
+            Self::Unary(node) => node.op.position.clone(),
+            Self::Call(node) => node.target.position(),
+            Self::Index(node) => node.target.position(),
+            Self::Cast(node) => node.value.position(),
+            Self::Selection(node) => node.value.position(),
+            Self::Grouped(node) => node.value.position(),
+            Self::Array(node) => node.open_square.position.clone(),
+            Self::Struct(node) => node.struct_tok.position.clone(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

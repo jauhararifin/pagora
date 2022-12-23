@@ -11,28 +11,37 @@ use std::{
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Unit {
+    pub package: Rc<String>,
     pub symbols: HashMap<Rc<String>, Symbol>,
 }
 
 impl Unit {
-    pub fn new() -> Self {
+    pub fn new(package: Rc<String>) -> Self {
         Self {
+            package,
             symbols: HashMap::new(),
         }
+    }
+
+    pub fn get_exported_type(&self, name: &String) -> Option<Rc<Type>> {
+        todo!();
+    }
+
+    pub fn get_exported_value(&self, name: &String) -> Option<Rc<Expr>> {
+        todo!();
     }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Symbol {
     pub exported: bool,
-    pub package: Rc<String>,
-    pub name: Rc<String>,
-    pub kind: SymbolKind,
+    pub name: (Rc<String>, Rc<String>),
+    pub object: Object,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub enum SymbolKind {
-    TypeUnknown,
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum Object {
+    Package(Rc<Unit>),
     Type(Rc<Type>),
     Value(Rc<Expr>),
 }
@@ -80,6 +89,7 @@ pub enum ExprKind {
     Call(CallExpr),
     Ident(IdentExpr),
     Const(ConstExpr),
+    DefaultZero,
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy, Serialize, Deserialize)]

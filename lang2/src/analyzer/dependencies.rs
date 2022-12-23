@@ -98,28 +98,7 @@ fn get_type_dependencies(scope: &Scope, expr_node: &ExprNode) -> Result<Vec<Rc<S
                 Ok(result)
             }
         }
-        _ => Err(unexpected(
-            "TYPE",
-            "EXPR",
-            match expr_node {
-                ExprNode::IntegerLit(node) => node.position.clone(),
-                ExprNode::RealLit(node) => node.position.clone(),
-                ExprNode::BooleanLit(node) => node.position.clone(),
-                ExprNode::StringLit(node) => node.position.clone(),
-                ExprNode::CompositeLit(node) => node.open_block.position.clone(),
-                ExprNode::KeyValue(node) => node.key.position.clone(),
-                ExprNode::Binary(node) => node.op.position.clone(),
-                ExprNode::Addr(node) => node.ampersand.position.clone(),
-                ExprNode::Deref(node) => node.asterisk.position.clone(),
-                ExprNode::Unary(node) => node.op.position.clone(),
-                ExprNode::Call(node) => node.open_brac.position.clone(),
-                ExprNode::Index(node) => node.open_square.position.clone(),
-                ExprNode::Cast(node) => node.as_tok.position.clone(),
-                ExprNode::Selection(node) => node.dot.position.clone(),
-                ExprNode::Grouped(node) => node.open_brac.position.clone(),
-                _ => unreachable!(),
-            },
-        )),
+        _ => Err(unexpected("TYPE", "EXPR", expr_node.position())),
     }
 }
 

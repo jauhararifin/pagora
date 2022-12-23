@@ -1,4 +1,8 @@
-use crate::tokens::{Position, Token, TokenKind};
+use crate::{
+    semantic::Expr,
+    tokens::{Position, Token, TokenKind},
+    types::Type,
+};
 use serde::{Deserialize, Serialize};
 use std::{io, path::Path, rc::Rc};
 
@@ -90,16 +94,16 @@ pub fn cannot_redeclare_symbol(token: &Token, declared_at: &Position) -> Compile
 //     )
 // }
 //
-// pub fn type_mismatch(expected: &Type, got: &Expr) -> CompileError {
-//     CompileError::from_message(
-//         Some(got.position.clone()),
-//         format!(
-//             "Type mismatch, expected {} got {}",
-//             expected, got.result_type
-//         ),
-//     )
-// }
-//
+pub fn type_mismatch(expected: &Type, got: &Expr) -> CompileError {
+    CompileError::from_message(
+        Some(got.position.clone()),
+        format!(
+            "Type mismatch, expected {} got {}",
+            expected, got.result_type
+        ),
+    )
+}
+
 pub fn undefined_type(pkg_name: Option<&Token>, token: &Token) -> CompileError {
     if let Some(pkg_name) = pkg_name {
         CompileError::from_message(
@@ -114,10 +118,14 @@ pub fn undefined_type(pkg_name: Option<&Token>, token: &Token) -> CompileError {
     }
 }
 
-pub fn undefined_symbol(token: &Token) -> CompileError {
+pub fn undefined_symbol(selector: Option<&String>, token: &Token) -> CompileError {
     CompileError::from_message(
         Some(token.position.clone()),
-        format!("Undefined symbol {}", token.value),
+        if let Some(selector) = selector {
+            format!("Undefined symbol {}.{}", selector, token.value)
+        } else {
+            format!("Undefined symbol {}", token.value)
+        },
     )
 }
 

@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, rc::Rc};
 
+use crate::semantic::Expr;
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Type {
     pub name: Option<(Rc<String>, Rc<String>)>,
@@ -80,6 +82,12 @@ impl Display for TupleType {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct StructType {
     pub fields: Vec<StructField>,
+}
+
+impl StructType {
+    pub fn get(&self, name: &String) -> Option<&StructField> {
+        todo!();
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

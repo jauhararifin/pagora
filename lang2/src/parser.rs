@@ -1,11 +1,11 @@
 use crate::{
     ast::{
-        AddrExprNode, AssignStmtNode, BinaryExprNode, BlockStmtNode, CallExprNode, CastExprNode,
-        CompositeLitNode, DerefExprNode, ElseIfStmtNode, ElseStmtNode, ExprNode, FuncHeadNode,
-        FuncNode, GroupedExprNode, IfStmtNode, ImportNode, IndexExprNode, ItemNode,
-        KeyValueExprNode, ParameterNode, ReturnStmtNode, RootNode, SelectionExprNode,
-        SelectionTypeNode, StmtNode, StructFieldNode, StructTypeExprNode, TupleLitNode, TypeNode,
-        UnaryExprNode, VarNode, VarStmtNode, WhileStmtNode,
+        AddrExprNode, ArrayTypeExprNode, AssignStmtNode, BinaryExprNode, BlockStmtNode,
+        CallExprNode, CastExprNode, CompositeLitNode, DerefExprNode, ElseIfStmtNode, ElseStmtNode,
+        ExprNode, FuncHeadNode, FuncNode, GroupedExprNode, IfStmtNode, ImportNode, IndexExprNode,
+        ItemNode, KeyValueExprNode, ParameterNode, ReturnStmtNode, RootNode, SelectionExprNode,
+        StmtNode, StructFieldNode, StructTypeExprNode, TupleLitNode, TypeNode, UnaryExprNode,
+        VarNode, VarStmtNode, WhileStmtNode,
     },
     errors::{
         cannot_use_expr_as_stmt, unexpected_token, unexpected_token_for, CompileError, Result,
@@ -737,7 +737,7 @@ fn parse_struct_type_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
             close_block,
         }))
     } else {
-        parse_primary_expr(tokens)
+        parse_array_type(tokens)
     }
 }
 
@@ -752,11 +752,19 @@ fn parse_struct_field(tokens: &mut TokenStream) -> Result<StructFieldNode> {
     })
 }
 
-// fn parse_array_type(tokens: &mut TokenStream) -> Result<ExprNode> {
-//     let open_square = tokens.take_if(TokenKind::OpenSquare, None)?;
-//     let close_square = tokens.take(TokenKind::CloseSquare, None)?;
-//     todo!();
-// }
+fn parse_array_type(tokens: &mut TokenStream) -> Result<ExprNode> {
+    if let Some(open_square) = tokens.take_if(TokenKind::OpenSquare) {
+        let close_square = tokens.take(TokenKind::CloseSquare, None)?;
+        let element_type = Box::new(parse_expr(tokens)?);
+        Ok(ExprNode::Array(ArrayTypeExprNode {
+            open_square,
+            close_square,
+            element_type,
+        }))
+    } else {
+        parse_primary_expr(tokens)
+    }
+}
 
 fn parse_primary_expr(tokens: &mut TokenStream) -> Result<ExprNode> {
     match tokens.kind() {

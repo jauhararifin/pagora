@@ -37,7 +37,7 @@ pub fn load_package_complete(package_name: &str) -> Result<()> {
     for package_name in load_order {
         let package_ast = packages.get(package_name).unwrap().clone();
         let unit = analyze_package(&units, package_name.clone(), &package_ast.root_set)?;
-        units.insert(package_name.clone(), unit);
+        units.insert(package_name.clone(), Rc::new(unit));
     }
 
     todo!();
